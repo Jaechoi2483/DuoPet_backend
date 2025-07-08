@@ -1,4 +1,5 @@
 HELP.md
+application.properties
 .gradle
 build/
 !gradle/wrapper/gradle-wrapper.jar
@@ -35,3 +36,30 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Cursor AI ###
+.cursor/
+.cursorrules
+
+### Preferences ###
+.env
+application-*.yml
+
+### Log, Temp ###
+*.log
+*.tmp
+
+### OS ###
+.DS_Store
+Thumbs.db
+
+### DB ###
+*.sql
+*.sql.gz
+*.sql.bz2
+*.sql.xz
+*.sql.tar
+*.sql.tar.gz
+*.sql.tar.bz2
+*.sql.tar.xz
+*.db
