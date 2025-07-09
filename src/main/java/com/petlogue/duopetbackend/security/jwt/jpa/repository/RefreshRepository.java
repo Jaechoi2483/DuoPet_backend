@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
@@ -28,6 +29,9 @@ public interface RefreshRepository extends JpaRepository<RefreshToken, Long> {
     // RefreshToken 전체 조회
     Optional<RefreshToken> findByRefreshToken(String token);
 
-    // userId 기준 전체 삭제 (로그아웃 시 유용)
-    void deleteByUserId(Long userId);
+    // RefreshToken 삭제
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM RefreshToken r WHERE r.userId = :userId")
+    void deleteByUserId(@Param("userId") Long userId);
 }

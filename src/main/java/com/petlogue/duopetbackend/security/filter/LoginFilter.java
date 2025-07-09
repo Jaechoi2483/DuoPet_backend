@@ -50,6 +50,11 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
             Map<String, String> requestBody = mapper.readValue(request.getInputStream(), Map.class);
             loginId = requestBody.get("loginId");
             userPwd = requestBody.get("userPwd");
+
+            // 클라이언트에서 전달한 로그인 정보 로그 출력
+            log.info("클라이언트에서 전달한 loginId: {}", loginId);
+            log.info("클라이언트에서 전달한 비밀번호: {}", userPwd);
+
         } catch (IOException e) {
             throw new RuntimeException("요청 데이터를 읽을 수 없습니다.", e);
         }
@@ -90,7 +95,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
                 .deviceInfo(request.getHeader("User-Agent"))  // 브라우저/디바이스 정보
                 .createdAt(new Date())
                 .expiresAt(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24))
-                .tokenStatus("active")
+                .tokenStatus("ACTIVE")
                 .build();
 
         refreshService.saveRefresh(refreshTokenEntity);

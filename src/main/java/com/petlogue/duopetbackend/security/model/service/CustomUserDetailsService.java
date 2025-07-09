@@ -26,6 +26,7 @@ public class CustomUserDetailsService implements UserDetailsService {
                 });
 
         log.info("DB에서 조회된 사용자: {}", user.getLoginId());
+        log.info("암호화된 비밀번호: {}", user.getUserPwd());  // 이 줄 추가해서 값 확인
 
         return User.builder()
                 .username(user.getLoginId())

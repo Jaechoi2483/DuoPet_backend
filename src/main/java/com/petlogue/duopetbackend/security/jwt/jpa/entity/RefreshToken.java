@@ -13,7 +13,7 @@ import java.util.GregorianCalendar;
 @AllArgsConstructor
 @Data
 @Entity
-@Table(name="TB_REFRESH_TOKENS")
+@Table(name="REFRESH_TOKEN")
 public class RefreshToken {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

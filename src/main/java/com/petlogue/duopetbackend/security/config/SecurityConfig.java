@@ -66,11 +66,11 @@ public class SecurityConfig implements WebMvcConfigurer {
         return provider;
     }
 
-    // ✅ CORS 설정
+    // CORS 설정
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOrigins("http://localhost:3000") // 배포시 실제 도메인으로 추가
+                .allowedOrigins("http://localhost:3000", "http://localhost:3001") // 배포시 실제 도메인으로 추가
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .exposedHeaders("token-expired", "Authorization", "RefreshToken")
@@ -91,11 +91,11 @@ public class SecurityConfig implements WebMvcConfigurer {
                 .authorizeHttpRequests(auth -> auth
                         // 인증 없이 접근 가능한 경로 목록
                         .requestMatchers(
-                                "/auth/login",
-                                "/auth/signup",
-                                "/auth/reissue",
-                                "/auth/id-check",
-                                "/auth/email-check",
+                                "/login",
+                                "/reissue",
+                                "/users/check-id",
+                                "/users/signup/**",
+                                "/email-check",
                                 "/notice/**",
                                 "/board/**",
                                 "/favicon.ico"
@@ -110,6 +110,8 @@ public class SecurityConfig implements WebMvcConfigurer {
                         // 그 외는 모두 인증 필요
                         .anyRequest().authenticated()
                 )
+
+                .authenticationProvider(daoAuthenticationProvider())
 
                 // JWT 필터 등록
                 .addFilterBefore(new JWTFilter(jwtUtil), UsernamePasswordAuthenticationFilter.class)
