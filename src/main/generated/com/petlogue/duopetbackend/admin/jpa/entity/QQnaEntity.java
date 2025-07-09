@@ -7,6 +7,7 @@ import com.querydsl.core.types.dsl.*;
 import com.querydsl.core.types.PathMetadata;
 import javax.annotation.processing.Generated;
 import com.querydsl.core.types.Path;
+import com.querydsl.core.types.dsl.PathInits;
 
 
 /**
@@ -18,6 +19,8 @@ public class QQnaEntity extends EntityPathBase<QnaEntity> {
     private static final long serialVersionUID = -741610827L;
 
     public static final QQnaEntity qnaEntity = new QQnaEntity("qnaEntity");
+
+    public final ListPath<QnaAnswerEntity, QQnaAnswerEntity> answers = this.<QnaAnswerEntity, QQnaAnswerEntity>createList("answers", QnaAnswerEntity.class, QQnaAnswerEntity.class, PathInits.DIRECT2);
 
     public final StringPath category = createString("category");
 

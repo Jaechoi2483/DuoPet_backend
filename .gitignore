@@ -52,14 +52,3 @@ application-*.yml
 ### OS ###
 .DS_Store
 Thumbs.db
-
-### DB ###
-*.sql
-*.sql.gz
-*.sql.bz2
-*.sql.xz
-*.sql.tar
-*.sql.tar.gz
-*.sql.tar.bz2
-*.sql.tar.xz
-*.db

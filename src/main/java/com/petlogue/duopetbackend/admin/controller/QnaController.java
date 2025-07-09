@@ -7,10 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -25,5 +22,11 @@ public class QnaController {
     public ResponseEntity<Page<Qna>> getQnaList(Pageable pageable) {
         Page<Qna> qnaPage = qnaService.findAllQna(pageable);
         return ResponseEntity.ok(qnaPage);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Qna> getQnaDetail(@PathVariable("id") int contentId) {
+        Qna qnaDetail = qnaService.findQnaDetail(contentId);
+        return ResponseEntity.ok(qnaDetail);
     }
 }

@@ -10,6 +10,8 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 @AllArgsConstructor
@@ -59,6 +61,9 @@ public class QnaEntity {
     @LastModifiedDate
     @Column(name = "UPDATE_AT")
     private LocalDateTime updatedAt;
+
+    @OneToMany(mappedBy = "qna", cascade = CascadeType.ALL)
+    private List<QnaAnswerEntity> answers = new ArrayList<>();
 
 
     public Qna toDto(){
