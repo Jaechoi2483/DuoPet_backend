@@ -7,6 +7,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -25,6 +27,8 @@ public class Qna {
     private String contentType;
     private String category;
     private String tags;
+
+    private List<QnaAnswer> answers;
 
 
     public QnaEntity toEntity() {
