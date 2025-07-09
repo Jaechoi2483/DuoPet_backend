@@ -28,6 +28,8 @@ public class JWTFilter extends OncePerRequestFilter {
                 || url.equals("/auth/id-check")
                 || url.equals("/auth/email-check")
                 || url.equals("/auth/reissue")
+                || url.equals("/faq")
+                || url.startsWith("/qna")
                 || url.startsWith("/notice")
                 || url.startsWith("/board")
                 || url.endsWith(".png");

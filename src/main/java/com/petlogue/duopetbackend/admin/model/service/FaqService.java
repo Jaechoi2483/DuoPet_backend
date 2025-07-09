@@ -5,6 +5,8 @@ import com.petlogue.duopetbackend.admin.jpa.repository.FaqRepository;
 import com.petlogue.duopetbackend.admin.model.dto.Faq;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,5 +31,33 @@ public class FaqService {
         return entities.stream()
                 .map(FaqEntity::toDto)
                 .collect(Collectors.toList());
+    }
+
+    public Faq updateFaq(int faqId, Faq updateRequest) {
+        // 1. ID로 기존 FAQ 엔티티를 찾음
+        FaqEntity faqEntity = faqRepository.findById(faqId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 FAQ를 찾을 수 없습니다. id=" + faqId));
+
+        // 2. 찾아온 엔티티의 내용을 받은 DTO의 내용으로 변경 (dirty-checking)
+        faqEntity.setQuestion(updateRequest.getQuestion());
+        faqEntity.setAnswer(updateRequest.getAnswer());
+
+        // 3. @Transactional에 의해 메소드가 끝나면 변경된 내용이 자동으로 DB에 저장됨
+        //    명시적으로 save를 호출해도 무방합니다: faqRepository.save(faqEntity);
+
+        // 4. 수정된 엔티티를 다시 DTO로 변환하여 반환
+        return faqEntity.toDto();
+    }
+
+    public Page<Faq> findFaqs(String keyword, Pageable pageable) {
+        Page<FaqEntity> faqPage;
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            // 키워드가 있으면 질문과 답변 내용에서 모두 검색
+            faqPage = faqRepository.findByQuestionContainingOrAnswerContaining(keyword, keyword, pageable);
+        } else {
+            // 키워드가 없으면 전체 조회
+            faqPage = faqRepository.findAll(pageable);
+        }
+        return faqPage.map(FaqEntity::toDto);
     }
 }

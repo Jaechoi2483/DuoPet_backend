@@ -1,10 +1,7 @@
 package com.petlogue.duopetbackend.admin.jpa.entity;
 
 import com.petlogue.duopetbackend.admin.model.dto.QnaAnswer;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -22,8 +19,7 @@ public class QnaAnswerEntity {
     @Id
     @Column(name = "COMMENT_ID")
     private int commentId;
-    @Column(name = "CONTENT_ID", nullable = false)
-    private  int contentId;
+
     @Column(name = "USER_ID", nullable = false)
     private int userId;
     @Column(name = "CONTENT", nullable = false)
@@ -35,10 +31,14 @@ public class QnaAnswerEntity {
     @Column(name = "UPDATE_AT")
     private LocalDateTime updatedAt;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "content_id") // QnaEntity의 ID를 외래키로 가짐
+    private QnaEntity qna;
+
     public QnaAnswer toDto() {
         return QnaAnswer.builder()
                 .commentId(commentId)
-                .contentId(contentId)
+                .contentId(qna.getContentId())
                 .userId(userId)
                 .content(content)
                 .parentCommentId(parentCommentId)

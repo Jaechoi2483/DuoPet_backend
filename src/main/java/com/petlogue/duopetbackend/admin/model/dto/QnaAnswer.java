@@ -2,6 +2,7 @@ package com.petlogue.duopetbackend.admin.model.dto;
 
 
 import com.petlogue.duopetbackend.admin.jpa.entity.QnaAnswerEntity;
+import com.petlogue.duopetbackend.admin.jpa.entity.QnaEntity;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,19 +19,19 @@ public class QnaAnswer {
     private  int contentId;
     private int userId;
     private  String content;
-    private int parentCommentId;
+    private Integer parentCommentId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    public QnaAnswerEntity toEntity() {
+    public QnaAnswerEntity toEntity(QnaEntity parentQna) {
         return QnaAnswerEntity.builder()
                 .commentId(commentId)
-                .contentId(contentId)
                 .userId(userId)
                 .content(content)
                 .parentCommentId(parentCommentId)
                 .createdAt(createdAt)
                 .updatedAt(updatedAt)
+                .qna(parentQna)
                 .build();
     }
 }
