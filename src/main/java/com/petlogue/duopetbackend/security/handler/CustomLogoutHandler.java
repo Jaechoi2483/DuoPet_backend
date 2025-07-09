@@ -33,6 +33,7 @@ public class CustomLogoutHandler implements LogoutHandler {
             try {
                 // 1️ accessToken에서 loginId 추출
                 String loginId = jwtUtil.getLoginIdFromToken(accessToken);
+                log.info("로그아웃 대상 loginId: {}", loginId);
 
                 // 2️ loginId → userId(PK) 조회
                 UserEntity user = userRepository.findByLoginId(loginId)
@@ -40,18 +41,14 @@ public class CustomLogoutHandler implements LogoutHandler {
 
                 Long userId = user.getUserId();
 
-                // 3️ userId → refreshToken 조회
-                String refreshToken = refreshService.findTokenByUserId(userId);
+                // 3️ userId 기준 모든 RefreshToken 삭제 (단일 토큰 아니라면 안전하게 전체 삭제)
+                refreshService.deleteByUserId(userId);
 
-                // 4️ userId + token 으로 토큰 ID 조회
-                Long tokenId = refreshService.findTokenId(userId, refreshToken);
-
-                // 5️ 해당 tokenId 삭제
-                refreshService.deleteRefresh(tokenId);
-
+                // 4️ 응답 처리
                 response.setStatus(HttpServletResponse.SC_OK);
                 response.getWriter().write("로그아웃 성공");
-                log.info("로그아웃 성공");
+                log.info("로그아웃 성공 → RefreshToken 모두 삭제됨");
+
             } catch (Exception e) {
                 log.error("로그아웃 중 예외 발생", e);
                 response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
@@ -72,4 +69,5 @@ public class CustomLogoutHandler implements LogoutHandler {
             }
         }
     }
+
 }

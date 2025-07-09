@@ -24,12 +24,12 @@ public class JWTFilter extends OncePerRequestFilter {
         return url.equals("/")
                 || url.equals("/favicon.ico")
                 || url.equals("/login")
-                || url.equals("/auth/signup")
-                || url.equals("/auth/id-check")
+                || url.equals("/users/check-id")
+                || url.startsWith("/users/signup")
                 || url.equals("/auth/email-check")
-                || url.equals("/auth/reissue")
-                || url.equals("/faq")
-                || url.startsWith("/qna")
+
+                || url.equals("/reissue")
+
                 || url.startsWith("/notice")
                 || url.startsWith("/board")
                 || url.endsWith(".png");
