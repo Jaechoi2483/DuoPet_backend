@@ -7,11 +7,11 @@ import com.petlogue.duopetbackend.security.jwt.JWTUtil;
 import com.petlogue.duopetbackend.security.jwt.model.service.RefreshService;
 import com.petlogue.duopetbackend.security.model.service.CustomUserDetailsService;
 import com.petlogue.duopetbackend.user.jpa.repository.UserRepository;
-
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -101,14 +101,20 @@ public class SecurityConfig implements WebMvcConfigurer {
                                 "/favicon.ico",
                                 "/faq",
                                 "/qna",
+
                                 "/qna/**"
                         ).permitAll()
+
+                        .requestMatchers(
+                                HttpMethod.POST, "/qna" // 문의글 작성
+                                // 여기에 다른 로그인 필수 POST 경로 추가 가능
+                        ).authenticated()
 
                         // 로그아웃은 인증 필요
                         .requestMatchers("/logout").authenticated()
 
                         // 관리자 전용 경로
-                        .requestMatchers("/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/admin/**").hasAuthority("admin")
 
                         // 그 외는 모두 인증 필요
                         .anyRequest().authenticated()

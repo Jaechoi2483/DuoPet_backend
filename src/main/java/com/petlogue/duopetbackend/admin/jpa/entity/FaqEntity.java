@@ -2,10 +2,7 @@ package com.petlogue.duopetbackend.admin.jpa.entity;
 
 
 import com.petlogue.duopetbackend.admin.model.dto.Faq;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,6 +17,7 @@ import lombok.NoArgsConstructor;
 public class FaqEntity {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "FAQ_ID")
     private int faqId;
     @Column(name = "USER_ID", nullable = false)
