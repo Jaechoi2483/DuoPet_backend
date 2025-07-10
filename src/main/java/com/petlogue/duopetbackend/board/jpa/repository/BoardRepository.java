@@ -1,6 +1,7 @@
 package com.petlogue.duopetbackend.board.jpa.repository;
 
 import com.petlogue.duopetbackend.board.jpa.entity.BoardEntity;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -23,6 +24,8 @@ public interface BoardRepository extends JpaRepository<BoardEntity, Number> {
             "WHERE b.category = '자유' AND b.contentType = 'board' " +
             "ORDER BY b.viewCount DESC")
     List<Object[]> findTop3Viewed(Pageable pageable);
+
+    Page<BoardEntity> findByCategory(String category, Pageable pageable);
 }
 
 

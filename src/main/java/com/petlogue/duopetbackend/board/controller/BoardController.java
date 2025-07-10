@@ -3,11 +3,18 @@ package com.petlogue.duopetbackend.board.controller;
 import com.petlogue.duopetbackend.board.jpa.entity.BoardEntity;
 import com.petlogue.duopetbackend.board.model.dto.Board;
 import com.petlogue.duopetbackend.board.model.service.BoardService;
+import com.petlogue.duopetbackend.common.Paging;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -18,7 +25,7 @@ public class BoardController {
 
     private final BoardService boardService;
 
-    // 전체 게시판 목록 조회
+    // 전체 자유 게시판 목록 조회
     @GetMapping("/free")
     public List<Board> getFreeBoardList() {
         log.info("자유게시판 전체 조회 요청");
@@ -51,5 +58,26 @@ public class BoardController {
     public List<Board> getTopViewedBoards() {
         log.info("TOP 조회수 게시글 요청");
         return boardService.getTopViewedBoards();
+    }
+
+    // 게시판 목록 & 페이징 정보 조회
+    @GetMapping("/freeList")
+    public Map<String, Object> boardList(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "2") int limit) {
+
+        int count = boardService.selectListCount();
+        Paging paging = new Paging(count, limit, page, "/freeList");
+        paging.calculate();
+
+        Pageable pageable = PageRequest.of(paging.getCurrentPage() - 1, paging.getLimit(), Sort.by("createdAt").descending());
+
+        ArrayList<Board> list = boardService.selectList(pageable);  // DTO로 이미 변환된 리스트
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("list", list);
+        result.put("paging", paging);
+
+        return result;
     }
 }
