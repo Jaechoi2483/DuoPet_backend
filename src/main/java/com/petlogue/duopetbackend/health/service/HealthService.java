@@ -1,0 +1,140 @@
+package com.petlogue.duopetbackend.health.service;
+
+import com.petlogue.duopetbackend.health.dto.PetHealthScheduleDto;
+import com.petlogue.duopetbackend.health.dto.PetMedicalVisitDto;
+import com.petlogue.duopetbackend.health.dto.PetVaccinDto;
+import com.petlogue.duopetbackend.health.dto.PetWeightDto;
+import com.petlogue.duopetbackend.health.entity.PetHealthSchedule;
+import com.petlogue.duopetbackend.health.entity.PetMedicalVisit;
+import com.petlogue.duopetbackend.health.entity.PetVaccin;
+import com.petlogue.duopetbackend.health.entity.PetWeight;
+import com.petlogue.duopetbackend.health.repository.PetHealthScheduleRepository;
+import com.petlogue.duopetbackend.health.repository.PetMedicalVisitRepository;
+import com.petlogue.duopetbackend.health.repository.PetVaccinRepository;
+import com.petlogue.duopetbackend.health.repository.PetWeightRepository;
+import com.petlogue.duopetbackend.pet.entity.Pet;
+import com.petlogue.duopetbackend.pet.repository.PetRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class HealthService {
+
+    private final PetMedicalVisitRepository petMedicalVisitRepository;
+    private final PetVaccinRepository petVaccinRepository;
+    private final PetWeightRepository petWeightRepository;
+    private final PetHealthScheduleRepository petHealthScheduleRepository;
+    private final PetRepository petRepository; // Pet 엔티티를 가져오기 위해 추가
+
+    // Medical Visit Service Methods
+    @Transactional
+    public void createMedicalVisit(PetMedicalVisitDto.CreateRequest dto) {
+        Pet pet = petRepository.findById(dto.getPetId()).orElseThrow(() -> new IllegalArgumentException("Pet not found"));
+        PetMedicalVisit visit = new PetMedicalVisit();
+        visit.setPet(pet);
+        visit.setHospitalName(dto.getHospitalName());
+        visit.setVeterinarian(dto.getVeterinarian());
+        visit.setVisitDate(dto.getVisitDate());
+        visit.setVisitReason(dto.getVisitReason());
+        visit.setDiagnosis(dto.getDiagnosis());
+        visit.setTreatment(dto.getTreatment());
+        visit.setCost(dto.getCost());
+        petMedicalVisitRepository.save(visit);
+    }
+
+    public List<PetMedicalVisitDto.Response> getMedicalVisits(Long petId) {
+        return petMedicalVisitRepository.findByPet_PetId(petId).stream()
+                .map(visit -> PetMedicalVisitDto.Response.builder()
+                        .visitId(visit.getVisitId())
+                        .hospitalName(visit.getHospitalName())
+                        .veterinarian(visit.getVeterinarian())
+                        .visitDate(visit.getVisitDate())
+                        .visitReason(visit.getVisitReason())
+                        .diagnosis(visit.getDiagnosis())
+                        .treatment(visit.getTreatment())
+                        .cost(visit.getCost())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    // Vaccination Service Methods
+    @Transactional
+    public void createVaccination(PetVaccinDto.CreateRequest dto) {
+        Pet pet = petRepository.findById(dto.getPetId()).orElseThrow(() -> new IllegalArgumentException("Pet not found"));
+        PetVaccin vaccin = new PetVaccin();
+        vaccin.setPet(pet);
+        vaccin.setVaccineName(dto.getVaccineName());
+        vaccin.setScheduledDate(dto.getScheduledDate());
+        vaccin.setDescription(dto.getDescription());
+        vaccin.setAdministeredDate(dto.getAdministeredDate());
+        petVaccinRepository.save(vaccin);
+    }
+
+    public List<PetVaccinDto.Response> getVaccinations(Long petId) {
+        return petVaccinRepository.findByPet_PetId(petId).stream()
+                .map(vaccin -> PetVaccinDto.Response.builder()
+                        .vaccinationId(vaccin.getVaccinationId())
+                        .vaccineName(vaccin.getVaccineName())
+                        .scheduledDate(vaccin.getScheduledDate())
+                        .description(vaccin.getDescription())
+                        .administeredDate(vaccin.getAdministeredDate())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    // Weight Service Methods
+    @Transactional
+    public void createWeight(PetWeightDto.CreateRequest dto) {
+        Pet pet = petRepository.findById(dto.getPetId()).orElseThrow(() -> new IllegalArgumentException("Pet not found"));
+        PetWeight weight = new PetWeight();
+        weight.setPet(pet);
+        weight.setWeightKg(dto.getWeightKg());
+        weight.setMeasuredDate(dto.getMeasuredDate());
+        weight.setMemo(dto.getMemo());
+        petWeightRepository.save(weight);
+    }
+
+    public List<PetWeightDto.Response> getWeights(Long petId) {
+        return petWeightRepository.findByPet_PetId(petId).stream()
+                .map(weight -> PetWeightDto.Response.builder()
+                        .weightId(weight.getWeightId())
+                        .weightKg(weight.getWeightKg())
+                        .measuredDate(weight.getMeasuredDate())
+                        .memo(weight.getMemo())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    // Health Schedule Service Methods
+    @Transactional
+    public void createHealthSchedule(PetHealthScheduleDto.CreateRequest dto) {
+        Pet pet = petRepository.findById(dto.getPetId()).orElseThrow(() -> new IllegalArgumentException("Pet not found"));
+        PetHealthSchedule schedule = new PetHealthSchedule();
+        schedule.setPet(pet);
+        schedule.setScheduleType(dto.getScheduleType());
+        schedule.setTitle(dto.getTitle());
+        schedule.setScheduleDate(dto.getScheduleDate());
+        schedule.setScheduleTime(dto.getScheduleTime());
+        schedule.setMemo(dto.getMemo());
+        petHealthScheduleRepository.save(schedule);
+    }
+
+    public List<PetHealthScheduleDto.Response> getHealthSchedules(Long petId) {
+        return petHealthScheduleRepository.findByPet_PetId(petId).stream()
+                .map(schedule -> PetHealthScheduleDto.Response.builder()
+                        .scheduleId(schedule.getScheduleId())
+                        .scheduleType(schedule.getScheduleType())
+                        .title(schedule.getTitle())
+                        .scheduleDate(schedule.getScheduleDate())
+                        .scheduleTime(schedule.getScheduleTime())
+                        .memo(schedule.getMemo())
+                        .build())
+                .collect(Collectors.toList());
+    }
+}
