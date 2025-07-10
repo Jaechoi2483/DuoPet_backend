@@ -25,7 +25,7 @@ public class QnaAnswerEntity {
     @Column(name = "CONTENT", nullable = false)
     private  String content;
     @Column(name = "PARENT_COMMENT_ID",  length = 1000)
-    private int parentCommentId;
+    private Integer parentCommentId;
     @Column(name = "CREATED_AT", nullable = false)
     private LocalDateTime createdAt;
     @Column(name = "UPDATE_AT")
