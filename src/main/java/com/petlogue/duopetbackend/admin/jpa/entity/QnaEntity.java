@@ -63,6 +63,7 @@ public class QnaEntity {
     private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "qna", cascade = CascadeType.ALL)
+    @Builder.Default
     private List<QnaAnswerEntity> answers = new ArrayList<>();
 
 

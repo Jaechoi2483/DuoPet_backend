@@ -88,7 +88,7 @@ INSERT INTO users (
     login_id, user_pwd, provider, provider_id, user_name, nickname, phone,
     gender, address, user_email, role, created_at, status, rename_filename, original_filename, face_recognition_id
 ) VALUES
-('vet001', 'hashed_password_2', 'NONE', NULL, '김수의', 'drkim', '010-2222-2222',
+('vet001', 'hashed_password_2', 'NONE', NULL, '김수의', '동물병원테스트', '010-2222-2222',
  'F', '서울특별시 송파구 올림픽로 300', 'vet@duopet.com', 'vet', TO_DATE('2024-06-02', 'YYYY-MM-DD'),
  'active', NULL, NULL, 'vet_face_001');
 

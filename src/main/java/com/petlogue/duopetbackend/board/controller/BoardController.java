@@ -1,6 +1,5 @@
 package com.petlogue.duopetbackend.board.controller;
 
-import com.petlogue.duopetbackend.board.jpa.entity.BoardEntity;
 import com.petlogue.duopetbackend.board.model.dto.Board;
 import com.petlogue.duopetbackend.board.model.service.BoardService;
 import lombok.RequiredArgsConstructor;

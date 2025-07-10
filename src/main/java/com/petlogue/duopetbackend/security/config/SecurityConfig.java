@@ -101,7 +101,8 @@ public class SecurityConfig implements WebMvcConfigurer {
                                 "/favicon.ico",
                                 "/faq",
                                 "/qna",
-                                "/qna/**"
+                                "/qna/**",
+                                "/api/info/**"
                         ).permitAll()
 
                         // 로그아웃은 인증 필요
