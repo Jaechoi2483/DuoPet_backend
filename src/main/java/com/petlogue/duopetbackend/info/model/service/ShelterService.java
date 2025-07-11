@@ -5,6 +5,7 @@ import com.petlogue.duopetbackend.info.jpa.repository.ShelterRepository;
 import com.petlogue.duopetbackend.info.model.dto.ShelterDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -17,13 +18,16 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-@Service
-@RequiredArgsConstructor
+@Service("shelterInfoService")
 @Slf4j
 @Transactional(readOnly = true)
 public class ShelterService {
 
     private final ShelterRepository shelterRepository;
+    
+    public ShelterService(@Qualifier("shelterInfoRepository") ShelterRepository shelterRepository) {
+        this.shelterRepository = shelterRepository;
+    }
 
     /**
      * 모든 활성화된 보호소 조회 (DTO 응답)

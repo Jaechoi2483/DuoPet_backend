@@ -6,16 +6,24 @@ import com.petlogue.duopetbackend.user.jpa.repository.UserRepository;
 import com.petlogue.duopetbackend.user.model.dto.ShelterDto;
 import com.petlogue.duopetbackend.user.model.service.ShelterService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/shelter")
-@RequiredArgsConstructor
 public class ShelterController {
 
     private final ShelterService shelterService;
     private final UserRepository userRepository;
     private final ShelterRepository shelterRepository;
+
+    public ShelterController(@Qualifier("shelterUserService") ShelterService shelterService, 
+                           UserRepository userRepository, 
+                           @Qualifier("shelterUserRepository") ShelterRepository shelterRepository) {
+        this.shelterService = shelterService;
+        this.userRepository = userRepository;
+        this.shelterRepository = shelterRepository;
+    }
 
     /**
      * 보호소 등록

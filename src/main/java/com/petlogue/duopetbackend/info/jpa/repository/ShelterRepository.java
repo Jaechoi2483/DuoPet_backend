@@ -10,7 +10,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
-@Repository
+@Repository("shelterInfoRepository")
 public interface ShelterRepository extends JpaRepository<ShelterEntity, Long> {
     
     /**
