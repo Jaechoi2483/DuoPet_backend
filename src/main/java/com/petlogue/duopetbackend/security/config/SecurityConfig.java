@@ -104,7 +104,12 @@ public class SecurityConfig implements WebMvcConfigurer {
                                 "/faq",
                                 "/qna",
 
-                                "/qna/**"
+                                "/qna/**",
+                                "/api/info/**"
+
+
+                                
+
                         ).permitAll()
 
                         .requestMatchers(

@@ -42,9 +42,11 @@ public class BoardEntity {
     private String tags;
 
     @Column(name = "VIEW_COUNT")
+    @Builder.Default
     private Integer  viewCount = 0;
 
     @Column(name = "LIKE_COUNT")
+    @Builder.Default
     private Integer  likeCount = 0;
 
     @Column(name = "RENAME_FILENAME")

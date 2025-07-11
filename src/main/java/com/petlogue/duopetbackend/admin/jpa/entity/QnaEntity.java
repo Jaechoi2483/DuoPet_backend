@@ -68,7 +68,11 @@ public class QnaEntity {
     @Column(name = "UPDATE_AT")
     private LocalDateTime updatedAt;
 
+
+   
+
     @OneToMany(mappedBy = "qna", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+
     private List<QnaAnswerEntity> answers = new ArrayList<>();
 
 
