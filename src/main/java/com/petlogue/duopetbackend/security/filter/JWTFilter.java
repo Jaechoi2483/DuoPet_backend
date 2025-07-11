@@ -28,6 +28,7 @@ public class JWTFilter extends OncePerRequestFilter {
                 || url.equals("/users/check-nickname")
                 || url.equals("/users/check-email")
                 || url.startsWith("/users/signup")
+                || url.equals("/auth/email-check")
 
                 || url.equals("/reissue")
 
@@ -102,6 +103,8 @@ public class JWTFilter extends OncePerRequestFilter {
 
             // 정상 토큰 → 필터 통과
             filterChain.doFilter(request, response);
+
+
 
         } catch (Exception e) {
             log.error("JWTFilter 토큰 검사 중 예외 발생", e);
