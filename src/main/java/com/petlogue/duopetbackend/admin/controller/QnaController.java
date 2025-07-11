@@ -8,9 +8,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -73,5 +76,62 @@ public class QnaController {
             return ResponseEntity.status(500).body("게시글 저장 실패"); // 실패
         }
     }
+    @PostMapping("/{qnaId}/answer")
+    public ResponseEntity<?> createAnswer(
+            @PathVariable("qnaId") int qnaId,
+            @RequestBody Map<String, String> requestBody, // 답변 내용을 Map으로 받음
+            Authentication authentication) {
+
+
+
+
+
+        // 1. 현재 로그인한 사용자의 역할 확인 (관리자만 가능)
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("admin")); // 실제 관리자 역할명으로 변경 (예: "ROLE_ADMIN")
+
+        if (!isAdmin) {
+            log.warn("Q&A 답변 시도 - 권한 없음: 사용자 ID = {}", authentication.getName());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("답변 등록 권한이 없습니다."); // 403 Forbidden
+        }
+
+        log.info("--- 백엔드 요청 본문 확인 ---");
+        log.info("qnaId: {}", qnaId);
+        log.info("requestBody: {}", requestBody); // Map 전체를 로깅
+        log.info("requestBody.get(\"content\"): {}", requestBody.get("content")); // content 필드 값 확인
+        log.info("---------------------------");
+
+        // 2. 답변 내용 추출 및 유효성 검사
+        String content = requestBody.get("content");
+        if (content == null || content.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body("답변 내용을 입력해주세요."); // 400 Bad Request
+        }
+
+        // 3. 현재 로그인한 관리자의 userId 조회
+        String adminLoginId = authentication.getName();
+        UserEntity adminUser = userRepository.findByLoginId(adminLoginId)
+                .orElseThrow(() -> new IllegalStateException("관리자 사용자 정보를 찾을 수 없습니다.")); // 이 경우는 발생해서는 안됨
+        Integer adminUserId = adminUser.getUserId().intValue();
+
+        // 4. 서비스 호출하여 답변 저장
+        try {
+            int result = qnaService.saveAnswer(qnaId, content, adminUserId);
+
+            if (result > 0) {
+                log.info("Q&A 답변 등록 성공: QnA ID = {}, 관리자 ID = {}", qnaId, adminUserId);
+                return ResponseEntity.status(HttpStatus.CREATED).body("답변이 성공적으로 등록되었습니다."); // 201 Created
+            } else {
+                log.error("Q&A 답변 등록 실패: QnA ID = {}, 관리자 ID = {}", qnaId, adminUserId);
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("답변 등록에 실패했습니다."); // 500 Internal Server Error
+            }
+        } catch (IllegalArgumentException e) {
+            log.warn("Q&A 답변 등록 실패 - QnA 없음: QnA ID = {}", qnaId, e);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage()); // 404 Not Found
+        } catch (Exception e) {
+            log.error("Q&A 답변 등록 중 예상치 못한 오류 발생: QnA ID = {}", qnaId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("서버 오류가 발생했습니다."); // 500 Internal Server Error
+        }
+    }
+
 
 }

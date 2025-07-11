@@ -14,6 +14,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -85,19 +86,45 @@ public class QnaService {
     @Transactional
     public int saveQna(Qna qna, Integer userId) {
         try {
-            // DTO를 Entity로 변환
             QnaEntity qnaEntity = qna.toEntity();
 
-            // Entity에 전달받은 userId를 명시적으로 설정
             qnaEntity.setUserId(userId);
 
             qnaEntity.setContentType("qna");
-            // 작성자 ID가 포함된 완전한 엔티티를 저장
             qnaRepository.save(qnaEntity);
 
             return 1; // 성공
         } catch (Exception e) {
-            // log.error("QnA 저장 중 오류 발생: {}", e.getMessage(), e);
+            return 0; // 실패
+        }
+    }
+
+    @Transactional
+    public int saveAnswer(int qnaId, String content, Integer adminUserId) {
+        try {
+            // 1. 질문 엔티티 조회
+            QnaEntity qnaEntity = qnaRepository.findById(qnaId) // int qnaId를 그대로 사용
+                    .orElseThrow(() -> new IllegalArgumentException("해당 Q&A를 찾을 수 없습니다. id=" + qnaId));
+            // 2. 새 답변 엔티티 생성 및 필드 설정
+            QnaAnswerEntity answerEntity = new QnaAnswerEntity();
+            answerEntity.setContent(content);
+            answerEntity.setUserId(adminUserId); // 관리자 ID 저장 (DB용, UI에는 노출 안 함)
+            answerEntity.setQna(qnaEntity);
+
+            // 3. 질문 엔티티의 답변 리스트에 추가
+            List<QnaAnswerEntity> answers = qnaEntity.getAnswers();
+            if (answers == null) {
+                answers = new ArrayList<>();
+                qnaEntity.setAnswers(answers);
+            }
+            answers.add(answerEntity);
+
+            // 4. QnaEntity 저장 (답변도 함께 저장됨)
+            qnaRepository.save(qnaEntity);
+
+            return 1; // 성공
+        } catch (Exception e) {
+            // 로깅 추가 가능: log.error("답변 저장 실패", e);
             return 0; // 실패
         }
     }

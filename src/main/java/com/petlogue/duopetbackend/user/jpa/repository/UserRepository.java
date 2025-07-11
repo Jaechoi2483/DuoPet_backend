@@ -1,9 +1,14 @@
 package com.petlogue.duopetbackend.user.jpa.repository;
 
+import com.petlogue.duopetbackend.admin.model.dto.StatItemDto;
 import com.petlogue.duopetbackend.user.jpa.entity.UserEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -20,4 +25,20 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
 
     // [회원가입 2단계] 닉네임 중복 여부 확인
     boolean existsByNickname(String nickname);
+
+
+// 관리자 회원목록 조회할때 역할이랑 상태별로 조회할때 쓰는 거에요
+
+    Page<UserEntity> findByRoleAndStatus(String role, String status, Pageable pageable);
+
+    // 2. Role로만 필터링
+    Page<UserEntity> findByRole(String role, Pageable pageable);
+
+    // 3. Status로만 필터링
+    Page<UserEntity> findByStatus(String status, Pageable pageable);
+
+    // 관리자 페이지 통계 표시할떄  쓰는 거에요
+    @Query("SELECT new com.petlogue.duopetbackend.admin.model.dto.StatItemDto(u.gender, COUNT(u)) " +
+            "FROM UserEntity u GROUP BY u.gender")
+    List<StatItemDto> findGenderStat();
 }

@@ -40,6 +40,11 @@ public class QnaAnswerEntity {
     @JoinColumn(name = "CONTENT_ID", nullable = false)
     private QnaEntity qna;
 
+    @PrePersist
+    public void prePersist() {
+        this.createdAt = LocalDateTime.now();
+    }
+
     public QnaAnswer toDto() {
         return QnaAnswer.builder()
                 .commentId(commentId)
