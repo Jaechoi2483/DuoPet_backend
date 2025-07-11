@@ -1,10 +1,10 @@
 package com.petlogue.duopetbackend.health.controller;
 
-import com.petlogue.duopetbackend.health.dto.PetHealthScheduleDto;
-import com.petlogue.duopetbackend.health.dto.PetMedicalVisitDto;
-import com.petlogue.duopetbackend.health.dto.PetVaccinDto;
-import com.petlogue.duopetbackend.health.dto.PetWeightDto;
-import com.petlogue.duopetbackend.health.service.HealthService;
+import com.petlogue.duopetbackend.health.model.dto.PetHealthScheduleDto;
+import com.petlogue.duopetbackend.health.model.dto.PetMedicalVisitDto;
+import com.petlogue.duopetbackend.health.model.dto.PetVaccinDto;
+import com.petlogue.duopetbackend.health.model.dto.PetWeightDto;
+import com.petlogue.duopetbackend.health.model.service.HealthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
