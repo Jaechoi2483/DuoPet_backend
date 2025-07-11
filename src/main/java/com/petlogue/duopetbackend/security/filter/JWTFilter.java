@@ -42,6 +42,7 @@ public class JWTFilter extends OncePerRequestFilter {
 
                 || url.startsWith("/api/info")
                 || url.startsWith("/info")
+                || url.startsWith("/api/adoption")
 
                 || url.startsWith("/board/freeList")
                 || url.startsWith("/board/detail")
@@ -59,6 +60,12 @@ public class JWTFilter extends OncePerRequestFilter {
         String requestURI = request.getRequestURI();
         String requestMethod = request.getMethod();
         log.info("JWTFilter 실행: {}", requestURI);
+        
+        // Debug logging
+        if (requestURI.startsWith("/api/adoption")) {
+            log.info("Adoption API 요청 감지: {}", requestURI);
+            log.info("isExcludedUrl 결과: {}", isExcludedUrl(requestURI));
+        }
 
         if (HttpMethod.GET.matches(requestMethod) && requestURI.equals("/faq")) {
             log.info("인증 예외 경로 (GET /faq): 토큰 검사 없이 통과 → {} {}", requestMethod, requestURI);
