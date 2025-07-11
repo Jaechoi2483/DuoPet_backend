@@ -92,11 +92,16 @@ public class SecurityConfig implements WebMvcConfigurer {
 
                         .requestMatchers(HttpMethod.POST,"/board/write").authenticated()
 
+                        .requestMatchers(HttpMethod.PUT, "/board/free/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/board/free/**").authenticated()
+
+
 
                         .requestMatchers(HttpMethod.DELETE, "/notice/{id}", "/faq/{id}" ).hasAuthority("admin")
                         .requestMatchers(HttpMethod.POST, "/faq").hasAuthority("admin")
                         .requestMatchers(HttpMethod.PUT, "/notice/{id}", "/faq/{id}").hasAuthority("admin")
                         .requestMatchers("/board/write").authenticated()
+
 
                         // 인증 없이 접근 가능한 경로 목록
                         .requestMatchers(
@@ -107,7 +112,10 @@ public class SecurityConfig implements WebMvcConfigurer {
                                 "/users/check-nickname",
                                 "/users/check-email",
                                 "/notice/**",
-                                "/board/**",
+                                "/board/detail/**",
+                                "/board/top-liked",
+                                "/board/top-viewed",
+                                "/board/freeList",
                                 "/favicon.ico",
                                 "/faq",
                                 "/qna",

@@ -5,6 +5,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -63,6 +64,25 @@ public class JWTUtil {
             log.error("JWT parsing error", e);
             throw e;
         }
+    }
+
+    // 수정 / 삭제시 사용자 ID 와 게시물 작성자 ID 일치 여부 확인
+    public Long getUserIdFromRequest(HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+        if (header != null && header.startsWith("Bearer ")) {
+            String token = header.substring(7); // "Bearer " 제거
+            Claims claims = getClaimsFromToken(token);
+
+            try {
+                Long userNo = Long.valueOf(claims.get("userNo").toString());
+                log.info("JWTUtil - 추출된 userNo: {}", userNo);
+                return Long.valueOf(claims.get("userNo").toString());
+            } catch (Exception e) {
+                log.error("userNo 추출 실패", e);
+                return null;
+            }
+        }
+        return null;
     }
 
     // 토큰 만료 여부 확인
