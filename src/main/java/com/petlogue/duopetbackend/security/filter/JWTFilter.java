@@ -6,6 +6,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpMethod;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -32,7 +33,12 @@ public class JWTFilter extends OncePerRequestFilter {
 
                 || url.equals("/reissue")
 
+
                 || url.startsWith("/notice")
+
+
+                || url.startsWith("/board")
+
 
                 || url.startsWith("/api/info")
                 || url.startsWith("/info")
@@ -41,7 +47,7 @@ public class JWTFilter extends OncePerRequestFilter {
                 || url.startsWith("/board/detail")
                 || url.equals("/board/top-liked")
                 || url.equals("/board/top-viewed")
-
+                || url.equals("/notice")
                 || url.endsWith(".png");
     }
 
@@ -51,7 +57,20 @@ public class JWTFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
 
         String requestURI = request.getRequestURI();
+        String requestMethod = request.getMethod();
         log.info("JWTFilter 실행: {}", requestURI);
+
+        if (HttpMethod.GET.matches(requestMethod) && requestURI.equals("/faq")) {
+            log.info("인증 예외 경로 (GET /faq): 토큰 검사 없이 통과 → {} {}", requestMethod, requestURI);
+            filterChain.doFilter(request, response);
+            return; // 중요: 다음 필터로 넘긴 후 바로 리턴
+        }
+
+        if (HttpMethod.GET.matches(requestMethod) && requestURI.startsWith("/notice")) {
+            log.info("인증 예외 경로 (GET /notice/**): 토큰 검사 없이 통과 → {} {}", requestMethod, requestURI);
+            filterChain.doFilter(request, response);
+            return; // 토큰 검사 로직을 건너뛰고 다음 필터로 진행
+        }
 
         if (isExcludedUrl(requestURI)) {
             log.info("인증 예외 경로: 토큰 검사 없이 통과 → {}", requestURI);
