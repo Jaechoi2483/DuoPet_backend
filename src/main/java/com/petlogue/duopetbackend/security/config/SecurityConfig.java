@@ -90,6 +90,8 @@ public class SecurityConfig implements WebMvcConfigurer {
 
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST,"/board/write").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/board/free/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/board/free/**").authenticated()
                         // 인증 없이 접근 가능한 경로 목록
                         .requestMatchers(
                                 "/login",
@@ -99,7 +101,10 @@ public class SecurityConfig implements WebMvcConfigurer {
                                 "/users/check-nickname",
                                 "/users/check-email",
                                 "/notice/**",
-                                "/board/**",
+                                "/board/detail/**",
+                                "/board/top-liked",
+                                "/board/top-viewed",
+                                "/board/freeList",
                                 "/favicon.ico",
                                 "/faq",
                                 "/qna",

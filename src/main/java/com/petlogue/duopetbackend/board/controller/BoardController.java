@@ -9,6 +9,8 @@ import com.petlogue.duopetbackend.board.model.dto.Board;
 import com.petlogue.duopetbackend.board.model.service.BoardService;
 import com.petlogue.duopetbackend.common.FileNameChange;
 import com.petlogue.duopetbackend.common.Paging;
+import com.petlogue.duopetbackend.security.jwt.JWTUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,6 +35,8 @@ public class BoardController {
     private final BoardService boardService;
 
     private final BoardRepository boardRepository;
+
+    private final JWTUtil jwtUtil;
 
     @Value("${file.upload-dir}")
     private String uploadDir;
@@ -102,6 +106,108 @@ public class BoardController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("DB 저장 실패");
         }
     }
+
+    // 게시물 수정
+    @PutMapping("/free/{id}")
+    public ResponseEntity<?> updateBoard(
+            @PathVariable Long id,
+            @ModelAttribute Board board,
+            @RequestParam(name = "ofile", required = false) MultipartFile mfile,
+            HttpServletRequest request
+    ) {
+        log.info("게시글 수정 요청: id={}, {}", id, board);
+
+        try {
+            BoardEntity existing = boardRepository.findById(id)
+                    .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 존재하지 않습니다."));
+
+            // 1. 토큰에서 로그인된 사용자 ID 추출
+            Long userId = jwtUtil.getUserIdFromRequest(request);
+            log.info("수정 요청 사용자 ID: {}", userId);
+
+            // 2. 게시글 작성자와 요청자 비교
+            if (!existing.getUserId().equals(userId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("수정 권한이 없습니다.");
+            }
+
+
+            // 제목/내용/카테고리/태그 업데이트
+            existing.setTitle(board.getTitle());
+            existing.setContentBody(board.getContentBody());
+            existing.setCategory(board.getCategory());
+            existing.setTags(board.getTags());
+
+            // 파일 처리
+            if (mfile != null && !mfile.isEmpty()) {
+                String savePath = uploadDir + "/board";
+                File dir = new File(savePath);
+                if (!dir.exists()) dir.mkdirs();
+
+                String originalName = mfile.getOriginalFilename();
+                String renamedName = FileNameChange.change(originalName, "yyyyMMddHHmmss");
+
+                try {
+                    mfile.transferTo(new File(savePath, renamedName));
+                    existing.setOriginalFilename(originalName);
+                    existing.setRenameFilename(renamedName);
+                } catch (Exception e) {
+                    log.error("파일 저장 실패", e);
+                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("파일 저장 실패");
+                }
+            }
+
+            boardRepository.save(existing);
+            return ResponseEntity.ok("게시글 수정 완료");
+
+        } catch (Exception e) {
+            log.error("게시글 수정 실패", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("게시글 수정 중 오류 발생");
+        }
+    }
+
+    // 게시물 삭제
+    @DeleteMapping("/free/{id}")
+    public ResponseEntity<?> deleteBoard(@PathVariable Long id,
+                                         HttpServletRequest request) {
+
+        try {
+            // 1. JWT에서 사용자 ID 추출
+            Long userId = jwtUtil.getUserIdFromRequest(request);
+            log.info("게시글 삭제 요청: 게시글 ID={}, 사용자 ID={}", id, userId);
+            log.info("Authorization 헤더: {}", request.getHeader("Authorization"));
+            log.info("파싱된 사용자 ID: {}", userId);
+
+            // 2. 게시물 존재 여부 확인
+            Optional<BoardEntity> optional = boardRepository.findById(id);
+            if (optional.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("게시글이 존재하지 않습니다.");
+            }
+
+            BoardEntity board = optional.get();
+
+            // 3. 게시물 작성자와 요청자 일치 여부 확인
+            if (!board.getUserId().equals(userId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("삭제 권한이 없습니다.");
+            }
+
+            // 4. 첨부파일 삭제 (선택)
+            if (board.getRenameFilename() != null) {
+                File file = new File(uploadDir + "/board/" + board.getRenameFilename());
+                if (file.exists()) {
+                    file.delete();
+                }
+            }
+
+            boardRepository.deleteById(id);
+            return ResponseEntity.ok("게시글 삭제 완료");
+
+        } catch (Exception e) {
+            log.error("게시글 삭제 실패", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("게시글 삭제 중 오류 발생");
+        }
+    }
+
+
 
     // 좋아요 TOP3
     @GetMapping("/top-liked")
