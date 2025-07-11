@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
 @Entity
 public class QnaAnswerEntity {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "COMMENT_ID")
     private int commentId;
 
@@ -25,14 +26,18 @@ public class QnaAnswerEntity {
     @Column(name = "CONTENT", nullable = false)
     private  String content;
     @Column(name = "PARENT_COMMENT_ID",  length = 1000)
+ 
     private Integer parentCommentId;
+
+    
+
     @Column(name = "CREATED_AT", nullable = false)
     private LocalDateTime createdAt;
     @Column(name = "UPDATE_AT")
     private LocalDateTime updatedAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "content_id") // QnaEntity의 ID를 외래키로 가짐
+    @JoinColumn(name = "CONTENT_ID", nullable = false)
     private QnaEntity qna;
 
     public QnaAnswer toDto() {

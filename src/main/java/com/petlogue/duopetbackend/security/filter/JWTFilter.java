@@ -81,6 +81,17 @@ public class JWTFilter extends OncePerRequestFilter {
                 return;
             }
 
+            String loginId = jwtUtil.getLoginIdFromToken(accessToken);
+            String role = jwtUtil.getRoleFromToken(accessToken);
+
+            // 2. 인증 객체 생성
+            org.springframework.security.authentication.UsernamePasswordAuthenticationToken authToken =
+                    new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(loginId, null,
+                            java.util.Collections.singletonList(new org.springframework.security.core.authority.SimpleGrantedAuthority(role)));
+
+            // 3. SecurityContext에 인증 정보 등록
+            org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(authToken);
+
             // 정상 토큰 → 필터 통과
             filterChain.doFilter(request, response);
 
