@@ -11,6 +11,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
 @Service
@@ -66,5 +67,26 @@ public class NoticeService {
             throw new IllegalArgumentException("해당 공지사항을 찾을 수 없습니다. id=" + noticeId);
         }
     }
+    public Notice updateNotice(Notice notice, MultipartFile file) {
+        // 1. 기존 엔티티를 ID로 조회합니다.
+        NoticeEntity existingEntity = noticeRepository.findById(notice.getContentId())
+                .orElse(null); // orElse(null)은 예시이며, 실제로는 예외 처리가 더 좋습니다.
 
+        if (existingEntity == null) {
+            // 수정할 게시물이 없으면 null 반환
+            return null;
+        }
+
+        // 2. DTO의 내용으로 기존 엔티티의 값을 변경합니다.
+        existingEntity.setTitle(notice.getTitle());
+        existingEntity.setContentBody(notice.getContentBody());
+        existingEntity.setOriginalFilename(notice.getOriginalFilename());
+        existingEntity.setRenameFilename(notice.getRenameFilename());
+
+        // 3. JpaRepository는 변경된 내용을 감지하여 자동으로 UPDATE 쿼리를 실행합니다.
+        // 별도의 save() 호출이 필요 없을 수 있으나 명시적으로 호출하는 것도 안전합니다.
+        NoticeEntity updatedEntity = noticeRepository.save(existingEntity);
+
+        return updatedEntity.toDto();
+    }
 }
