@@ -80,6 +80,7 @@ public class BoardService {
         return list;
     }
 
+
     // 게시글 수 조회
     public int selectListCount() {
         return (int) boardRepository.count();
