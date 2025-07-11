@@ -25,15 +25,22 @@ public class JWTFilter extends OncePerRequestFilter {
                 || url.equals("/favicon.ico")
                 || url.equals("/login")
                 || url.equals("/users/check-id")
+                || url.equals("/users/check-nickname")
+                || url.equals("/users/check-email")
                 || url.startsWith("/users/signup")
-                || url.equals("/auth/email-check")
 
                 || url.equals("/reissue")
 
                 || url.startsWith("/notice")
                 || url.startsWith("/board")
+
                 || url.startsWith("/api/info")
                 || url.startsWith("/info")
+
+                || url.startsWith("/board/detail")
+                || url.equals("/board/top-liked")
+                || url.equals("/board/top-viewed")
+
                 || url.endsWith(".png");
     }
 
@@ -81,6 +88,17 @@ public class JWTFilter extends OncePerRequestFilter {
                 response.getWriter().write("{\"error\":\"AccessToken expired\"}");
                 return;
             }
+
+            String loginId = jwtUtil.getLoginIdFromToken(accessToken);
+            String role = jwtUtil.getRoleFromToken(accessToken);
+
+            // 2. 인증 객체 생성
+            org.springframework.security.authentication.UsernamePasswordAuthenticationToken authToken =
+                    new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(loginId, null,
+                            java.util.Collections.singletonList(new org.springframework.security.core.authority.SimpleGrantedAuthority(role)));
+
+            // 3. SecurityContext에 인증 정보 등록
+            org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(authToken);
 
             // 정상 토큰 → 필터 통과
             filterChain.doFilter(request, response);

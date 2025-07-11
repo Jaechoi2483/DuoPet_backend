@@ -29,6 +29,7 @@ public class Qna {
     private String tags;
 
     private List<QnaAnswer> answers;
+    private String status;
 
 
     public QnaEntity toEntity() {

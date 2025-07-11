@@ -5,7 +5,9 @@ import com.petlogue.duopetbackend.board.jpa.repository.BoardRepository;
 import com.petlogue.duopetbackend.board.model.dto.Board;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -73,6 +75,22 @@ public class BoardService {
             board.setUserId(((Number) row[2]).longValue());      // 작성자 ID
             board.setViewCount(((Number) row[3]).intValue());    // 조회수
             list.add(board);
+        }
+        return list;
+    }
+
+
+    // 게시글 수 조회
+    public int selectListCount() {
+        return (int) boardRepository.count();
+    }
+
+    // 페이징처리 Service에서 DTO 변환 처리
+    public ArrayList<Board> selectList(Pageable pageable) {
+        Page<BoardEntity> page = boardRepository.findByCategory("자유", pageable);
+        ArrayList<Board> list = new ArrayList<>();
+        for(BoardEntity entity : page){
+            list.add(entity.toDto());
         }
         return list;
     }

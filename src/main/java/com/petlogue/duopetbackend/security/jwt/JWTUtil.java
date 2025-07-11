@@ -32,6 +32,7 @@ public class JWTUtil {
     public String generateToken(UserDto userDto, String category) {
         return Jwts.builder()
                 .setSubject(userDto.getLoginId())  // 토큰의 subject = 로그인 ID
+                .claim("userNo", userDto.getUserId())
                 .claim("category", category)       // access / refresh
                 .claim("nickname", userDto.getNickname())
                 .claim("role", userDto.getRole())  // "USER", "ADMIN" 등

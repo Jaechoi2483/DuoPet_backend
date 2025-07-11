@@ -8,11 +8,14 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+
+@EntityListeners(AuditingEntityListener.class)
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -20,7 +23,10 @@ import java.util.List;
 @Table(name= "CONTENT")
 @Entity
 public class QnaEntity {
+
+
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "CONTENT_ID")
     private int contentId;
 
@@ -62,12 +68,20 @@ public class QnaEntity {
     @Column(name = "UPDATE_AT")
     private LocalDateTime updatedAt;
 
-    @OneToMany(mappedBy = "qna", cascade = CascadeType.ALL)
-    @Builder.Default
+
+   
+
+    @OneToMany(mappedBy = "qna", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+
     private List<QnaAnswerEntity> answers = new ArrayList<>();
 
 
+
+
     public Qna toDto(){
+        String status = (this.answers != null && !this.answers.isEmpty())
+                ? "ANSWERED"
+                : "PENDING";
         return Qna.builder()
                 .contentId(contentId)
                 .userId(userId)
@@ -82,6 +96,7 @@ public class QnaEntity {
                 .originalFilename(originalFilename)
                 .createdAt(createdAt)
                 .updatedAt(updatedAt)
+                .status(status)
                 .build();
     }
 
