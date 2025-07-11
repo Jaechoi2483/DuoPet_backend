@@ -60,4 +60,22 @@ public class FaqService {
         }
         return faqPage.map(FaqEntity::toDto);
     }
+
+    public FaqEntity createFaq(Faq requestDto, Integer userId) {
+        FaqEntity faqEntity = FaqEntity.builder()
+                .question(requestDto.getQuestion())
+                .answer(requestDto.getAnswer())
+                .userId(userId)
+                .build();
+        return faqRepository.save(faqEntity);
+    }
+
+    public boolean deleteFaq(int faqId) {
+        // 해당 ID의 FAQ가 존재하는지 먼저 확인
+        if (faqRepository.existsById(faqId)) {
+            faqRepository.deleteById(faqId);
+            return true; // 삭제 성공
+        }
+        return false; // 삭제할 대상이 없음
+    }
 }
