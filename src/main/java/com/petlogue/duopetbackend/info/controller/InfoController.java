@@ -6,6 +6,7 @@ import com.petlogue.duopetbackend.info.model.service.HospitalService;
 import com.petlogue.duopetbackend.info.model.service.ShelterService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -18,13 +19,18 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/info")
-@RequiredArgsConstructor
 @Slf4j
 @CrossOrigin(origins = "http://localhost:3000")
 public class InfoController {
 
     private final HospitalService hospitalService;
     private final ShelterService shelterService;
+
+    public InfoController(HospitalService hospitalService, 
+                         @Qualifier("shelterInfoService") ShelterService shelterService) {
+        this.hospitalService = hospitalService;
+        this.shelterService = shelterService;
+    }
 
     /**
      * 모든 병원 조회 (페이징)

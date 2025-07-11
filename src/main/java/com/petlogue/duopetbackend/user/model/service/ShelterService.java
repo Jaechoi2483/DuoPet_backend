@@ -5,13 +5,17 @@ import com.petlogue.duopetbackend.user.jpa.entity.UserEntity;
 import com.petlogue.duopetbackend.user.jpa.repository.ShelterRepository;
 import com.petlogue.duopetbackend.user.model.dto.ShelterDto;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
-@Service
-@RequiredArgsConstructor
+@Service("shelterUserService")
 public class ShelterService {
 
     private final ShelterRepository shelterRepository;
+    
+    public ShelterService(@Qualifier("shelterUserRepository") ShelterRepository shelterRepository) {
+        this.shelterRepository = shelterRepository;
+    }
 
     /**
      * 보호소 등록 처리
