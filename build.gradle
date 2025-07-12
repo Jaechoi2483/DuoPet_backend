@@ -92,13 +92,28 @@ dependencies {
 
 // sourceSets
 //gradle build 시 QClass (Q엔티티클래스명) 소스도 함께 build 하기 위해서 sourceSets 에 저장할 위치를 추가 지정해 준다.
-def querydslSrcDir = 'src/main/generated'
+//def querydslSrcDir = 'src/main/generated'
+//sourceSets {
+//    main {
+//        java {
+//            srcDirs += [ querydslSrcDir ]
+//        }
+//    }
+//}
+
+
+def generatedDir = layout.buildDirectory.dir('generated/querydsl')
+
 sourceSets {
-    main {
-        java {
-            srcDirs += [ querydslSrcDir ]
-        }
-    }
+    main.java.srcDirs += [generatedDir]
+}
+
+tasks.withType(JavaCompile) {
+    options.getGeneratedSourceOutputDirectory().set(file(generatedDir))
+}
+
+clean {
+    delete generatedDir
 }
 
 //annotationProcessorGeneratedSourcesDirectory 를 사용할 수도 있는데,
@@ -106,18 +121,18 @@ sourceSets {
 // generatedSourceOutputDirectory 를 사용함
 //generatedSourceOutputDirectory 는 annotation processors 에서 생성한 소스 파일을 저장할 디렉토리를 지정해 준다.
 //위에서 선언한 src/main/generated 에 annotation processors 가 만든 Q클래스들을 저장하도록 설정함
-tasks.withType(JavaCompile) {
-    options.generatedSourceOutputDirectory = file(querydslSrcDir)
-}
-
-//build clean 시에 생성되었던 QClass 들도 모두 삭제하고자 한다면
-//만들어진 Q엔티티클래스 삭제하기 : Gradle > build > clean
-//Q엔티티클래스 만들기 : Gradle > build > compileJava
-//src/main/generated 폴더 아래에 Q엔티티클래스 만들어졌으면 QueryDSL 설정이 정상적으로 작동된 것이다.
-clean {
-    delete file(querydslSrcDir)
-}
-
-tasks.named('test') {
-    useJUnitPlatform()
-}
+//tasks.withType(JavaCompile) {
+//    options.generatedSourceOutputDirectory = file(querydslSrcDir)
+//}
+//
+////build clean 시에 생성되었던 QClass 들도 모두 삭제하고자 한다면
+////만들어진 Q엔티티클래스 삭제하기 : Gradle > build > clean
+////Q엔티티클래스 만들기 : Gradle > build > compileJava
+////src/main/generated 폴더 아래에 Q엔티티클래스 만들어졌으면 QueryDSL 설정이 정상적으로 작동된 것이다.
+//clean {
+//    delete file(querydslSrcDir)
+//}
+//
+//tasks.named('test') {
+//    useJUnitPlatform()
+//}
