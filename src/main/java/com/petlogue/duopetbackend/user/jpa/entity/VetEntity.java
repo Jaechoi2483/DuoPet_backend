@@ -61,8 +61,8 @@ public class VetEntity {
                 .address(address)
                 .website(website)
                 .specialization(specialization)
-                .renameFilename(renameFilename)
-                .originalFilename(originalFilename)
+                .vetFileOriginalFilename(originalFilename)
+                .vetFileRenameFilename(renameFilename)
                 .build();
     }
 }

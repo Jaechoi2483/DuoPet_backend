@@ -29,16 +29,14 @@ public class JWTFilter extends OncePerRequestFilter {
                 || url.equals("/users/check-nickname")
                 || url.equals("/users/check-email")
                 || url.startsWith("/users/signup")
-                || url.equals("/auth/email-check")
+                || url.equals("/vet/upload-temp")
+                || url.equals("/vet/register")
 
                 || url.equals("/reissue")
 
-
                 || url.startsWith("/notice")
 
-
                 || url.startsWith("/board")
-
 
                 || url.startsWith("/api/info")
                 || url.startsWith("/info")
