@@ -8,12 +8,14 @@ import com.petlogue.duopetbackend.user.model.dto.VetDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.util.Date;
 
 @Service
+@Transactional
 @RequiredArgsConstructor
 public class UserService {
 
@@ -137,9 +139,9 @@ public class UserService {
 
             switch (role.toLowerCase()) {
                 case "vet":
+                case "shelter":
                     userDto.setStatus("waiting");
                     break;
-                case "shelter":
                 case "user":
                 default:
                     userDto.setStatus("active");

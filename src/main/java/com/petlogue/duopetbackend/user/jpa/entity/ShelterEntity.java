@@ -48,6 +48,9 @@ public class ShelterEntity {
     @Column(name = "original_filename")
     private String originalFilename;
 
+    @Column(name = "auth_file_description")
+    private String authFileDescription;
+
     public ShelterDto toDto() {
         return ShelterDto.builder()
                 .shelterId(shelterId)
@@ -59,8 +62,9 @@ public class ShelterEntity {
                 .website(website)
                 .capacity(capacity)
                 .operatingHours(operatingHours)
-                .renameFilename(renameFilename)
-                .originalFilename(originalFilename)
+                .shelterFileOriginalFilename(originalFilename)
+                .shelterFileRenameFilename(renameFilename)
+                .authFileDescription(authFileDescription)
                 .build();
     }
 }

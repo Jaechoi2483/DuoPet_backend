@@ -24,10 +24,11 @@ public class ShelterDto {
     private Integer capacity;       // 수용 가능 동물 수 (nullable)
     private String operatingHours;  // 운영 시간
 
-    private String originalFilename;  // 업로드된 파일명
-    private String renameFilename;    // 서버 저장용 파일명
+    private String shelterFileOriginalFilename; // 인증파일 원본 이름
+    private String shelterFileRenameFilename;   // 인증파일 저장 파일명
+    private String authFileDescription;         // 인증파일 설명
 
-    private MultipartFile profileImageFile; // 실제 프로필 이미지 (업로드용)
+    private MultipartFile shelterProfileFile;   // 업로드된 실제 파일 (DB 저장 안 함)
 
     // ShelterEntity로 변환 (UserEntity 연관 필수)
     public ShelterEntity toEntity(UserEntity userEntity) {
@@ -40,8 +41,9 @@ public class ShelterDto {
                 .website(this.website)
                 .capacity(this.capacity)
                 .operatingHours(this.operatingHours)
-                .originalFilename(this.originalFilename)
-                .renameFilename(this.renameFilename)
+                .originalFilename(this.shelterFileOriginalFilename)
+                .renameFilename(this.shelterFileRenameFilename)
+                .authFileDescription(this.authFileDescription)
                 .build();
     }
 }
