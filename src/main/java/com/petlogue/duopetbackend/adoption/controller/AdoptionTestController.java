@@ -47,13 +47,13 @@ public class AdoptionTestController {
         
         try {
             // API 수정일(2025-05-30) 이전 데이터 조회
-            LocalDate endDate = LocalDate.of(2025, 5, 30);  // API 수정일
+            LocalDate endDate = LocalDate.now();  // 현재 날짜
             LocalDate startDate = endDate.minusDays(30);    // 30일 전부터
             String bgnde = startDate.format(DateTimeFormatter.BASIC_ISO_DATE);
             String endde = endDate.format(DateTimeFormatter.BASIC_ISO_DATE);
             
             Map<String, Object> result = publicDataApiClient.getAbandonmentAnimals(
-                    bgnde, endde, upkind, state, pageNo, numOfRows);
+                    bgnde, endde, upkind, state, pageNo, numOfRows, null);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             log.error("Error calling animal API", e);

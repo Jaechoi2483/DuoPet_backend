@@ -2,6 +2,7 @@ package com.petlogue.duopetbackend.adoption.model.dto;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.util.List;
 import java.util.Map;
@@ -11,6 +12,7 @@ import java.util.Map;
 public class PublicAnimalApiResponse {
     
     @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Item {
         private String desertionNo;      // 유기번호
         private String filename;         // 썸네일 이미지
@@ -24,6 +26,8 @@ public class PublicAnimalApiResponse {
         private String noticeSdt;        // 공고시작일
         private String noticeEdt;        // 공고종료일
         private String popfile;          // 이미지
+        private String popfile1;         // 고품질 이미지 1
+        private String popfile2;         // 고품질 이미지 2
         private String processState;     // 상태
         private String sexCd;            // 성별 (M/F/Q)
         private String neuterYn;         // 중성화여부 (Y/N/U)
@@ -35,6 +39,9 @@ public class PublicAnimalApiResponse {
         private String chargeNm;         // 담당자
         private String officetel;        // 담당자연락처
         private String noticeComment;    // 특이사항
+        private String kindNm;           // 품종명 (e.g., "말티즈", "코리안숏헤어")
+        private String upKindNm;         // 축종명 (e.g., "개", "고양이")
+        private String careRegNo;        // 보호소등록번호
     }
     
     // API 응답을 AdoptionAnimal 엔티티로 변환
@@ -43,29 +50,58 @@ public class PublicAnimalApiResponse {
         
         // 기본 정보
         dto.setDesertionNo(item.getDesertionNo());
-        dto.setImageUrl(item.getPopfile());
+        
+        // 이미지 URL 우선순위: popfile1 > popfile > filename
+        String imageUrl = null;
+        if (item.getPopfile1() != null && !item.getPopfile1().trim().isEmpty()) {
+            imageUrl = item.getPopfile1();
+        } else if (item.getPopfile() != null && !item.getPopfile().trim().isEmpty()) {
+            imageUrl = item.getPopfile();
+        } else if (item.getFilename() != null && !item.getFilename().trim().isEmpty()) {
+            imageUrl = item.getFilename();
+        }
+        dto.setImageUrl(imageUrl);
+        
         dto.setHappenPlace(item.getHappenPlace());
         dto.setSpecialMark(item.getSpecialMark());
         dto.setPublicNoticeNo(item.getNoticeNo());
         dto.setColorCd(item.getColorCd());
         dto.setProcessState(item.getProcessState());
         
-        // 품종 정보 파싱
-        if (item.getKindCd() != null) {
+        // 동물 종류 설정 - upKindNm 우선 사용
+        if (item.getUpKindNm() != null && !item.getUpKindNm().trim().isEmpty()) {
+            dto.setAnimalType(item.getUpKindNm());
+        } else if (item.getKindCd() != null && item.getKindCd().contains("[")) {
+            // kindCd에서 추출 (예: "[개] 믹스견" -> "개")
             String[] parts = item.getKindCd().split("] ");
             if (parts.length > 0) {
                 dto.setAnimalType(parts[0].replace("[", "").trim());
-                if (parts.length > 1) {
-                    dto.setBreed(parts[1].trim());
-                }
+            }
+        } else {
+            dto.setAnimalType("기타"); // 기본값
+        }
+        
+        // 품종 정보 설정 - kindNm 우선 사용
+        if (item.getKindNm() != null && !item.getKindNm().trim().isEmpty()) {
+            dto.setBreed(item.getKindNm());
+        } else if (item.getKindCd() != null && item.getKindCd().contains("] ")) {
+            // kindCd에서 추출 (예: "[개] 믹스견" -> "믹스견")
+            String[] parts = item.getKindCd().split("] ");
+            if (parts.length > 1) {
+                dto.setBreed(parts[1].trim());
             }
         }
         
         // 성별 변환
         dto.setGender(item.getSexCd());
         
-        // 중성화 여부
-        dto.setNeutered(item.getNeuterYn());
+        // 중성화 여부 - U(불명)는 N으로 처리
+        String neuterYn = item.getNeuterYn();
+        if ("Y".equals(neuterYn)) {
+            dto.setNeutered("Y");
+        } else {
+            dto.setNeutered("N");  // U 또는 기타 값은 모두 N으로 처리
+        }
         
         // 나이 파싱 (문자열에서 숫자 추출 시도)
         if (item.getAge() != null) {

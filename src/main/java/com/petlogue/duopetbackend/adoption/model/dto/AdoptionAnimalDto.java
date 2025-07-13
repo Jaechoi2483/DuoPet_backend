@@ -43,14 +43,36 @@ public class AdoptionAnimalDto {
     private String colorCd;
     private String processState;
     
+    /**
+     * 표시용 이미지 URL 반환 (fallback 처리 포함)
+     * @return 이미지 URL 또는 기본 이미지 경로
+     */
+    public String getDisplayImageUrl() {
+        // 우선순위: imageUrl -> profileImage -> 기본 이미지
+        if (this.imageUrl != null && !this.imageUrl.trim().isEmpty()) {
+            return this.imageUrl;
+        } else if (this.profileImage != null && !this.profileImage.trim().isEmpty()) {
+            return this.profileImage;
+        } else {
+            // 동물 종류에 따른 기본 이미지
+            if ("개".equals(this.animalType) || "dog".equalsIgnoreCase(this.animalType)) {
+                return "/images/default-dog.png";
+            } else if ("고양이".equals(this.animalType) || "cat".equalsIgnoreCase(this.animalType)) {
+                return "/images/default-cat.png";
+            } else {
+                return "/images/default-animal.png";
+            }
+        }
+    }
+    
     // Entity -> DTO 변환
     public static AdoptionAnimalDto from(AdoptionAnimal entity) {
         return AdoptionAnimalDto.builder()
                 .animalId(entity.getAnimalId())
                 .shelterId(entity.getShelter() != null ? entity.getShelter().getShelterId() : null)
-                .shelterName(entity.getShelter() != null ? entity.getShelter().getShelterName() : null)
-                .shelterPhone(entity.getShelter() != null ? entity.getShelter().getPhone() : null)
-                .shelterAddress(entity.getShelter() != null ? entity.getShelter().getAddress() : null)
+                .shelterName(entity.getShelter() != null ? entity.getShelter().getShelterName() : entity.getApiShelterName())
+                .shelterPhone(entity.getShelter() != null ? entity.getShelter().getPhone() : entity.getApiShelterTel())
+                .shelterAddress(entity.getShelter() != null ? entity.getShelter().getAddress() : entity.getApiShelterAddr())
                 .name(entity.getName())
                 .animalType(entity.getAnimalType())
                 .breed(entity.getBreed())

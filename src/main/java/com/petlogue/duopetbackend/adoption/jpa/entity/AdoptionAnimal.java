@@ -19,8 +19,7 @@ import java.time.LocalDateTime;
 public class AdoptionAnimal {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "shelter_animals_seq")
-    @SequenceGenerator(name = "shelter_animals_seq", sequenceName = "SEQ_SHELTER_ANIMALS", allocationSize = 1)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "animal_id")
     private Long animalId;
     
@@ -109,4 +108,14 @@ public class AdoptionAnimal {
     
     @Column(name = "process_state", length = 20)
     private String processState; // 상태 (protect, return, adopt 등)
+    
+    // 공공 API 보호소 정보 (FK 매핑 전 임시 저장용)
+    @Column(name = "api_shelter_name", length = 200)
+    private String apiShelterName; // 보호소 이름
+    
+    @Column(name = "api_shelter_tel", length = 50)
+    private String apiShelterTel; // 보호소 전화번호
+    
+    @Column(name = "api_shelter_addr", length = 500)
+    private String apiShelterAddr; // 보호소 주소
 }
