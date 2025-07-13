@@ -207,8 +207,6 @@ public class BoardController {
         }
     }
 
-
-
     // 좋아요 TOP3
     @GetMapping("/top-liked")
     public List<Board> getTopLikedBoards() {
@@ -227,16 +225,30 @@ public class BoardController {
     @GetMapping("/freeList")
     public Map<String, Object> boardList(
             @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "2") int limit) {
+            @RequestParam(defaultValue = "2") int limit,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "date") String sort
+    ) {
+        log.info("자유게시판 목록 요청 (page={}, keyword={}, sort={})", page, keyword, sort);
 
-        int count = boardService.selectListCount();
+        // 1. 총 게시글 수 계산 (검색어 있는 경우 조건 추가)
+        int count = boardService.selectListCount(keyword);
+
+        // 2. 페이징 계산
         Paging paging = new Paging(count, limit, page, "/freeList");
         paging.calculate();
 
-        Pageable pageable = PageRequest.of(paging.getCurrentPage() - 1, paging.getLimit(), Sort.by("createdAt").descending());
+        // 3. 정렬 조건 처리
+        Sort sorting = sort.equals("title")
+                ? Sort.by("title").ascending()
+                : Sort.by("createdAt").descending();
 
-        ArrayList<Board> list = boardService.selectList(pageable);  // DTO로 이미 변환된 리스트
+        Pageable pageable = PageRequest.of(paging.getCurrentPage() - 1, paging.getLimit(), sorting);
 
+        // 4. 검색어 포함 게시글 목록 조회
+        ArrayList<Board> list = boardService.selectList(keyword, pageable);
+
+        // 5. 응답 구성
         Map<String, Object> result = new HashMap<>();
         result.put("list", list);
         result.put("paging", paging);

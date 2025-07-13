@@ -36,10 +36,6 @@ public class JWTFilter extends OncePerRequestFilter {
 
                 || url.startsWith("/notice")
 
-
-                || url.startsWith("/board")
-
-
                 || url.startsWith("/api/info")
                 || url.startsWith("/info")
                 || url.startsWith("/api/adoption")
