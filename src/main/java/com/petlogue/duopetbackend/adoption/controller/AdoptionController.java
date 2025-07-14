@@ -12,6 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 
 @Slf4j
 @RestController
@@ -81,13 +83,88 @@ public class AdoptionController {
      * 데이터 동기화 수동 실행 (관리자용)
      */
     @PostMapping("/sync")
-    public ResponseEntity<String> syncData() {
+    public ResponseEntity<Map<String, Object>> syncData() {
+        Map<String, Object> result = new HashMap<>();
         try {
-            adoptionService.syncAdoptionData();
-            return ResponseEntity.ok("Data synchronization started");
+            Map<String, Object> syncResult = adoptionService.syncAdoptionData();
+            result.put("status", "success");
+            result.put("message", "Data synchronization completed");
+            result.putAll(syncResult);  // 동기화 통계 추가
+            return ResponseEntity.ok(result);
         } catch (Exception e) {
             log.error("Error starting data sync", e);
-            return ResponseEntity.internalServerError().body("Failed to start sync");
+            result.put("status", "error");
+            result.put("message", e.getMessage());
+            result.put("type", e.getClass().getSimpleName());
+            return ResponseEntity.ok(result);
         }
     }
+    
+    /**
+     * 디버깅용 - 동기화 테스트
+     */
+    @GetMapping("/sync/debug")
+    public ResponseEntity<Map<String, Object>> debugSync() {
+        return ResponseEntity.ok(adoptionService.debugSyncTest());
+    }
+    
+    /**
+     * 디버깅용 - 설정 확인
+     */
+    @GetMapping("/debug/config")
+    public ResponseEntity<Map<String, Object>> debugConfig() {
+        return ResponseEntity.ok(adoptionService.getDebugConfig());
+    }
+    
+    /**
+     * 디버깅용 - 직접 API 호출 테스트
+     */
+    @GetMapping("/debug/direct-test")
+    public ResponseEntity<String> directTest() {
+        return ResponseEntity.ok(adoptionService.directApiTest());
+    }
+    
+    /**
+     * 디버깅용 - 단일 동물 동기화 테스트
+     */
+    @GetMapping("/debug/sync-one")
+    public ResponseEntity<Map<String, Object>> syncOne() {
+        return ResponseEntity.ok(adoptionService.testSyncOne());
+    }
+    
+    /**
+     * 간단한 동기화 테스트
+     */
+    @GetMapping("/debug/simple-sync")
+    public ResponseEntity<Map<String, Object>> simpleSync() {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            // 동기화 시작
+            adoptionService.syncAdoptionData();
+            result.put("status", "started");
+            result.put("message", "동기화가 시작되었습니다. 서버 로그를 확인하세요.");
+        } catch (Exception e) {
+            result.put("status", "error");
+            result.put("message", e.getMessage());
+            result.put("type", e.getClass().getSimpleName());
+        }
+        return ResponseEntity.ok(result);
+    }
+    
+    /**
+     * 데이터베이스 현황 조회
+     */
+    @GetMapping("/debug/db-status")
+    public ResponseEntity<Map<String, Object>> getDbStatus() {
+        return ResponseEntity.ok(adoptionService.getDatabaseStatus());
+    }
+    
+    /**
+     * API 페이지네이션 테스트
+     */
+    @GetMapping("/debug/pagination")
+    public ResponseEntity<Map<String, Object>> testPagination() {
+        return ResponseEntity.ok(adoptionService.testPagination());
+    }
+    
 }

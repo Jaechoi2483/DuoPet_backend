@@ -5,9 +5,20 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -64,33 +75,72 @@ public class PublicDataApiClient {
      * @param state 상태 (전체: null, 공고중: notice, 보호중: protect)
      * @param pageNo 페이지 번호
      * @param numOfRows 한 페이지 결과 수
+     * @param uprCd 시도코드 (경기도: 6410000)
      * @return 유기동물 정보
      */
     public Map<String, Object> getAbandonmentAnimals(
             String bgnde, String endde, String upkind, 
-            String state, int pageNo, int numOfRows) {
+            String state, int pageNo, int numOfRows, String uprCd) {
         
-        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(animalBaseUrl)
-                .queryParam("serviceKey", animalServiceKey)
-                .queryParam("pageNo", pageNo)
-                .queryParam("numOfRows", numOfRows)
-                .queryParam("_type", "json");
-        
-        if (bgnde != null) builder.queryParam("bgnde", bgnde);
-        if (endde != null) builder.queryParam("endde", endde);
-        if (upkind != null) builder.queryParam("upkind", upkind);
-        if (state != null) builder.queryParam("state", state);
-        
-        URI uri = builder.build().encode().toUri();
-        
-        log.info("Calling Animal API: {}", uri);
-        
-        return webClientBuilder.build()
-                .get()
-                .uri(uri)
-                .retrieve()
-                .bodyToMono(Map.class)
-                .block();
+        try {
+            // 서비스 키가 이미 디코딩된 상태이므로 직접 사용
+            // 공공 API는 URL 인코딩된 키를 요구하므로 인코딩
+            String encodedServiceKey = URLEncoder.encode(animalServiceKey, StandardCharsets.UTF_8);
+            
+            // 직접 URL 구성
+            String url = animalBaseUrl + "?serviceKey=" + encodedServiceKey;
+            url += "&pageNo=" + pageNo;
+            url += "&numOfRows=" + numOfRows;
+            url += "&_type=json";
+            
+            if (bgnde != null) url += "&bgnde=" + bgnde;
+            if (endde != null) url += "&endde=" + endde;
+            if (upkind != null) url += "&upkind=" + upkind;
+            if (state != null) url += "&state=" + state;
+            if (uprCd != null) url += "&upr_cd=" + uprCd;
+            
+            log.info("Calling Animal API with URL: {}", url);
+            
+            // Java 11 HttpClient 사용
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .header("Accept", "application/json")
+                    .header("User-Agent", "Mozilla/5.0")
+                    .GET()
+                    .build();
+                    
+            HttpResponse<String> httpResponse = client.send(request, HttpResponse.BodyHandlers.ofString());
+            String response = httpResponse.body();
+            
+            log.info("Response status: {}", httpResponse.statusCode());
+                    
+            log.info("API Response (first 200 chars): {}", 
+                response.substring(0, Math.min(200, response.length())));
+                
+            // JSON 파싱
+            if (response.trim().startsWith("<")) {
+                log.error("API returned XML. URL was: {}", url);
+                log.error("Service key length: {}", animalServiceKey.length());
+                log.error("Encoded service key length: {}", encodedServiceKey.length());
+                throw new RuntimeException("API returned XML. Response: " + response.substring(0, 200) + "\nURL: " + url);
+            }
+            
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            return mapper.readValue(response, Map.class);
+                    
+        } catch (Exception e) {
+            log.error("Error calling Animal API", e);
+            throw new RuntimeException("Failed to call Animal API: " + e.getMessage(), e);
+        }
+    }
+    
+    public int getServiceKeyLength() {
+        return animalServiceKey != null ? animalServiceKey.length() : 0;
+    }
+    
+    public String getBaseUrl() {
+        return animalBaseUrl;
     }
     
     /**

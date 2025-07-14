@@ -1,6 +1,7 @@
 package com.petlogue.duopetbackend.pet.jpa.repository;
 
 import com.petlogue.duopetbackend.admin.model.dto.StatItemDto;
+
 import com.petlogue.duopetbackend.pet.jpa.entity.Pet;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
