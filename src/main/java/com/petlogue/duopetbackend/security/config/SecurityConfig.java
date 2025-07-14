@@ -127,7 +127,8 @@ public class SecurityConfig implements WebMvcConfigurer {
 
                                 "/qna/**",
                                 "/api/info/**",
-                                "/api/adoption/**"
+                                "/api/adoption/**",
+                                "/api/hospitals/**"
 
                         ).permitAll()
 

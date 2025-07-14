@@ -1,6 +1,6 @@
 package com.petlogue.duopetbackend.pet.jpa.entity;
 
-import com.petlogue.duopetbackend.user.entity.User;
+import com.petlogue.duopetbackend.user.jpa.entity.UserEntity;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -23,7 +23,7 @@ public class Pet {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    private UserEntity user;
 
     @Column(name = "pet_name", nullable = false, length = 50)
     private String petName;

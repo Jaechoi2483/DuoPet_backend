@@ -6,6 +6,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 
 @Data
 @NoArgsConstructor
@@ -103,23 +105,8 @@ public class PublicAnimalApiResponse {
             dto.setNeutered("N");  // U 또는 기타 값은 모두 N으로 처리
         }
         
-        // 나이 파싱 (문자열에서 숫자 추출 시도)
-        if (item.getAge() != null) {
-            try {
-                // "2023(년생)" 같은 형태에서 숫자만 추출
-                String ageStr = item.getAge().replaceAll("[^0-9]", "");
-                if (!ageStr.isEmpty()) {
-                    int birthYear = Integer.parseInt(ageStr);
-                    if (birthYear > 2000) { // 년도인 경우
-                        dto.setAge(java.time.Year.now().getValue() - birthYear);
-                    } else { // 나이인 경우
-                        dto.setAge(birthYear);
-                    }
-                }
-            } catch (Exception e) {
-                // 파싱 실패시 null로 유지
-            }
-        }
+        // 나이 파싱 (개선된 로직)
+        dto.setAge(parseAge(item.getAge()));
         
         // 체중 파싱
         if (item.getWeight() != null) {
@@ -142,8 +129,86 @@ public class PublicAnimalApiResponse {
         dto.setShelterName(item.getCareNm());
         dto.setShelterPhone(item.getCareTel());
         dto.setShelterAddress(item.getCareAddr());
+        dto.setOrgNm(item.getOrgNm());
         
         return dto;
+    }
+    
+    /**
+     * 개선된 나이 파싱 로직
+     * 공공 API에서 받아온 나이 데이터를 안전하게 파싱합니다.
+     * @param ageData 공공 API의 age 필드 값 (예: "2024(년생)", "3", "6개월")
+     * @return 파싱된 나이 (실패시 null)
+     */
+    private static Integer parseAge(String ageData) {
+        if (ageData == null || ageData.trim().isEmpty()) {
+            return null;
+        }
+        
+        try {
+            String cleanData = ageData.trim();
+            
+            // 1. "2024(년생)" 형태의 출생년도 패턴 처리 (최우선)
+            Pattern birthYearPattern = Pattern.compile("(\\d{4})\\s*\\(\\s*년생\\s*\\)");
+            Matcher birthYearMatcher = birthYearPattern.matcher(cleanData);
+            
+            if (birthYearMatcher.find()) {
+                int birthYear = Integer.parseInt(birthYearMatcher.group(1));
+                int currentYear = java.time.Year.now().getValue();
+                int age = currentYear - birthYear;
+                
+                // 합리적인 나이 범위 체크 (출생년도가 1990-현재년도 범위)
+                if (birthYear >= 1990 && birthYear <= currentYear && age >= 0 && age <= 35) {
+                    return age;
+                }
+                // 범위를 벗어나면 로깅하고 null 반환
+                return null;
+            }
+            
+            // 2. 일반적인 4자리 연도 패턴 (년생 표기 없이)
+            Pattern yearPattern = Pattern.compile("\\b(20[0-2][0-9])\\b");
+            Matcher yearMatcher = yearPattern.matcher(cleanData);
+            
+            if (yearMatcher.find()) {
+                int birthYear = Integer.parseInt(yearMatcher.group(1));
+                int currentYear = java.time.Year.now().getValue();
+                int age = currentYear - birthYear;
+                
+                // 합리적인 나이 범위 체크
+                if (age >= 0 && age <= 35) {
+                    return age;
+                }
+            }
+            
+            // 3. "개월" 단위 처리 (예: "6개월" -> 0세)
+            Pattern monthPattern = Pattern.compile("(\\d+)\\s*개월");
+            Matcher monthMatcher = monthPattern.matcher(cleanData);
+            
+            if (monthMatcher.find()) {
+                int months = Integer.parseInt(monthMatcher.group(1));
+                if (months >= 0 && months <= 60) { // 최대 5년까지
+                    return months / 12; // 12개월 미만은 0세로 처리
+                }
+            }
+            
+            // 4. 단순 나이 숫자 패턴 (독립된 숫자, 0-30 범위)
+            Pattern simpleAgePattern = Pattern.compile("\\b([0-9]|[1-2][0-9]|30)\\b");
+            Matcher simpleAgeMatcher = simpleAgePattern.matcher(cleanData);
+            
+            if (simpleAgeMatcher.find()) {
+                int age = Integer.parseInt(simpleAgeMatcher.group(1));
+                return age;
+            }
+            
+            return null;
+            
+        } catch (NumberFormatException e) {
+            // 숫자 파싱 실패
+            return null;
+        } catch (Exception e) {
+            // 기타 파싱 실패
+            return null;
+        }
     }
     
     private static java.time.LocalDate parseDate(String dateStr) {

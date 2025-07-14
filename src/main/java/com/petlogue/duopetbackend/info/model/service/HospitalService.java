@@ -1,6 +1,8 @@
 package com.petlogue.duopetbackend.info.model.service;
 
+import com.petlogue.duopetbackend.info.jpa.entity.AnimalHospital;
 import com.petlogue.duopetbackend.info.jpa.entity.HospitalEntity;
+import com.petlogue.duopetbackend.info.jpa.repository.AnimalHospitalRepository;
 import com.petlogue.duopetbackend.info.jpa.repository.HospitalRepository;
 import com.petlogue.duopetbackend.info.model.dto.HospitalDto;
 import lombok.RequiredArgsConstructor;
@@ -25,48 +27,52 @@ import java.util.stream.Collectors;
 public class HospitalService {
 
     private final HospitalRepository hospitalRepository;
+    private final AnimalHospitalRepository animalHospitalRepository;
 
     /**
-     * 모든 병원 조회 (role='vet'이고 활성 상태)
+     * 모든 병원 조회 (ANIMAL_HOSPITALS 테이블에서)
      */
     public Page<HospitalDto.Response> getAllHospitals(Pageable pageable) {
-        // role='vet'이고 status='active'인 병원만 조회
-        List<HospitalEntity> entities = hospitalRepository.findByRoleAndStatus("vet", "active");
+        // ANIMAL_HOSPITALS 테이블에서 영업 중인 병원 조회
+        Page<AnimalHospital> hospitals = animalHospitalRepository.findOperatingHospitals(pageable);
         
-        // 수동으로 페이징 처리
-        int start = (int) pageable.getOffset();
-        int end = Math.min(start + pageable.getPageSize(), entities.size());
-        
-        List<HospitalEntity> pageContent = entities.subList(start, end);
-        Page<HospitalEntity> page = new PageImpl<>(pageContent, pageable, entities.size());
-        
-        return page.map(this::convertToResponse);
+        return hospitals.map(this::convertAnimalHospitalToResponse);
     }
 
     /**
      * 병원 상세 조회
      */
     public Optional<HospitalDto.Response> getHospitalById(Long vetId) {
-        return hospitalRepository.findById(vetId)
-                .map(this::convertToResponse);
+        // AnimalHospital 테이블에서 조회
+        return animalHospitalRepository.findById(vetId)
+                .map(this::convertAnimalHospitalToResponse);
     }
 
     /**
      * 복합 검색
      */
     public Page<HospitalDto.Response> searchHospitals(HospitalDto.SearchRequest searchRequest) {
-        List<HospitalEntity> entities;
+        List<AnimalHospital> hospitals;
         
-        // 키워드로 검색 (role='vet' 조건 포함)
+        // 키워드로 검색
         if (searchRequest.getKeyword() != null && !searchRequest.getKeyword().trim().isEmpty()) {
-            entities = hospitalRepository.findActiveVetsByKeywordSearch(searchRequest.getKeyword());
+            // ANIMAL_HOSPITALS 테이블에서 키워드 검색
+            Page<AnimalHospital> searchResults = animalHospitalRepository.searchByKeyword(
+                searchRequest.getKeyword(), 
+                PageRequest.of(0, 1000) // 최대 1000개 결과
+            );
+            hospitals = searchResults.getContent();
         } else {
-            entities = hospitalRepository.findByRoleAndStatus("vet", "active");
+            // 영업 중인 모든 병원 조회
+            Page<AnimalHospital> allHospitals = animalHospitalRepository.findOperatingHospitals(
+                PageRequest.of(0, 1000)
+            );
+            hospitals = allHospitals.getContent();
         }
 
         // DTO로 변환하면서 거리 계산
-        List<HospitalDto.Response> responses = entities.stream()
-                .map(entity -> convertToResponseWithDistance(entity, 
+        List<HospitalDto.Response> responses = hospitals.stream()
+                .map(hospital -> convertAnimalHospitalToResponseWithDistance(hospital, 
                      searchRequest.getUserLatitude(), 
                      searchRequest.getUserLongitude()))
                 .collect(Collectors.toList());
@@ -115,10 +121,13 @@ public class HospitalService {
      * 응급 병원 조회
      */
     public List<HospitalDto.Summary> getEmergencyHospitals() {
-        // 활성 상태인 모든 병원을 조회한 후 응급병원 필터링
-        List<HospitalEntity> entities = hospitalRepository.findByStatus("active");
-        return entities.stream()
-                .map(this::convertToSummary)
+        // ANIMAL_HOSPITALS 테이블에서 영업 중인 병원 조회
+        Page<AnimalHospital> hospitals = animalHospitalRepository.findOperatingHospitals(
+            PageRequest.of(0, 100) // 상위 100개만
+        );
+        
+        return hospitals.stream()
+                .map(this::convertAnimalHospitalToSummary)
                 .filter(summary -> summary.getIsEmergency() != null && summary.getIsEmergency())
                 .collect(Collectors.toList());
     }
@@ -127,10 +136,13 @@ public class HospitalService {
      * 24시간 병원 조회
      */
     public List<HospitalDto.Summary> get24HourHospitals() {
-        // 활성 상태인 모든 병원을 조회한 후 24시간 병원 필터링
-        List<HospitalEntity> entities = hospitalRepository.findByStatus("active");
-        return entities.stream()
-                .map(this::convertToSummary)
+        // ANIMAL_HOSPITALS 테이블에서 영업 중인 병원 조회
+        Page<AnimalHospital> hospitals = animalHospitalRepository.findOperatingHospitals(
+            PageRequest.of(0, 100) // 상위 100개만
+        );
+        
+        return hospitals.stream()
+                .map(this::convertAnimalHospitalToSummary)
                 .filter(summary -> summary.getOpenHours() != null && summary.getOpenHours().contains("24"))
                 .collect(Collectors.toList());
     }
@@ -140,12 +152,15 @@ public class HospitalService {
      */
     public List<HospitalDto.Response> getHospitalsByLocation(BigDecimal latitude, BigDecimal longitude, 
                                                           Double radiusKm) {
-        // 현재는 위치 정보가 @Transient이므로 모든 활성 병원을 조회
-        List<HospitalEntity> entities = hospitalRepository.findByStatus("active");
+        // ANIMAL_HOSPITALS 테이블에서 근처 병원 조회
+        List<AnimalHospital> hospitals = animalHospitalRepository.findNearbyHospitals(
+            latitude.doubleValue(), 
+            longitude.doubleValue(), 
+            radiusKm
+        );
         
-        return entities.stream()
-                .map(entity -> convertToResponseWithDistance(entity, latitude, longitude))
-                .filter(response -> response.getDistance() == null || response.getDistance() <= radiusKm)
+        return hospitals.stream()
+                .map(hospital -> convertAnimalHospitalToResponseWithDistance(hospital, latitude, longitude))
                 .sorted((a, b) -> {
                     if (a.getDistance() == null && b.getDistance() == null) return 0;
                     if (a.getDistance() == null) return 1;
@@ -157,6 +172,10 @@ public class HospitalService {
 
     private HospitalDto.Response convertToResponse(HospitalEntity entity) {
         return convertToResponseWithDistance(entity, null, null);
+    }
+    
+    private HospitalDto.Response convertAnimalHospitalToResponse(AnimalHospital hospital) {
+        return convertAnimalHospitalToResponseWithDistance(hospital, null, null);
     }
 
     private HospitalDto.Response convertToResponseWithDistance(HospitalEntity entity, 
@@ -215,6 +234,60 @@ public class HospitalService {
                 .rating(entity.getRating())
                 .reviewCount(entity.getReviewCount())
                 .openHours(entity.getOpenHours())
+                .build();
+    }
+    
+    private HospitalDto.Summary convertAnimalHospitalToSummary(AnimalHospital hospital) {
+        return HospitalDto.Summary.builder()
+                .vetId(hospital.getHospitalId()) // hospitalId를 vetId로 사용
+                .name(hospital.getBusinessName())
+                .address(hospital.getRoadAddress() != null ? hospital.getRoadAddress() : hospital.getJibunAddress())
+                .phone(hospital.getPhone())
+                .specialization("종합진료") // 기본값
+                .isEmergency(false) // 기본값
+                .rating(new BigDecimal("4.5")) // 기본값
+                .reviewCount(0)
+                .openHours("09:00 - 18:00") // 기본값
+                .build();
+    }
+
+    private HospitalDto.Response convertAnimalHospitalToResponseWithDistance(AnimalHospital hospital,
+                                                                           BigDecimal userLat,
+                                                                           BigDecimal userLng) {
+        // 기본 서비스 목록
+        List<String> services = Arrays.asList("진료", "건강검진", "예방접종");
+        
+        Double distance = null;
+        if (userLat != null && userLng != null && 
+            hospital.getLatitude() != null && hospital.getLongitude() != null) {
+            distance = calculateDistance(
+                userLat.doubleValue(), userLng.doubleValue(),
+                hospital.getLatitude(), hospital.getLongitude()
+            );
+        }
+        
+        return HospitalDto.Response.builder()
+                .vetId(hospital.getHospitalId()) // hospitalId를 vetId로 사용
+                .name(hospital.getBusinessName())
+                .licenseNumber(hospital.getManagementNo())
+                .phone(hospital.getPhone())
+                .email(null) // ANIMAL_HOSPITALS에는 이메일 정보가 없음
+                .address(hospital.getRoadAddress() != null ? hospital.getRoadAddress() : hospital.getJibunAddress())
+                .website(null)
+                .specialization("종합진료") // 기본값
+                .renameFilename(null)
+                .originalFilename(null)
+                .latitude(hospital.getLatitude() != null ? new BigDecimal(hospital.getLatitude()) : null)
+                .longitude(hospital.getLongitude() != null ? new BigDecimal(hospital.getLongitude()) : null)
+                .openHours("09:00 - 18:00") // 기본값
+                .isEmergency(false) // 기본값
+                .services(services)
+                .rating(new BigDecimal("4.5")) // 기본값
+                .reviewCount(0)
+                .description("반려동물의 건강을 책임지는 " + hospital.getBusinessName() + "입니다.")
+                .distance(distance)
+                .createdAt(hospital.getCreatedAt())
+                .updatedAt(hospital.getUpdatedAt())
                 .build();
     }
 
@@ -281,28 +354,34 @@ public class HospitalService {
      */
     public String getDebugInfo() {
         try {
-            // 전체 사용자 수
-            long totalCount = hospitalRepository.count();
-            log.info("전체 USERS 테이블 count: {}", totalCount);
+            // ANIMAL_HOSPITALS 테이블 정보
+            long animalHospitalCount = animalHospitalRepository.count();
+            log.info("전체 ANIMAL_HOSPITALS 테이블 count: {}", animalHospitalCount);
             
-            // role='vet'인 사용자 수
-            List<HospitalEntity> vetUsers = hospitalRepository.findByRole("vet");
-            log.info("role='vet' 사용자 수: {}", vetUsers.size());
-            
-            // role='vet'이고 status='active'인 사용자 수
-            List<HospitalEntity> activeVetUsers = hospitalRepository.findByRoleAndStatus("vet", "active");
-            log.info("role='vet'이고 active 상태인 사용자 수: {}", activeVetUsers.size());
+            // 영업 중인 병원 수
+            Page<AnimalHospital> operatingHospitals = animalHospitalRepository.findOperatingHospitals(
+                PageRequest.of(0, 5)
+            );
+            log.info("영업 중인 병원 수: {}", operatingHospitals.getTotalElements());
             
             // 처음 5개 데이터 로그 출력
-            for (int i = 0; i < Math.min(5, activeVetUsers.size()); i++) {
-                HospitalEntity entity = activeVetUsers.get(i);
-                log.info("데이터 {}: userId={}, hospitalName={}, role={}, status={}", 
-                    i+1, entity.getUserId(), entity.getHospitalName(), entity.getRole(), entity.getStatus());
+            int idx = 1;
+            for (AnimalHospital hospital : operatingHospitals.getContent()) {
+                log.info("데이터 {}: hospitalId={}, businessName={}, address={}, phone={}", 
+                    idx++, hospital.getHospitalId(), hospital.getBusinessName(), 
+                    hospital.getRoadAddress(), hospital.getPhone());
             }
             
+            // 기존 USERS 테이블 정보 (참고용)
+            long totalUserCount = hospitalRepository.count();
+            List<HospitalEntity> vetUsers = hospitalRepository.findByRole("vet");
+            
             return String.format(
-                "DB 연결 성공! 전체 사용자: %d개, role='vet': %d개, active 상태 병원: %d개", 
-                totalCount, vetUsers.size(), activeVetUsers.size());
+                "DB 연결 성공!\n" +
+                "ANIMAL_HOSPITALS 테이블: 전체 %d개, 영업중 %d개\n" +
+                "USERS 테이블 (참고): 전체 %d개, role='vet' %d개", 
+                animalHospitalCount, operatingHospitals.getTotalElements(),
+                totalUserCount, vetUsers.size());
                 
         } catch (Exception e) {
             log.error("데이터베이스 디버깅 실패", e);
