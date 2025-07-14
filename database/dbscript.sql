@@ -1951,3 +1951,30 @@ ADD CONSTRAINT CK_USERS_STATUS
 CHECK (status IN ('active', 'inactive', 'suspended', 'waiting', 'rejected'));
 
 COMMENT ON COLUMN users.status IS '계정 상태 (active: 활성, inactive: 비활성, suspended: 정지, waiting: 전문가/보호소 승인 대기,rejected: 전문가/보호소 승인 거절)';
+
+commit;
+
+
+
+/*================
+2025-07-12 수정
+USERS 테이블 USER_NAME 제약조건 삭제
+=================*/
+
+ALTER TABLE users DROP CONSTRAINT UQ_USERS_NAME;
+
+commit;
+
+
+
+/*================
+2025-07-13 수정
+SHELTER 테이블 AUTH_FILE_DESCRIPTION  컬럼 추가
+=================*/
+
+ALTER TABLE SHELTER
+ADD AUTH_FILE_DESCRIPTION VARCHAR2(255 BYTE);
+
+COMMENT ON COLUMN SHELTER.AUTH_FILE_DESCRIPTION IS '보호소 첨부파일 기타 설명란';
+
+commit;

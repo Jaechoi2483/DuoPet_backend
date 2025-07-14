@@ -26,6 +26,13 @@ public interface BoardRepository extends JpaRepository<BoardEntity, Number> {
     List<Object[]> findTop3Viewed(Pageable pageable);
 
     Page<BoardEntity> findByCategory(String category, Pageable pageable);
+
+    // 게시글 수
+    int countByTitleContainingOrContentBodyContaining(String title, String content);
+
+    // 게시글 목록
+    Page<BoardEntity> findByCategoryAndTitleContainingOrContentBodyContaining(
+            String category, String title, String content, Pageable pageable);
 }
 
 

@@ -31,6 +31,20 @@ public class BoardService {
     @Value("${file.upload-dir}")
     private String uploadDir;
 
+    // 게시글 수 조회
+    public int selectListCount() {
+        return (int) boardRepository.count();
+    }
+
+    // 검색 키워드 포함 게시글 수 조회
+    public int selectListCount(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return selectListCount();
+        }
+
+        return boardRepository.countByTitleContainingOrContentBodyContaining(keyword, keyword);
+    }
+
     // 전체 게시물 목록
     public List<Board> getAllFreeBoards() {
         List<BoardEntity> entities = boardRepository.findByContentTypeAndCategory("board", "자유");
@@ -41,6 +55,25 @@ public class BoardService {
         }
 
         return boardList;
+    }
+
+    // 검색 키워드 포함 게시글 목록 조회
+    public ArrayList<Board> selectList(String keyword, Pageable pageable) {
+        Page<BoardEntity> page;
+
+        if (keyword == null || keyword.trim().isEmpty()) {
+            page = boardRepository.findByCategory("자유", pageable);
+        } else {
+            page = boardRepository.findByCategoryAndTitleContainingOrContentBodyContaining(
+                    "자유", keyword, keyword, pageable);
+        }
+
+        ArrayList<Board> list = new ArrayList<>();
+        for (BoardEntity entity : page) {
+            list.add(entity.toDto());
+        }
+
+        return list;
     }
 
     // 게시물 상세보기
@@ -100,6 +133,7 @@ public class BoardService {
         boardRepository.delete(board);
     }
 
+
     // 좋아요 TOP3
     public List<Board> getTopLikedBoards() {
         List<Object[]> results = boardRepository.findTop3Liked(PageRequest.of(0, 3));
@@ -130,11 +164,6 @@ public class BoardService {
             list.add(board);
         }
         return list;
-    }
-
-    // 게시글 수 조회
-    public int selectListCount() {
-        return (int) boardRepository.count();
     }
 
     // 페이징 리스트

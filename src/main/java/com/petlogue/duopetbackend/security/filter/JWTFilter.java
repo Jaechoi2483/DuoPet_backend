@@ -29,16 +29,18 @@ public class JWTFilter extends OncePerRequestFilter {
                 || url.equals("/users/check-nickname")
                 || url.equals("/users/check-email")
                 || url.startsWith("/users/signup")
-                || url.equals("/auth/email-check")
+                || url.equals("/vet/upload-temp")
+                || url.equals("/vet/register")
+                || url.equals("/shelter/upload-temp")
+                || url.equals("/shelter/register")
+                || url.equals("/shelter/check")
 
                 || url.equals("/reissue")
-
 
                 || url.startsWith("/notice")
 
 
                 || url.startsWith("/board")
-
 
                 || url.startsWith("/api/info")
                 || url.startsWith("/info")
@@ -122,7 +124,7 @@ public class JWTFilter extends OncePerRequestFilter {
             // 2. 인증 객체 생성
             org.springframework.security.authentication.UsernamePasswordAuthenticationToken authToken =
                     new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(loginId, null,
-                            java.util.Collections.singletonList(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_" + role)));
+                            java.util.Collections.singletonList(new org.springframework.security.core.authority.SimpleGrantedAuthority(role)));
 
             // 3. SecurityContext에 인증 정보 등록
             org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(authToken);

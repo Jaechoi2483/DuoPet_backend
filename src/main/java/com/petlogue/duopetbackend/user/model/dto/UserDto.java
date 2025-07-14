@@ -34,8 +34,8 @@ public class UserDto {
     private String status;      // ACTIVE / INACTIVE / SUSPENDED
     @JsonFormat(pattern = "yyyy-MM-dd")
     private java.util.Date createdAt;     // 가입일
-    private String renameFilename;      // 서버 저장용 프로필 파일명
-    private String originalFilename;    // 원본 파일명
+    private String userProfileRenameFilename;      // 서버 저장용 프로필 파일명
+    private String userProfileOriginalFilename;    // 원본 파일명
     private String faceRecognitionId;   // 얼굴 인식 ID
 
     public UserEntity toEntity() {
@@ -55,8 +55,8 @@ public class UserDto {
                 .role(role)
                 .status(status)
                 .createdAt(createdAt)
-                .renameFilename(renameFilename)
-                .originalFilename(originalFilename)
+                .renameFilename(userProfileRenameFilename)
+                .originalFilename(userProfileOriginalFilename)
                 .faceRecognitionId(faceRecognitionId)
                 .build();
     }
