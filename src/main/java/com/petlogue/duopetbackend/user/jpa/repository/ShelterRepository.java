@@ -7,7 +7,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 
-@Repository("shelterUserRepository")
+@Repository
 public interface ShelterRepository extends JpaRepository<ShelterEntity, Long> {
 
     // 이미 등록된 보호소인지 확인

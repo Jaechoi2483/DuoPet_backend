@@ -31,6 +31,9 @@ public class JWTFilter extends OncePerRequestFilter {
                 || url.startsWith("/users/signup")
                 || url.equals("/vet/upload-temp")
                 || url.equals("/vet/register")
+                || url.equals("/shelter/upload-temp")
+                || url.equals("/shelter/register")
+                || url.equals("/shelter/check")
 
                 || url.equals("/reissue")
 

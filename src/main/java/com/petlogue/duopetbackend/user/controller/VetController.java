@@ -15,6 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/vet")
 @RequiredArgsConstructor
+@CrossOrigin
 public class VetController {
 
     private final VetService vetService;
