@@ -25,8 +25,8 @@ public class VetDto {
     private String address; // 병원 주소
     private String website; // 병원 웹사이트 주소
     private String specialization; // 전문 분야
-    private String originalFilename; // 업로드된 원본 파일명 (면허증)
-    private String renameFilename;   // 서버 저장용 파일명
+    private String vetFileOriginalFilename; // 면허증 원본 파일명
+    private String vetFileRenameFilename;   // 저장된 파일명
     private MultipartFile licenseFile; // 실제 업로드된 면허증 파일 (DB 미저장)
 
     public VetEntity toEntity(UserEntity userEntity) {
@@ -39,8 +39,8 @@ public class VetDto {
                 .address(this.address)
                 .website(this.website)
                 .specialization(this.specialization)
-                .originalFilename(this.originalFilename)
-                .renameFilename(this.renameFilename)
+                .originalFilename(this.vetFileOriginalFilename)
+                .renameFilename(this.vetFileRenameFilename)
                 .build();
     }
 }

@@ -111,6 +111,8 @@ public class SecurityConfig implements WebMvcConfigurer {
                                 "/users/signup/**",
                                 "/users/check-nickname",
                                 "/users/check-email",
+                                "/vet/upload-temp",
+                                "/vet/register",
                                 "/notice/**",
                                 "/board/detail/**",
                                 "/board/top-liked",

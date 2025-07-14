@@ -44,6 +44,26 @@ public class UserController {
     }
 
     /**
+     * 회원가입 4단계 - 최종 회원 등록 처리
+     * - 프로필 이미지 포함
+     * - 전문가/보호소일 경우 각 Service 호출
+     */
+    @PostMapping("/signup/final")
+    public ResponseEntity<?> signupFinal(
+            @RequestPart("data") UserDto userDto,
+            @RequestPart(value = "file", required = false) MultipartFile file
+    ) {
+        try {
+            userService.saveFinalUser(userDto, file);
+            return ResponseEntity.ok("회원가입이 완료되었습니다.");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("회원가입 실패: " + e.getMessage());
+        }
+    }
+
+    /**
      * 아이디 중복 확인
      */
     @GetMapping("/check-id")

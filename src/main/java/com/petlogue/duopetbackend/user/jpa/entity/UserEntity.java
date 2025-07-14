@@ -74,8 +74,8 @@ public class UserEntity {
                 .role(role)
                 .status(status)
                 .createdAt(createdAt)
-                .renameFilename(renameFilename)
-                .originalFilename(originalFilename)
+                .userProfileOriginalFilename(originalFilename)
+                .userProfileRenameFilename(renameFilename)
                 .faceRecognitionId(faceRecognitionId)
                 .build();
     }
