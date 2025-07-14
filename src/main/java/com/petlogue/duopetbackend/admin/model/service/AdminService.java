@@ -3,6 +3,7 @@ package com.petlogue.duopetbackend.admin.model.service;
 
 import com.petlogue.duopetbackend.admin.model.dto.DashboardDataDto;
 import com.petlogue.duopetbackend.admin.model.dto.StatItemDto;
+import com.petlogue.duopetbackend.pet.jpa.repository.PetRepository;
 import com.petlogue.duopetbackend.user.jpa.entity.UserEntity;
 import com.petlogue.duopetbackend.user.jpa.repository.UserRepository;
 import com.petlogue.duopetbackend.user.model.dto.UserDto;
@@ -21,6 +22,7 @@ import java.util.List;
 @Transactional
 public class AdminService {
 
+    private final PetRepository petRepository;
     private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
@@ -72,12 +74,37 @@ public class AdminService {
     }
 
     public DashboardDataDto getDashboardData() {
-        // Repository에서 성별 통계 데이터를 조회
+        long totalUserCount = userRepository.count();
+        long totalPetCount = petRepository.count();
+        long vetUserCount = userRepository.countByRole("vet");
+        long shelterUserCount = userRepository.countByRole("shelter");
+
+        List<StatItemDto> summaryList = List.of(
+                new StatItemDto("총 회원 수", totalUserCount),
+                new StatItemDto("총 반려동물 수", totalPetCount),
+                new StatItemDto("수의사 회원", vetUserCount),
+                new StatItemDto("보호소 회원", shelterUserCount)
+        );
+
+
+        // 성별 통계 데이터 조회
         List<StatItemDto> genderStat = userRepository.findGenderStat();
 
-        // Builder를 사용하여 최종 응답 DTO를 조립
+        // 반려동물 보유 수 통계 데이터 조회
+        List<StatItemDto> petCountStat = userRepository.findPetCountStat();
+
+        // 반려동물 종류 통계
+        List<StatItemDto> animalTypeStat = petRepository.findAnimalTypeStat();
+// 중성화 비율
+        List<StatItemDto> neuteredStat = petRepository.findNeuteredStat();
+
+        // 최종 응답 DTO 조립
         return DashboardDataDto.builder()
+                .summary(summaryList)
                 .genderStat(genderStat)
+                .petCountStat(petCountStat)
+                .animalTypeStat(animalTypeStat)
+                .neuteredStat(neuteredStat)
                 .build();
     }
 }
