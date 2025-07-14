@@ -17,12 +17,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 
 @Slf4j
@@ -227,32 +229,29 @@ public class BoardController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "2") int limit,
             @RequestParam(required = false) String keyword,
-            @RequestParam(defaultValue = "date") String sort
+            @RequestParam(defaultValue = "date") String sort,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") Date date
     ) {
-        log.info("자유게시판 목록 요청 (page={}, keyword={}, sort={})", page, keyword, sort);
+        log.info("자유게시판 목록 요청 (page={}, keyword={}, sort={}, date={})", page, keyword, sort, date);
 
-        // 1. 총 게시글 수 계산 (검색어 있는 경우 조건 추가)
-        int count = boardService.selectListCount(keyword);
-
-        // 2. 페이징 계산
-        Paging paging = new Paging(count, limit, page, "/freeList");
-        paging.calculate();
-
-        // 3. 정렬 조건 처리
+        // 페이징 + 정렬
         Sort sorting = sort.equals("title")
                 ? Sort.by("title").ascending()
                 : Sort.by("createdAt").descending();
 
-        Pageable pageable = PageRequest.of(paging.getCurrentPage() - 1, paging.getLimit(), sorting);
+        Pageable pageable = PageRequest.of(page - 1, limit, sorting);
 
-        // 4. 검색어 포함 게시글 목록 조회
-        ArrayList<Board> list = boardService.selectList(keyword, pageable);
+        // 게시글 수 조회
+        int count = boardService.countFreeBoardByKeywordOrDate(keyword, date);
+        Paging paging = new Paging(count, limit, page, "/freeList");
+        paging.calculate();
 
-        // 5. 응답 구성
+        // 게시글 목록 조회
+        List<Board> list = boardService.selectByKeywordOrDate(keyword, date, pageable);
+
         Map<String, Object> result = new HashMap<>();
         result.put("list", list);
         result.put("paging", paging);
-
         return result;
     }
 }
