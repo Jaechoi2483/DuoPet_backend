@@ -116,6 +116,7 @@ public class SecurityConfig implements WebMvcConfigurer {
                                 "/shelter/upload-temp",
                                 "/shelter/register",
                                 "/shelter/check",
+                                "/pet/register",
                                 "/notice/**",
                                 "/board/detail/**",
                                 "/board/top-liked",

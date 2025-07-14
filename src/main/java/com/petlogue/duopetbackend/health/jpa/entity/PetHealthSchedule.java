@@ -1,6 +1,6 @@
 package com.petlogue.duopetbackend.health.jpa.entity;
 
-import com.petlogue.duopetbackend.pet.jpa.entity.Pet;
+import com.petlogue.duopetbackend.pet.jpa.entity.PetEntity;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -23,7 +23,7 @@ public class PetHealthSchedule {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "pet_id", nullable = false)
-    private Pet pet;
+    private PetEntity pet;
 
     @Column(name = "schedule_type", nullable = false, length = 50)
     private String scheduleType;
