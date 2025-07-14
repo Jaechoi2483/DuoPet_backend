@@ -8,5 +8,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface FaqRepository extends JpaRepository<FaqEntity, Integer> {
+
     Page<FaqEntity> findByQuestionContainingOrAnswerContaining(String question, String answer, Pageable pageable);
 }

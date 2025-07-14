@@ -40,8 +40,8 @@ public class VetService {
             file.transferTo(dest);
 
             VetDto dto = new VetDto();
-            dto.setOriginalFilename(originalFilename);
-            dto.setRenameFilename(renameFilename);
+            dto.setVetFileOriginalFilename(originalFilename);
+            dto.setVetFileRenameFilename(renameFilename);
             return dto;
 
         } catch (Exception e) {
@@ -65,8 +65,8 @@ public class VetService {
         String tempDirPath = "C:/upload_files/vet/temp";
         String realDirPath = "C:/upload_files/vet";
 
-        File tempFile = new File(tempDirPath, vetDto.getRenameFilename());
-        File realFile = new File(realDirPath, vetDto.getRenameFilename());
+        File tempFile = new File(tempDirPath, vetDto.getVetFileRenameFilename());
+        File realFile = new File(realDirPath, vetDto.getVetFileRenameFilename());
 
         if (!tempFile.exists()) {
             throw new RuntimeException("임시 파일이 존재하지 않습니다: " + tempFile.getPath());

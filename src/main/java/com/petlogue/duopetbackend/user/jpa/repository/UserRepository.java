@@ -41,4 +41,26 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     @Query("SELECT new com.petlogue.duopetbackend.admin.model.dto.StatItemDto(u.gender, COUNT(u)) " +
             "FROM UserEntity u GROUP BY u.gender")
     List<StatItemDto> findGenderStat();
+
+    @Query(value = "SELECT " +
+            "    CAST(pet_counts.pet_count AS VARCHAR2(255)) as item, " +
+            "    CAST(COUNT(pet_counts.user_id) AS NUMBER(19)) as count " + // ✨ NUMBER -> NUMBER(19)로 수정
+            "FROM " +
+            "    (SELECT " +
+            "        u.user_id, " +
+            "        COUNT(p.pet_id) as pet_count " +
+            "    FROM " +
+            "        users u " +
+            "    LEFT JOIN " +
+            "        pet p ON u.user_id = p.user_id " +
+            "    GROUP BY " +
+            "        u.user_id) pet_counts " +
+            "GROUP BY " +
+            "    pet_counts.pet_count " +
+            "ORDER BY " +
+            "    pet_counts.pet_count ASC", nativeQuery = true)
+    List<StatItemDto> findPetCountStat();
+
+    long countByRole(String role);
+
 }

@@ -1,5 +1,7 @@
 package com.petlogue.duopetbackend.user.controller;
 
+import java.util.Map;
+import java.util.HashMap;
 import com.petlogue.duopetbackend.user.jpa.entity.UserEntity;
 import com.petlogue.duopetbackend.user.jpa.repository.UserRepository;
 import com.petlogue.duopetbackend.user.jpa.repository.VetRepository;
@@ -25,9 +27,14 @@ public class VetController {
      * - 응답: originalFilename, renameFilename 포함한 VetDto
      */
     @PostMapping("/upload-temp")
-    public ResponseEntity<VetDto> uploadLicenseTemp(@RequestParam MultipartFile file) {
+    public ResponseEntity<Map<String, String>> uploadLicenseTemp(@RequestParam MultipartFile file) {
         VetDto dto = vetService.processVetFileUpload(file);
-        return ResponseEntity.ok(dto);
+
+        Map<String, String> response = new HashMap<>();
+        response.put("originalFilename", dto.getVetFileOriginalFilename());
+        response.put("renameFilename", dto.getVetFileRenameFilename());
+
+        return ResponseEntity.ok(response);
     }
 
     /**

@@ -9,4 +9,8 @@ import java.util.List;
 @Builder
 public class DashboardDataDto {
     private List<StatItemDto> genderStat;
+    private List<StatItemDto> petCountStat;
+    private List<StatItemDto> animalTypeStat;
+    private List<StatItemDto> neuteredStat;
+    private List<StatItemDto> summary;
 }
