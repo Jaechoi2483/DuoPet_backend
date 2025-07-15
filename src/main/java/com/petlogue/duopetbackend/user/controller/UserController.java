@@ -1,5 +1,6 @@
 package com.petlogue.duopetbackend.user.controller;
 
+import com.petlogue.duopetbackend.user.jpa.entity.UserEntity;
 import com.petlogue.duopetbackend.user.model.dto.UserDto;
 import com.petlogue.duopetbackend.user.model.service.UserService;
 import com.petlogue.duopetbackend.user.jpa.repository.UserRepository;
@@ -7,6 +8,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/users")
@@ -55,8 +59,15 @@ public class UserController {
             @RequestPart(value = "file", required = false) MultipartFile file
     ) {
         try {
-            userService.saveFinalUser(userDto, file);
-            return ResponseEntity.ok("회원가입이 완료되었습니다.");
+            UserEntity savedUser = userService.saveFinalUser(userDto, file);
+
+            // 응답 객체 구성
+            Map<String, Object> response = new HashMap<>();
+            response.put("userId", savedUser.getUserId());         // 프론트에서 필요한 값
+            response.put("nickname", savedUser.getNickname());     // 선택적으로 추가
+            response.put("message", "회원가입이 완료되었습니다.");
+
+            return ResponseEntity.ok(response); // 구조화된 응답으로 프론트 연결
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {

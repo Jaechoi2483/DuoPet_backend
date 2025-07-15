@@ -6,7 +6,11 @@ import com.petlogue.duopetbackend.board.jpa.entity.BoardEntity;
 import com.petlogue.duopetbackend.board.jpa.repository.BoardRepository;
 
 import com.petlogue.duopetbackend.board.model.dto.Board;
+import com.petlogue.duopetbackend.board.model.dto.Bookmark;
+import com.petlogue.duopetbackend.board.model.dto.Like;
 import com.petlogue.duopetbackend.board.model.service.BoardService;
+import com.petlogue.duopetbackend.board.model.service.BookmarkService;
+import com.petlogue.duopetbackend.board.model.service.LikeService;
 import com.petlogue.duopetbackend.common.FileNameChange;
 import com.petlogue.duopetbackend.common.Paging;
 import com.petlogue.duopetbackend.security.jwt.JWTUtil;
@@ -17,6 +21,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -33,6 +38,10 @@ import java.util.*;
 public class BoardController {
 
     private final BoardService boardService;
+
+    private final BookmarkService bookmarkService;
+
+    private final LikeService likeService;
 
     private final BoardRepository boardRepository;
 
@@ -227,32 +236,90 @@ public class BoardController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "2") int limit,
             @RequestParam(required = false) String keyword,
-            @RequestParam(defaultValue = "date") String sort
+            @RequestParam(defaultValue = "date") String sort,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") Date date
     ) {
-        log.info("자유게시판 목록 요청 (page={}, keyword={}, sort={})", page, keyword, sort);
+        log.info("자유게시판 목록 요청 (page={}, keyword={}, sort={}, date={})", page, keyword, sort, date);
 
-        // 1. 총 게시글 수 계산 (검색어 있는 경우 조건 추가)
-        int count = boardService.selectListCount(keyword);
-
-        // 2. 페이징 계산
-        Paging paging = new Paging(count, limit, page, "/freeList");
-        paging.calculate();
-
-        // 3. 정렬 조건 처리
+        // 페이징 + 정렬
         Sort sorting = sort.equals("title")
                 ? Sort.by("title").ascending()
                 : Sort.by("createdAt").descending();
 
-        Pageable pageable = PageRequest.of(paging.getCurrentPage() - 1, paging.getLimit(), sorting);
+        Pageable pageable = PageRequest.of(page - 1, limit, sorting);
 
-        // 4. 검색어 포함 게시글 목록 조회
-        ArrayList<Board> list = boardService.selectList(keyword, pageable);
+        // 게시글 수 조회
+        int count = boardService.countFreeBoardByKeywordOrDate(keyword, date);
+        Paging paging = new Paging(count, limit, page, "/freeList");
+        paging.calculate();
 
-        // 5. 응답 구성
+        // 게시글 목록 조회
+        List<Board> list = boardService.selectByKeywordOrDate(keyword, date, pageable);
+
         Map<String, Object> result = new HashMap<>();
         result.put("list", list);
         result.put("paging", paging);
-
         return result;
     }
+
+    // 조회수 증가용 API (GET 방식, 비회원 가능)
+    @GetMapping("/view-count")
+    public ResponseEntity<?> increaseViewCount(@RequestParam Long id) {
+        try {
+            log.info("비회원 포함 조회수 증가 요청: 게시글 ID = {}", id);
+            Optional<BoardEntity> optional = boardRepository.findById(id);
+
+            if (optional.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("게시글이 존재하지 않습니다.");
+            }
+
+            BoardEntity board = optional.get();
+            board.setViewCount(board.getViewCount() + 1);
+            boardRepository.save(board); // 변경사항 저장
+
+            return ResponseEntity.ok().build(); // 응답 본문 없이 200 OK
+        } catch (Exception e) {
+            log.error("조회수 증가 실패", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("조회수 증가 중 오류 발생");
+        }
+    }
+
+    // 좋아요 등록
+    @PostMapping("/like/{id}")
+    public ResponseEntity<Like> toggleLike (
+            @PathVariable Long id,       // 게시글 ID
+            @RequestParam Long userId    // 사용자 ID
+    ) {
+        Like result = likeService.toggleLike(userId, id);
+        return ResponseEntity.ok(result);
+    }
+
+    // 북마크 등록
+    @PostMapping("/bookmark/{id}")
+    public ResponseEntity<Bookmark> toggleBookmark(
+            @PathVariable Long id,       // 게시글 ID
+            @RequestParam Long userId    // 사용자 ID
+    ) {
+        Bookmark result = bookmarkService.toggleBookmark(userId, id);
+        return ResponseEntity.ok(result);
+    }
+
+    // 좋아요 목록 조회
+//    @GetMapping("/mypage/likes")
+//    public ResponseEntity<List<Like>> getLikes(
+//            @RequestParam Long userId
+//    ) {
+//        List<Like> result = LikeService.getLikesByUser(userId);
+//        return ResponseEntity.ok(result);
+//    }
+//
+//    // 북마크 목록 조회
+//    @GetMapping("/mypage/bookmarks")
+//    public ResponseEntity<List<Bookmark>> getBookmarks(
+//            @RequestParam Long userId
+//    ) {
+//        List<Bookmark> result = bookmarkService.getBookmarksByUser(userId);
+//        return ResponseEntity.ok(result);
+//    }
+
 }

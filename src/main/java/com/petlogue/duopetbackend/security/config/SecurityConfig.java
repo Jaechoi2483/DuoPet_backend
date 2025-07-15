@@ -91,9 +91,10 @@ public class SecurityConfig implements WebMvcConfigurer {
                 .authorizeHttpRequests(auth -> auth
 
                         .requestMatchers(HttpMethod.POST,"/board/write").authenticated()
-
                         .requestMatchers(HttpMethod.PUT, "/board/free/**").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/board/free/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/like/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/bookmark/**").authenticated()
 
 
 
@@ -116,8 +117,10 @@ public class SecurityConfig implements WebMvcConfigurer {
                                 "/shelter/upload-temp",
                                 "/shelter/register",
                                 "/shelter/check",
+                                "/pet/register",
                                 "/notice/**",
                                 "/board/detail/**",
+                                "/board/view-count",
                                 "/board/top-liked",
                                 "/board/top-viewed",
                                 "/board/freeList",
@@ -129,6 +132,8 @@ public class SecurityConfig implements WebMvcConfigurer {
                                 "/api/info/**",
                                 "/api/adoption/**",
                                 "/api/hospitals/**"
+                                "/uploads/**", "/images/**"
+
 
                         ).permitAll()
 
