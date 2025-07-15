@@ -1,6 +1,6 @@
 package com.petlogue.duopetbackend.health.jpa.entity;
 
-import com.petlogue.duopetbackend.pet.jpa.entity.Pet;
+import com.petlogue.duopetbackend.pet.jpa.entity.PetEntity;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -24,7 +24,7 @@ public class PetMedicalVisit {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "pet_id", nullable = false)
-    private Pet pet;
+    private PetEntity pet;
 
     @Column(name = "hospital_name", nullable = false, length = 100)
     private String hospitalName;

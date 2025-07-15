@@ -34,10 +34,14 @@ public class JWTFilter extends OncePerRequestFilter {
                 || url.equals("/shelter/upload-temp")
                 || url.equals("/shelter/register")
                 || url.equals("/shelter/check")
+                || url.equals("/pet/register")
 
                 || url.equals("/reissue")
 
-                || url.startsWith("/notice")
+
+
+
+
 
 
                 || url.startsWith("/api/info")
@@ -49,8 +53,8 @@ public class JWTFilter extends OncePerRequestFilter {
                 || url.startsWith("/board/detail")
                 || url.equals("/board/top-liked")
                 || url.equals("/board/top-viewed")
-                || url.equals("/notice")
-                || url.endsWith(".png");
+                || url.equals("/notice");
+
     }
 
     @Override

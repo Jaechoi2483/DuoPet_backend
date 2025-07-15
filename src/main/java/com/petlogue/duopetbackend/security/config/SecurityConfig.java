@@ -117,6 +117,7 @@ public class SecurityConfig implements WebMvcConfigurer {
                                 "/shelter/upload-temp",
                                 "/shelter/register",
                                 "/shelter/check",
+                                "/pet/register",
                                 "/notice/**",
                                 "/board/detail/**",
                                 "/board/view-count",
@@ -129,7 +130,8 @@ public class SecurityConfig implements WebMvcConfigurer {
 
                                 "/qna/**",
                                 "/api/info/**",
-                                "/api/adoption/**"
+                                "/api/adoption/**",
+                                "/uploads/**", "/images/**"
 
                         ).permitAll()
 

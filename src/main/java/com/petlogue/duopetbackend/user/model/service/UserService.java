@@ -4,7 +4,6 @@ import com.petlogue.duopetbackend.common.FileNameChange;
 import com.petlogue.duopetbackend.user.jpa.entity.UserEntity;
 import com.petlogue.duopetbackend.user.jpa.repository.UserRepository;
 import com.petlogue.duopetbackend.user.model.dto.UserDto;
-import com.petlogue.duopetbackend.user.model.dto.VetDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -12,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
+import java.time.LocalDateTime;
 import java.util.Date;
 
 @Service
@@ -44,7 +44,7 @@ public class UserService {
         // 3. 기본값 설정
         userDto.setRole("USER");
         userDto.setStatus("ACTIVE");
-        userDto.setCreatedAt(new Date());
+        userDto.setCreatedAt(LocalDateTime.now());
 
         // 4. Entity 변환 후 저장
         UserEntity user = userDto.toEntity();
@@ -101,7 +101,7 @@ public class UserService {
      * - UserEntity 저장
      * - 전문가/보호소일 경우 각 Service 호출
      */
-    public void saveFinalUser(UserDto userDto, MultipartFile file) {
+    public UserEntity saveFinalUser(UserDto userDto, MultipartFile file) {
 
         // 1. 비밀번호 암호화
         if (!userDto.getUserPwd().startsWith("{bcrypt}")) {
@@ -153,7 +153,7 @@ public class UserService {
 
         // 5. 가입일 설정
         if (userDto.getCreatedAt() == null) {
-            userDto.setCreatedAt(new Date());
+            userDto.setCreatedAt(LocalDateTime.now());
         }
 
         // 6. 디버깅 로그
@@ -163,6 +163,7 @@ public class UserService {
         // 7. USERS 테이블 저장
         UserEntity user = userDto.toEntity();
         userRepository.save(user);
+        return user;
 
         // 전문가(VET) / 보호소(SHELTER) insert는 각 컨트롤러에서 별도로 처리
     }

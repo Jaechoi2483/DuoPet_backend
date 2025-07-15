@@ -7,6 +7,8 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 import org.springframework.validation.annotation.Validated;
 
+import java.time.LocalDateTime;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -32,11 +34,13 @@ public class UserDto {
     private String userEmail;   // 이메일
     private String role;        // USER / ADMIN / VET / SHELTER
     private String status;      // ACTIVE / INACTIVE / SUSPENDED
-    @JsonFormat(pattern = "yyyy-MM-dd")
-    private java.util.Date createdAt;     // 가입일
+    private LocalDateTime createdAt;     // 가입일
     private String userProfileRenameFilename;      // 서버 저장용 프로필 파일명
     private String userProfileOriginalFilename;    // 원본 파일명
     private String faceRecognitionId;   // 얼굴 인식 ID
+
+    private VetDto vetProfile;
+    private ShelterDto shelterProfile;
 
     public UserEntity toEntity() {
         return UserEntity.builder()
