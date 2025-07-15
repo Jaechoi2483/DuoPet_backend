@@ -16,7 +16,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -32,17 +34,20 @@ public class BoardService {
     private String uploadDir;
 
     // 게시글 수 조회
-    public int selectListCount() {
-        return (int) boardRepository.count();
-    }
+    public int countFreeBoardByKeywordOrDate(String keyword, Date date) {
+        // 키워드만 있는 경우
+        if (keyword != null && !keyword.trim().isEmpty() && date == null) {
+            return boardRepository.countByCategoryAndContentTypeAndTitleContaining("자유", "board", keyword);
 
-    // 검색 키워드 포함 게시글 수 조회
-    public int selectListCount(String keyword) {
-        if (keyword == null || keyword.trim().isEmpty()) {
-            return selectListCount();
+            // 날짜만 있는 경우
+        } else if ((keyword == null || keyword.trim().isEmpty()) && date != null) {
+            return boardRepository.countByCategoryAndContentTypeAndCreatedAtBetween(
+                    "자유", "board", getStartOfDay(date), getEndOfDay(date));
+
+            // 키워드 + 날짜 둘 다 없음 (전체)
+        } else {
+            return boardRepository.countByCategoryAndContentType("자유", "board");
         }
-
-        return boardRepository.countByTitleContainingOrContentBodyContaining(keyword, keyword);
     }
 
     // 전체 게시물 목록
@@ -57,15 +62,19 @@ public class BoardService {
         return boardList;
     }
 
-    // 검색 키워드 포함 게시글 목록 조회
-    public ArrayList<Board> selectList(String keyword, Pageable pageable) {
+    // 게시글 목록 조회
+    public ArrayList<Board> selectByKeywordOrDate(String keyword, Date date, Pageable pageable) {
         Page<BoardEntity> page;
 
-        if (keyword == null || keyword.trim().isEmpty()) {
-            page = boardRepository.findByCategory("자유", pageable);
+        if (keyword != null && !keyword.trim().isEmpty() && date == null) {
+            // 키워드만 있을 때
+            page = boardRepository.findByCategoryAndContentTypeAndTitleContaining("자유", "board", keyword, pageable);
+        } else if ((keyword == null || keyword.trim().isEmpty()) && date != null) {
+            // 날짜만 있을 때
+            page = boardRepository.findByCategoryAndContentTypeAndCreatedAtBetween("자유", "board", getStartOfDay(date), getEndOfDay(date), pageable);
         } else {
-            page = boardRepository.findByCategoryAndTitleContainingOrContentBodyContaining(
-                    "자유", keyword, keyword, pageable);
+            // 전체 목록
+            page = boardRepository.findByCategoryAndContentType("자유", "board", pageable);
         }
 
         ArrayList<Board> list = new ArrayList<>();
@@ -74,6 +83,26 @@ public class BoardService {
         }
 
         return list;
+    }
+
+    // Date로 저장되어 있어 createdAt 이 부분이 시분초까지 저장
+    // 프런트에서 yyyy-MM-dd 형식의 날짜만 보내도 저장되어 있는 것이
+    // 시분초까지 저장되어 정확한 날짜 판단을 위해 사용함
+    private Date getStartOfDay(Date date) {
+        return Date.from(date.toInstant()
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate()
+                .atStartOfDay(ZoneId.systemDefault())
+                .toInstant());
+    }
+
+    private Date getEndOfDay(Date date) {
+        return Date.from(date.toInstant()
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate()
+                .atTime(23, 59, 59)
+                .atZone(ZoneId.systemDefault())
+                .toInstant());
     }
 
     // 게시물 상세보기
