@@ -1,11 +1,14 @@
 package com.petlogue.duopetbackend.user.jpa.repository;
 
+
 import com.petlogue.duopetbackend.admin.model.dto.StatItemDto;
 import com.petlogue.duopetbackend.user.jpa.entity.UserEntity;
+import com.petlogue.duopetbackend.user.model.dto.UserDetailDto;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -36,6 +39,16 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
 
     // 3. Status로만 필터링
     Page<UserEntity> findByStatus(String status, Pageable pageable);
+
+
+
+
+    @Query("SELECT NEW com.petlogue.duopetbackend.user.model.dto.UserDetailDto(u, v, s) " +
+            "FROM UserEntity u " +
+            "LEFT JOIN VetEntity v ON v.user.userId = u.userId " +
+            "LEFT JOIN UserShelterEntity s ON s.user.userId = u.userId " +
+            "WHERE u.userId = :userId")
+    Optional<UserDetailDto> findDetailWithProfiles(@Param("userId") Long userId);
 
     // 관리자 페이지 통계 표시할떄  쓰는 거에요
     @Query("SELECT new com.petlogue.duopetbackend.admin.model.dto.StatItemDto(u.gender, COUNT(u)) " +

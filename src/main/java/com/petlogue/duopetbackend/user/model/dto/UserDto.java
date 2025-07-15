@@ -39,6 +39,9 @@ public class UserDto {
     private String userProfileOriginalFilename;    // 원본 파일명
     private String faceRecognitionId;   // 얼굴 인식 ID
 
+    private VetDto vetProfile;
+    private ShelterDto shelterProfile;
+
     public UserEntity toEntity() {
         return UserEntity.builder()
                 .userId(userId)

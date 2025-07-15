@@ -38,10 +38,10 @@ public class JWTFilter extends OncePerRequestFilter {
 
                 || url.equals("/reissue")
 
-                || url.startsWith("/notice")
 
 
-                || url.startsWith("/board")
+
+
 
                 || url.startsWith("/api/info")
                 || url.startsWith("/info")
@@ -51,8 +51,8 @@ public class JWTFilter extends OncePerRequestFilter {
                 || url.startsWith("/board/detail")
                 || url.equals("/board/top-liked")
                 || url.equals("/board/top-viewed")
-                || url.equals("/notice")
-                || url.endsWith(".png");
+                || url.equals("/notice");
+
     }
 
     @Override
