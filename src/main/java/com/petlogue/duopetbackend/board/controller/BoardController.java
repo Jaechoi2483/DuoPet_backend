@@ -5,6 +5,8 @@ package com.petlogue.duopetbackend.board.controller;
 import com.petlogue.duopetbackend.board.jpa.entity.BoardEntity;
 import com.petlogue.duopetbackend.board.jpa.repository.BoardRepository;
 
+import com.petlogue.duopetbackend.board.jpa.repository.BookmarkRepository;
+import com.petlogue.duopetbackend.board.jpa.repository.LikeRepository;
 import com.petlogue.duopetbackend.board.model.dto.Board;
 import com.petlogue.duopetbackend.board.model.dto.Bookmark;
 import com.petlogue.duopetbackend.board.model.dto.Like;
@@ -44,6 +46,10 @@ public class BoardController {
     private final LikeService likeService;
 
     private final BoardRepository boardRepository;
+
+    private final LikeRepository likeRepo;
+
+    private final BookmarkRepository bookmarkRepository;
 
     private final JWTUtil jwtUtil;
 
@@ -286,22 +292,74 @@ public class BoardController {
 
     // 좋아요 등록
     @PostMapping("/like/{id}")
-    public ResponseEntity<Like> toggleLike (
-            @PathVariable Long id,       // 게시글 ID
-            @RequestParam Long userId    // 사용자 ID
-    ) {
+    public ResponseEntity<?> toggleLike(@PathVariable Long id, HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        log.info("Controller 도달 - request.getAttribute(userId): {}", request.getAttribute("userId"));
+
+        if (userId == null) {
+            log.error("좋아요 토글 요청 - 인증 실패, userId가 null");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "사용자 인증 실패"));
+        }
+
+        log.info("좋아요 토글 요청 - userId: {}, contentId: {}", userId, id);
+
         Like result = likeService.toggleLike(userId, id);
-        return ResponseEntity.ok(result);
+        log.info("좋아요 토글 결과 - liked: {}", result.isLiked());
+
+        return ResponseEntity.ok(Map.of("liked", result.isLiked(), "message", result.isLiked() ? "좋아요 등록됨" : "좋아요 취소됨"));
     }
+
+    // 좋아요 상태 확인
+    @GetMapping("/like/{contentId}/status")
+    public ResponseEntity<?> checkLikeStatus(@PathVariable Long contentId, HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("liked", false));
+        }
+
+        boolean liked = likeRepo.findByUserIdAndTargetIdAndTargetType(userId, contentId, "board").isPresent();
+        return ResponseEntity.ok(Map.of("liked", liked));
+    }
+
 
     // 북마크 등록
     @PostMapping("/bookmark/{id}")
-    public ResponseEntity<Bookmark> toggleBookmark(
-            @PathVariable Long id,       // 게시글 ID
-            @RequestParam Long userId    // 사용자 ID
-    ) {
+    public ResponseEntity<?> toggleBookmark(@PathVariable Long id, HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        log.info("Bookmark Controller 도달 - request.getAttribute(userId): {}", userId);
+
+        if (userId == null) {
+            log.error("북마크 토글 요청 - 인증 실패, userId가 null");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "로그인이 필요한 기능입니다."));
+        }
+
+        log.info("북마크 토글 요청 - userId: {}, contentId: {}", userId, id);
+
         Bookmark result = bookmarkService.toggleBookmark(userId, id);
-        return ResponseEntity.ok(result);
+        log.info("북마크 토글 결과 - bookmarked: {}", result.isBookmarked());
+
+        return ResponseEntity.ok(Map.of(
+                "bookmarked", result.isBookmarked(),
+                "message", result.isBookmarked() ? "북마크 등록됨" : "북마크 해제됨"
+        ));
+    }
+
+    // 북마크 상태 확인
+    @GetMapping("/bookmark/{contentId}/status")
+    public ResponseEntity<?> checkBookmarkStatus(@PathVariable Long contentId, HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("bookmarked", false));
+        }
+
+        boolean bookmarked = bookmarkRepository
+                .findByUserIdAndContentIdAndTargetType(userId, contentId, "board")
+                .isPresent();
+
+        return ResponseEntity.ok(Map.of("bookmarked", bookmarked));
     }
 
     // 좋아요 목록 조회

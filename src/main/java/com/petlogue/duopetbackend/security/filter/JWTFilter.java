@@ -1,6 +1,7 @@
 package com.petlogue.duopetbackend.security.filter;
 
 import com.petlogue.duopetbackend.security.jwt.JWTUtil;
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -122,8 +123,36 @@ public class JWTFilter extends OncePerRequestFilter {
                 return;
             }
 
-            String loginId = jwtUtil.getLoginIdFromToken(accessToken);
-            String role = jwtUtil.getRoleFromToken(accessToken);
+
+                Claims claims = jwtUtil.getClaimsFromToken(accessToken);
+
+                Object userNoObj = claims.get("userNo");
+
+                if (userNoObj == null) {
+                    log.error("JWTFilter - userNo가 null입니다.");
+                    throw new IllegalArgumentException("userNo가 존재하지 않습니다.");
+                }
+
+                Long userId;
+                if (userNoObj instanceof Integer) {
+                    userId = ((Integer) userNoObj).longValue();
+                } else if (userNoObj instanceof Long) {
+                    userId = (Long) userNoObj;
+                } else if (userNoObj instanceof String) {
+                    userId = Long.valueOf((String) userNoObj);
+                } else {
+                    throw new IllegalArgumentException("userNo 형식이 잘못되었습니다. 타입: " + userNoObj.getClass());
+                }
+
+                log.info("JWTFilter - 추출된 userId: {}", userId);
+                request.setAttribute("userId", userId);
+
+                String loginId = jwtUtil.getLoginIdFromToken(accessToken);
+                String role = jwtUtil.getRoleFromToken(accessToken);
+                log.info("JWTFilter - 로그인 ID: {}", loginId);
+                log.info("JWTFilter - 권한: {}", role);
+
+                request.setAttribute("loginId", loginId);
 
             // 2. 인증 객체 생성
             org.springframework.security.authentication.UsernamePasswordAuthenticationToken authToken =

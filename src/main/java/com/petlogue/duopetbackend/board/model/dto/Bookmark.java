@@ -22,7 +22,7 @@ public class Bookmark {
     private String targetType;     // 게시글 유형 (자유, 후기, 팁 등)
     private Date createdAt;        // 북마크 생성일시
 
-    private Boolean bookmarked;  // 현재 북마크 상태
+    private boolean bookmarked;  // 현재 북마크 상태
 
     // DTO → Entity 변환 메서드
     public BookmarkEntity toEntity() {

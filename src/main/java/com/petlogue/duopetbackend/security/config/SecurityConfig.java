@@ -131,7 +131,7 @@ public class SecurityConfig implements WebMvcConfigurer {
                                 "/qna/**",
                                 "/api/info/**",
                                 "/api/adoption/**",
-                                "/api/hospitals/**"
+                                "/api/hospitals/**",
                                 "/uploads/**", "/images/**"
 
 
