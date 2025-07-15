@@ -6,7 +6,11 @@ import com.petlogue.duopetbackend.board.jpa.entity.BoardEntity;
 import com.petlogue.duopetbackend.board.jpa.repository.BoardRepository;
 
 import com.petlogue.duopetbackend.board.model.dto.Board;
+import com.petlogue.duopetbackend.board.model.dto.Bookmark;
+import com.petlogue.duopetbackend.board.model.dto.Like;
 import com.petlogue.duopetbackend.board.model.service.BoardService;
+import com.petlogue.duopetbackend.board.model.service.BookmarkService;
+import com.petlogue.duopetbackend.board.model.service.LikeService;
 import com.petlogue.duopetbackend.common.FileNameChange;
 import com.petlogue.duopetbackend.common.Paging;
 import com.petlogue.duopetbackend.security.jwt.JWTUtil;
@@ -24,7 +28,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
-import java.time.format.DateTimeParseException;
 import java.util.*;
 
 @Slf4j
@@ -35,6 +38,10 @@ import java.util.*;
 public class BoardController {
 
     private final BoardService boardService;
+
+    private final BookmarkService bookmarkService;
+
+    private final LikeService likeService;
 
     private final BoardRepository boardRepository;
 
@@ -254,4 +261,65 @@ public class BoardController {
         result.put("paging", paging);
         return result;
     }
+
+    // 조회수 증가용 API (GET 방식, 비회원 가능)
+    @GetMapping("/view-count")
+    public ResponseEntity<?> increaseViewCount(@RequestParam Long id) {
+        try {
+            log.info("비회원 포함 조회수 증가 요청: 게시글 ID = {}", id);
+            Optional<BoardEntity> optional = boardRepository.findById(id);
+
+            if (optional.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("게시글이 존재하지 않습니다.");
+            }
+
+            BoardEntity board = optional.get();
+            board.setViewCount(board.getViewCount() + 1);
+            boardRepository.save(board); // 변경사항 저장
+
+            return ResponseEntity.ok().build(); // 응답 본문 없이 200 OK
+        } catch (Exception e) {
+            log.error("조회수 증가 실패", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("조회수 증가 중 오류 발생");
+        }
+    }
+
+    // 좋아요 등록
+    @PostMapping("/like/{id}")
+    public ResponseEntity<Like> toggleLike (
+            @PathVariable Long id,       // 게시글 ID
+            @RequestParam Long userId    // 사용자 ID
+    ) {
+        Like result = likeService.toggleLike(userId, id);
+        return ResponseEntity.ok(result);
+    }
+
+    // 북마크 등록
+    @PostMapping("/bookmark/{id}")
+    public ResponseEntity<Bookmark> toggleBookmark(
+            @PathVariable Long id,       // 게시글 ID
+            @RequestParam Long userId    // 사용자 ID
+    ) {
+        Bookmark result = bookmarkService.toggleBookmark(userId, id);
+        return ResponseEntity.ok(result);
+    }
+
+    // 좋아요 목록 조회
+//    @GetMapping("/mypage/likes")
+//    public ResponseEntity<List<Like>> getLikes(
+//            @RequestParam Long userId
+//    ) {
+//        List<Like> result = LikeService.getLikesByUser(userId);
+//        return ResponseEntity.ok(result);
+//    }
+//
+//    // 북마크 목록 조회
+//    @GetMapping("/mypage/bookmarks")
+//    public ResponseEntity<List<Bookmark>> getBookmarks(
+//            @RequestParam Long userId
+//    ) {
+//        List<Bookmark> result = bookmarkService.getBookmarksByUser(userId);
+//        return ResponseEntity.ok(result);
+//    }
+
 }
