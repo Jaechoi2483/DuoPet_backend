@@ -12,7 +12,7 @@ import com.petlogue.duopetbackend.health.jpa.repository.PetHealthScheduleReposit
 import com.petlogue.duopetbackend.health.jpa.repository.PetMedicalVisitRepository;
 import com.petlogue.duopetbackend.health.jpa.repository.PetVaccinRepository;
 import com.petlogue.duopetbackend.health.jpa.repository.PetWeightRepository;
-import com.petlogue.duopetbackend.pet.jpa.entity.Pet;
+import com.petlogue.duopetbackend.pet.jpa.entity.PetEntity;
 import com.petlogue.duopetbackend.pet.jpa.repository.PetRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -35,7 +35,7 @@ public class HealthService {
     // Medical Visit Service Methods
     @Transactional
     public void createMedicalVisit(PetMedicalVisitDto.CreateRequest dto) {
-        Pet pet = petRepository.findById(dto.getPetId()).orElseThrow(() -> new IllegalArgumentException("Pet not found"));
+        PetEntity pet = petRepository.findById(dto.getPetId()).orElseThrow(() -> new IllegalArgumentException("Pet not found"));
         PetMedicalVisit visit = new PetMedicalVisit();
         visit.setPet(pet);
         visit.setHospitalName(dto.getHospitalName());
@@ -66,7 +66,7 @@ public class HealthService {
     // Vaccination Service Methods
     @Transactional
     public void createVaccination(PetVaccinDto.CreateRequest dto) {
-        Pet pet = petRepository.findById(dto.getPetId()).orElseThrow(() -> new IllegalArgumentException("Pet not found"));
+        PetEntity pet = petRepository.findById(dto.getPetId()).orElseThrow(() -> new IllegalArgumentException("Pet not found"));
         PetVaccin vaccin = new PetVaccin();
         vaccin.setPet(pet);
         vaccin.setVaccineName(dto.getVaccineName());
@@ -91,7 +91,7 @@ public class HealthService {
     // Weight Service Methods
     @Transactional
     public void createWeight(PetWeightDto.CreateRequest dto) {
-        Pet pet = petRepository.findById(dto.getPetId()).orElseThrow(() -> new IllegalArgumentException("Pet not found"));
+        PetEntity pet = petRepository.findById(dto.getPetId()).orElseThrow(() -> new IllegalArgumentException("Pet not found"));
         PetWeight weight = new PetWeight();
         weight.setPet(pet);
         weight.setWeightKg(dto.getWeightKg());
@@ -114,7 +114,7 @@ public class HealthService {
     // Health Schedule Service Methods
     @Transactional
     public void createHealthSchedule(PetHealthScheduleDto.CreateRequest dto) {
-        Pet pet = petRepository.findById(dto.getPetId()).orElseThrow(() -> new IllegalArgumentException("Pet not found"));
+        PetEntity pet = petRepository.findById(dto.getPetId()).orElseThrow(() -> new IllegalArgumentException("Pet not found"));
         PetHealthSchedule schedule = new PetHealthSchedule();
         schedule.setPet(pet);
         schedule.setScheduleType(dto.getScheduleType());

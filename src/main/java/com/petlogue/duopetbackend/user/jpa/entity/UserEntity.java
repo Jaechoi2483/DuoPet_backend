@@ -4,6 +4,7 @@ import com.petlogue.duopetbackend.user.model.dto.UserDto;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
 import java.util.GregorianCalendar;
 
 @Table(name = "users")
@@ -44,7 +45,7 @@ public class UserEntity {
     @Column(name = "status")
     private String status;
     @Column(name = "created_at")
-    private java.util.Date createdAt;
+    private LocalDateTime createdAt;
     @Column(name = "rename_filename")
     private String renameFilename;
     @Column(name = "original_filename")
@@ -54,7 +55,7 @@ public class UserEntity {
 
     @PrePersist
     public void prePersist() {
-        createdAt = new GregorianCalendar().getGregorianChange();    //현재 날짜 시간 적용
+        this.createdAt = LocalDateTime.now();    //현재 날짜 시간 적용
     }
 
     public UserDto toDto(){

@@ -1,6 +1,6 @@
 package com.petlogue.duopetbackend.health.jpa.entity;
 
-import com.petlogue.duopetbackend.pet.jpa.entity.Pet;
+import com.petlogue.duopetbackend.pet.jpa.entity.PetEntity;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -24,7 +24,7 @@ public class PetWeight {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "pet_id", nullable = false)
-    private Pet pet;
+    private PetEntity pet;
 
     @Column(name = "weight_kg", nullable = false, precision = 5, scale = 2)
     private BigDecimal weightKg;
