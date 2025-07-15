@@ -17,7 +17,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.Map;
 
@@ -46,6 +49,17 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         String userPwd = null;
 
         try {
+            // 요청 바디 내용을 문자열로 먼저 읽어 출력해보기
+            String rawBody = new BufferedReader(new InputStreamReader(request.getInputStream()))
+                    .lines()
+                    .reduce("", (acc, cur) -> acc + cur);
+
+            log.info("🟡 LoginFilter: 요청 바디(raw): {}", rawBody);
+
+            if (rawBody == null || rawBody.isBlank()) {
+                throw new RuntimeException("요청 바디가 비어 있습니다.");
+            }
+
             ObjectMapper mapper = new ObjectMapper();
             Map<String, String> requestBody = mapper.readValue(request.getInputStream(), Map.class);
             loginId = requestBody.get("loginId");
@@ -93,7 +107,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
                 .refreshToken(refreshToken)
                 .ipAddress(request.getRemoteAddr())  // 클라이언트 IP
                 .deviceInfo(request.getHeader("User-Agent"))  // 브라우저/디바이스 정보
-                .createdAt(new Date())
+                .createdAt(LocalDateTime.now())
                 .expiresAt(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24))
                 .tokenStatus("ACTIVE")
                 .build();
@@ -130,4 +144,10 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
         response.getWriter().write(String.format("{\"error\":\"%s\"}", errorMessage));
     }
+
+    @Override
+    protected boolean requiresAuthentication(HttpServletRequest request, HttpServletResponse response) {
+        return request.getMethod().equals("POST") && request.getRequestURI().equals("/login");
+    }
+
 }

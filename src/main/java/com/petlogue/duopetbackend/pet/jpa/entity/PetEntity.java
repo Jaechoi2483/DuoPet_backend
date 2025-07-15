@@ -39,7 +39,7 @@ public class PetEntity {
     @Column(name = "age")
     private Integer age;
 
-    @Column(name = "gender", nullable = false)
+    @Column(name = "gender", nullable = false, length = 1)
     private String gender;  // M / F
 
     @Column(name = "neutered", nullable = false)

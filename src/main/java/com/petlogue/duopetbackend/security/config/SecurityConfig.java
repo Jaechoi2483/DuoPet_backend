@@ -3,9 +3,11 @@ package com.petlogue.duopetbackend.security.config;
 import com.petlogue.duopetbackend.security.filter.JWTFilter;
 import com.petlogue.duopetbackend.security.filter.LoginFilter;
 import com.petlogue.duopetbackend.security.handler.CustomLogoutHandler;
+import com.petlogue.duopetbackend.security.handler.CustomOAuth2SuccessHandler;
 import com.petlogue.duopetbackend.security.jwt.JWTUtil;
 import com.petlogue.duopetbackend.security.jwt.model.service.RefreshService;
 import com.petlogue.duopetbackend.security.model.service.CustomUserDetailsService;
+import com.petlogue.duopetbackend.social.model.service.KakaoService;
 import com.petlogue.duopetbackend.user.jpa.repository.UserRepository;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -33,13 +35,20 @@ public class SecurityConfig implements WebMvcConfigurer {
     private final CustomUserDetailsService userDetailsService;
     private final UserRepository userRepository;
     private final RefreshService refreshService;
+    private final KakaoService kakaoService;
+    private final CustomOAuth2SuccessHandler customOAuth2SuccessHandler;
+
 
     public SecurityConfig(JWTUtil jwtUtil, CustomUserDetailsService userDetailsService,
-                          UserRepository userRepository, RefreshService refreshService) {
+                          UserRepository userRepository, RefreshService refreshService,
+                          KakaoService kakaoService,
+                          CustomOAuth2SuccessHandler customOAuth2SuccessHandler) {
         this.jwtUtil = jwtUtil;
         this.userDetailsService = userDetailsService;
         this.userRepository = userRepository;
         this.refreshService = refreshService;
+        this.kakaoService = kakaoService;
+        this.customOAuth2SuccessHandler = customOAuth2SuccessHandler;
     }
 
     @Bean
@@ -80,7 +89,7 @@ public class SecurityConfig implements WebMvcConfigurer {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
                                                    AuthenticationManager authenticationManager,
-                                                   CustomLogoutHandler customLogoutHandler) throws Exception {
+                                                   CustomLogoutHandler customLogoutHandler, KakaoService kakaoService) throws Exception {
 
         http
                 .csrf(csrf -> csrf.disable())
@@ -112,6 +121,11 @@ public class SecurityConfig implements WebMvcConfigurer {
                                 "/users/signup/**",
                                 "/users/check-nickname",
                                 "/users/check-email",
+                                "/oauth2/**",
+                                "/social-signup",
+                                "/login/oauth2/**",
+                                "/oauth2/authorization/kakao",
+                                "/oauth2/redirect",
                                 "/vet/upload-temp",
                                 "/vet/register",
                                 "/shelter/upload-temp",
@@ -131,7 +145,7 @@ public class SecurityConfig implements WebMvcConfigurer {
                                 "/qna/**",
                                 "/api/info/**",
                                 "/api/adoption/**",
-                                "/api/hospitals/**"
+                                "/api/hospitals/**",
                                 "/uploads/**", "/images/**"
 
 
@@ -161,6 +175,21 @@ public class SecurityConfig implements WebMvcConfigurer {
                 .addFilterAt(
                         new LoginFilter(authenticationManager, jwtUtil, userRepository, refreshService),
                         UsernamePasswordAuthenticationFilter.class
+                )
+
+                // 소셜 로그인 설정 추가
+                .oauth2Login(oauth2 -> oauth2
+                        .userInfoEndpoint(userInfo -> userInfo
+                                .userService(kakaoService)  // 사용자 정보 파싱
+                        )
+                        .successHandler(customOAuth2SuccessHandler) // 로그인 성공 처리
+                        .failureHandler((request, response, exception) -> {
+                            System.out.println("[소셜 로그인 실패] 이유: " + exception.getMessage());
+                            exception.printStackTrace(); // 디버깅용 스택 출력
+
+                            // 프론트에서 메시지 보여주도록 커스텀 쿼리 파라미터 전달
+                            response.sendRedirect("/login?error=oauth&message=rate_limit");
+                        })
                 )
 
                 // 로그아웃 설정

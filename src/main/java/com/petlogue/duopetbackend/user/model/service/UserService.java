@@ -168,7 +168,24 @@ public class UserService {
         // 전문가(VET) / 보호소(SHELTER) insert는 각 컨트롤러에서 별도로 처리
     }
 
+    public void updateSocialUser(UserDto userDto) {
+        // loginId로 기존 유저 조회
+        UserEntity user = userRepository.findByLoginId(userDto.getLoginId())
+                .orElseThrow(() -> new IllegalArgumentException("해당 사용자를 찾을 수 없습니다."));
 
+        if (!"SOCIAL_TEMP".equals(user.getStatus())) {
+            throw new IllegalArgumentException("이미 등록된 사용자입니다.");
+        }
 
+        // 추가 정보 입력
+        user.setUserName(userDto.getUserName());
+        user.setNickname(userDto.getNickname());
+        user.setPhone(userDto.getPhone());
+        user.setAge(userDto.getAge());
+        user.setGender(userDto.getGender());
+        user.setAddress(userDto.getAddress());
+        user.setStatus("ACTIVE"); // 상태 활성화
 
+        userRepository.save(user);
+    }
 }

@@ -101,4 +101,18 @@ public class UserController {
         boolean exists = userRepository.existsByUserEmail(userEmail);
         return ResponseEntity.ok(exists); // true = 중복 O
     }
+
+    // 소셜 로그인 사용자 정보 보완 (최초 로그인 후)
+    @PatchMapping("/social-update")
+    public ResponseEntity<?> updateSocialUser(@RequestBody UserDto userDto) {
+        try {
+            userService.updateSocialUser(userDto);
+            return ResponseEntity.ok("소셜 사용자 정보 업데이트 완료");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("업데이트 실패: " + e.getMessage());
+        }
+    }
+
 }

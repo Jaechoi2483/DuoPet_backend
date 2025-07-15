@@ -29,6 +29,9 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     // [회원가입 2단계] 닉네임 중복 여부 확인
     boolean existsByNickname(String nickname);
 
+    // 소셜 로그인용 providerId로 회원 조회
+    Optional<UserEntity> findByProviderId(String providerId);
+
 
 // 관리자 회원목록 조회할때 역할이랑 상태별로 조회할때 쓰는 거에요
 

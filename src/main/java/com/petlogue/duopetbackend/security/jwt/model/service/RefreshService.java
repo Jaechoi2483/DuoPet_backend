@@ -17,9 +17,19 @@ public class RefreshService {
 
     private final RefreshRepository refreshTokenRepository;
 
-    // 저장
+    // 기본 저장
     public void saveRefresh(RefreshToken refreshToken) {
         refreshTokenRepository.save(refreshToken);
+    }
+
+    // 소셜 저장
+    public void saveToken(Long userId, String refreshTokenValue) {
+        RefreshToken refreshToken = RefreshToken.builder()
+                .userId(userId)
+                .refreshToken(refreshTokenValue)
+                .build();
+
+        saveRefresh(refreshToken);
     }
 
     // 삭제

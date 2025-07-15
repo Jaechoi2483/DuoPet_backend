@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.GregorianCalendar;
 
 @Builder
@@ -28,7 +29,7 @@ public class RefreshToken {
     @Column(name = "device_info", length = 255)
     private String deviceInfo;
     @Column(name = "created_at")
-    private java.util.Date createdAt;
+    private LocalDateTime createdAt;
     @Column(name = "expires_at")
     private java.util.Date expiresAt;
     @Column(name = "token_status", length = 20)
@@ -36,7 +37,7 @@ public class RefreshToken {
 
     @PrePersist
     public void onCreate() {
-        this.createdAt = new GregorianCalendar().getGregorianChange();
+        this.createdAt = LocalDateTime.now();
         if (this.tokenStatus == null) {
             this.tokenStatus = "ACTIVE";
         }

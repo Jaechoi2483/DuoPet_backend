@@ -34,13 +34,13 @@ public class UserEntity {
     private String phone;
     @Column(name = "age")
     private Integer age;
-    @Column(name = "gender")
+    @Column(name = "gender", length = 1)
     private String gender;
     @Column(name = "address")
     private String address;
     @Column(name = "user_email")
     private String userEmail;
-    @Column(name = "role")
+    @Column(name = "role", nullable = false)
     private String role;
     @Column(name = "status")
     private String status;
