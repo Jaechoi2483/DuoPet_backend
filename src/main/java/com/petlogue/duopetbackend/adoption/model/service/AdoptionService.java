@@ -104,56 +104,50 @@ public class AdoptionService {
         
         try {
             int pageNo = 1;
-            int numOfRows = 100;  // 페이지당 100개
-            boolean hasMore = true;
+            int numOfRows = 1000;  // 페이지당 1000개 (최대값)
             
-            // 경기도 지역 코드 (6410000)
-            String uprCd = "6410000";
+            // 지역 코드 없이 전국 데이터 조회
+            String uprCd = null;
             
-            log.info("Starting animal data synchronization...");
+            log.info("Starting animal data synchronization with pageNo={}, numOfRows={}, uprCd={}", pageNo, numOfRows, uprCd);
             
-            while (hasMore) {
-                Map<String, Object> response = publicDataApiClient.getAbandonmentAnimals(
-                        null, null, null, null, pageNo, numOfRows, uprCd);
+            // 1페이지만 호출 (페이지네이션 없음)
+            Map<String, Object> response = publicDataApiClient.getAbandonmentAnimals(
+                    null, null, null, null, pageNo, numOfRows, uprCd);
+            
+            if (response != null && response.containsKey("response")) {
+                Map<String, Object> responseBody = (Map<String, Object>) 
+                        ((Map<String, Object>) response.get("response")).get("body");
                 
-                if (response != null && response.containsKey("response")) {
-                    Map<String, Object> responseBody = (Map<String, Object>) 
-                            ((Map<String, Object>) response.get("response")).get("body");
+                if (responseBody != null && responseBody.containsKey("items")) {
+                    Map<String, Object> items = (Map<String, Object>) responseBody.get("items");
+                    List<Map<String, Object>> itemList = (List<Map<String, Object>>) items.get("item");
                     
-                    if (responseBody != null && responseBody.containsKey("items")) {
-                        Map<String, Object> items = (Map<String, Object>) responseBody.get("items");
-                        List<Map<String, Object>> itemList = (List<Map<String, Object>>) items.get("item");
-                        
-                        if (itemList != null && !itemList.isEmpty()) {
-                            log.info("Processing {} animals from page {}", itemList.size(), pageNo);
-                            for (Map<String, Object> item : itemList) {
-                                totalProcessed++;
-                                try {
-                                    syncAnimalData(item);
-                                    successCount++;
-                                } catch (Exception e) {
-                                    failureCount++;
-                                    String desertionNo = item.get("desertionNo") != null ? item.get("desertionNo").toString() : "unknown";
-                                    log.error("Failed to sync animal: desertionNo={}, error={}", desertionNo, e.getMessage(), e);
-                                }
+                    if (itemList != null && !itemList.isEmpty()) {
+                        log.info("Processing {} animals from API response", itemList.size());
+                        for (Map<String, Object> item : itemList) {
+                            totalProcessed++;
+                            try {
+                                syncAnimalData(item);
+                                successCount++;
+                            } catch (Exception e) {
+                                failureCount++;
+                                String desertionNo = item.get("desertionNo") != null ? item.get("desertionNo").toString() : "unknown";
+                                log.error("Failed to sync animal: desertionNo={}, error={}", desertionNo, e.getMessage(), e);
                             }
-                            
-                            // 다음 페이지 확인
-                            Integer totalCount = (Integer) responseBody.get("totalCount");
-                            if (pageNo * numOfRows >= totalCount) {
-                                hasMore = false;
-                            } else {
-                                pageNo++;
-                            }
-                        } else {
-                            hasMore = false;
                         }
+                        
+                        // 전체 건수 로그
+                        Integer totalCount = (Integer) responseBody.get("totalCount");
+                        log.info("Total available animals in API: {}, Processed: {}", totalCount, totalProcessed);
                     } else {
-                        hasMore = false;
+                        log.warn("No items found in API response");
                     }
                 } else {
-                    hasMore = false;
+                    log.error("Invalid response structure: no items found");
                 }
+            } else {
+                log.error("Failed to get response from API");
             }
             
             result.put("totalProcessed", totalProcessed);
@@ -186,6 +180,20 @@ public class AdoptionService {
             
             // DTO로 변환
             AdoptionAnimalDto dto = PublicAnimalApiResponse.toDto(item);
+            
+            // 나이 파싱 문제 로깅 (개선된 로깅)
+            if (item.getAge() != null) {
+                if (dto.getAge() == null) {
+                    log.warn("Age parsing failed for desertionNo: {}, original age: '{}', format not recognized", 
+                            item.getDesertionNo(), item.getAge());
+                } else if (dto.getAge() < 0 || dto.getAge() > 35) {
+                    log.warn("Suspicious age value for desertionNo: {}, parsed age: {}, original: '{}', age out of valid range", 
+                            item.getDesertionNo(), dto.getAge(), item.getAge());
+                } else {
+                    log.debug("Age parsed successfully for desertionNo: {}, age: {}, original: '{}'", 
+                            item.getDesertionNo(), dto.getAge(), item.getAge());
+                }
+            }
             
             // 중복 체크 없이 항상 새로운 엔티티 생성 (임시 해결책)
             AdoptionAnimal animal = createAnimalFromDto(dto);
@@ -244,8 +252,13 @@ public class AdoptionService {
                 .weight(dto.getWeight())
                 .colorCd(dto.getColorCd())
                 .processState(dto.getProcessState())
+                .intakeDate(dto.getHappenDate())  // 발견일을 입소일로 사용
                 .apiSource("PUBLIC_API")
                 .status("AVAILABLE")  // 기본값 설정
+                .apiShelterName(dto.getShelterName())
+                .apiShelterTel(dto.getShelterPhone())
+                .apiShelterAddr(dto.getShelterAddress())
+                .apiOrgNm(dto.getOrgNm())
                 .build();
     }
     
@@ -269,11 +282,17 @@ public class AdoptionService {
         animal.setColorCd(dto.getColorCd());
         animal.setProcessState(dto.getProcessState());
         
+        // intake_date가 없으면 happen_date로 설정
+        if (animal.getIntakeDate() == null && dto.getHappenDate() != null) {
+            animal.setIntakeDate(dto.getHappenDate());
+        }
+        
         // 보호소 정보 업데이트
         if (dto.getShelterName() != null) {
             animal.setApiShelterName(dto.getShelterName());
             animal.setApiShelterTel(dto.getShelterPhone());
             animal.setApiShelterAddr(dto.getShelterAddress());
+            animal.setApiOrgNm(dto.getOrgNm());
         }
     }
     
@@ -503,6 +522,58 @@ public class AdoptionService {
         } catch (Exception e) {
             result.put("error", e.getMessage());
             e.printStackTrace();
+        }
+        
+        return result;
+    }
+    
+    /**
+     * 잘못된 나이 데이터 확인 및 정리
+     * @return 정리 결과
+     */
+    public Map<String, Object> cleanupInvalidAgeData() {
+        Map<String, Object> result = new HashMap<>();
+        
+        try {
+            // 비정상적인 나이 값을 가진 동물들 조회
+            List<AdoptionAnimal> problematicAnimals = adoptionAnimalRepository.findAll().stream()
+                    .filter(animal -> animal.getAge() != null && (animal.getAge() < 0 || animal.getAge() > 30))
+                    .collect(Collectors.toList());
+            
+            result.put("totalProblematicAnimals", problematicAnimals.size());
+            
+            // 문제가 있는 데이터 상세 정보
+            List<Map<String, Object>> details = problematicAnimals.stream()
+                    .map(animal -> {
+                        Map<String, Object> detail = new HashMap<>();
+                        detail.put("animalId", animal.getAnimalId());
+                        detail.put("desertionNo", animal.getDesertionNo());
+                        detail.put("age", animal.getAge());
+                        detail.put("name", animal.getName());
+                        detail.put("breed", animal.getBreed());
+                        return detail;
+                    })
+                    .collect(Collectors.toList());
+            
+            result.put("problematicData", details);
+            
+            // 비정상적인 나이 값을 null로 설정
+            int updatedCount = 0;
+            for (AdoptionAnimal animal : problematicAnimals) {
+                animal.setAge(null);
+                adoptionAnimalRepository.save(animal);
+                updatedCount++;
+            }
+            
+            result.put("updatedCount", updatedCount);
+            result.put("success", true);
+            
+            log.info("Cleaned up {} animals with invalid age data", updatedCount);
+            
+        } catch (Exception e) {
+            result.put("error", e.getMessage());
+            result.put("success", false);
+            log.error("Error during age data cleanup", e);
         }
         
         return result;

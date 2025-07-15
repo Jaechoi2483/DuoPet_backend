@@ -118,4 +118,7 @@ public class AdoptionAnimal {
     
     @Column(name = "api_shelter_addr", length = 500)
     private String apiShelterAddr; // 보호소 주소
+    
+    @Column(name = "api_org_nm", length = 200) 
+    private String apiOrgNm; // 관할기관
 }

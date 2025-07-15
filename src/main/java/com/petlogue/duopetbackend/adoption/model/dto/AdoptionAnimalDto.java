@@ -17,6 +17,7 @@ public class AdoptionAnimalDto {
     private String shelterName;
     private String shelterPhone;
     private String shelterAddress;
+    private String orgNm; // 관할기관
     
     // 기본 정보
     private String name;
@@ -73,6 +74,7 @@ public class AdoptionAnimalDto {
                 .shelterName(entity.getShelter() != null ? entity.getShelter().getShelterName() : entity.getApiShelterName())
                 .shelterPhone(entity.getShelter() != null ? entity.getShelter().getPhone() : entity.getApiShelterTel())
                 .shelterAddress(entity.getShelter() != null ? entity.getShelter().getAddress() : entity.getApiShelterAddr())
+                .orgNm(entity.getApiOrgNm())
                 .name(entity.getName())
                 .animalType(entity.getAnimalType())
                 .breed(entity.getBreed())

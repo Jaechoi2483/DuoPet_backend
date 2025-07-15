@@ -72,7 +72,7 @@ public class QnaEntity {
    
 
     @OneToMany(mappedBy = "qna", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-
+    @Builder.Default
     private List<QnaAnswerEntity> answers = new ArrayList<>();
 
 

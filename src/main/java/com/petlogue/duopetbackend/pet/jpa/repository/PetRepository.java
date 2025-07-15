@@ -18,6 +18,4 @@ public interface PetRepository extends JpaRepository<PetEntity, Long> {
 
     @Query("SELECT new com.petlogue.duopetbackend.admin.model.dto.StatItemDto(p.neutered, COUNT(p)) FROM PetEntity p GROUP BY p.neutered")
     List<StatItemDto> findNeuteredStat();
-
-
 }

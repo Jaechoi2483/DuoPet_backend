@@ -36,10 +36,11 @@ public interface AdoptionAnimalRepository extends JpaRepository<AdoptionAnimal, 
            "AND a.animalType = :type")
     Page<AdoptionAnimal> findByAnimalType(@Param("type") String type, Pageable pageable);
     
-    // 메인 화면용 랜덤 동물 조회
+    // 메인 화면용 랜덤 동물 조회 (이미지가 있는 동물만)
     @Query(value = "SELECT * FROM (" +
            "SELECT * FROM SHELTER_ANIMALS " +
            "WHERE process_state IN ('protect', '보호중') AND status = 'AVAILABLE' " +
+           "AND image_url IS NOT NULL " +
            "ORDER BY DBMS_RANDOM.VALUE) " +
            "WHERE ROWNUM <= :limit", nativeQuery = true)
     List<AdoptionAnimal> findRandomAnimals(@Param("limit") int limit);
