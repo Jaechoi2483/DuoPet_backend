@@ -60,7 +60,15 @@ public class AdminController {
         adminService.updateUserStatus(userId, request.getStatus());
         return ResponseEntity.ok().build();
     }
+    @PostMapping("/admin/chatbot/resync")
+    public ResponseEntity<String> resyncChatbotData() {
+        log.info("관리자: 챗봇 데이터 동기화 API 호출됨");
 
+        // To-Do: AdminService를 호출하여 실제 동기화 로직을 수행해야 합니다.
+         adminService.resyncChatbotData();
+
+        return ResponseEntity.ok("챗봇 데이터 동기화 요청이 정상적으로 접수되었습니다.");
+    }
 
 
     // 대시보드 데이터 조회 엔드포인트 추가

@@ -98,7 +98,7 @@ public class SecurityConfig implements WebMvcConfigurer {
                 .httpBasic(basic -> basic.disable())
 
                 .authorizeHttpRequests(auth -> auth
-
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.POST,"/board/write").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/board/free/**").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/board/free/**").authenticated()
