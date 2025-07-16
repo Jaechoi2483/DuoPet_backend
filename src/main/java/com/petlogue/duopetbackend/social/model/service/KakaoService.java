@@ -42,7 +42,7 @@ public class KakaoService extends DefaultOAuth2UserService {
                     .userEmail(kakaoUser.getEmail())
                     .phone("소셜가입")
                     .role("user")
-                    .status("active")
+                    .status("social_temp")
                     .createdAt(LocalDateTime.now())
                     .build();
 

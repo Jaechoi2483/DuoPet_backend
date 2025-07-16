@@ -14,6 +14,9 @@ import java.util.Optional;
 public interface RefreshRepository extends JpaRepository<RefreshToken, Long> {
 
     // userId로 refreshToken 조회
+    Optional<RefreshToken> findByUserId(Long userId);
+
+    // userId로 refreshToken 조회
     @Query("SELECT r.refreshToken FROM RefreshToken r WHERE r.userId = :userId")
     String findTokenByUserId(@Param("userId") Long userId);
 
