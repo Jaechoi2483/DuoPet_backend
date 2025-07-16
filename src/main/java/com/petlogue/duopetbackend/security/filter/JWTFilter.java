@@ -39,11 +39,6 @@ public class JWTFilter extends OncePerRequestFilter {
                 || url.equals("/reissue")
 
 
-
-
-
-
-
                 || url.startsWith("/api/info")
                 || url.startsWith("/info")
                 || url.startsWith("/api/adoption")
