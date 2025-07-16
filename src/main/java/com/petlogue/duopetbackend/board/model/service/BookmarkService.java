@@ -20,13 +20,14 @@ public class BookmarkService {
 
     private final BookmarkRepository bookmarkRepository;
 
-    private static final String TARGET_TYPE = "자유"; // 기본값. 필요 시 파라미터로 확장 가능
+    private static final String TARGET_TYPE = "board"; // 게시판 타입 (DB와 통일해야 함)
 
-    @Transactional
     public Bookmark toggleBookmark(Long userId, Long contentId) {
 
         Optional<BookmarkEntity> existing = bookmarkRepository
                 .findByUserIdAndContentIdAndTargetType(userId, contentId, TARGET_TYPE);
+
+        BookmarkEntity bookmarkEntity;
 
         boolean bookmarked;
 
@@ -34,24 +35,26 @@ public class BookmarkService {
             // 북마크 해제
             bookmarkRepository.delete(existing.get());
             bookmarked = false;
+            log.info("북마크 해제 - userId: {}, contentId: {}", userId, contentId);
+            bookmarkEntity = existing.get(); // 삭제 전 상태 보존용
         } else {
             // 북마크 등록
-            BookmarkEntity bookmark = BookmarkEntity.builder()
+            bookmarkEntity = BookmarkEntity.builder()
                     .userId(userId)
                     .contentId(contentId)
                     .targetType(TARGET_TYPE)
-                    .createdAt(new Date())
                     .build();
 
-            bookmarkRepository.save(bookmark);
+            bookmarkRepository.save(bookmarkEntity);
             bookmarked = true;
+            log.info("북마크 등록 - userId: {}, contentId: {}", userId, contentId);
         }
 
         return Bookmark.builder()
                 .userId(userId)
                 .contentId(contentId)
                 .targetType(TARGET_TYPE)
-                .createdAt(new Date())
+                .createdAt(bookmarkEntity.getCreatedAt()) // 등록된 날짜 사용
                 .bookmarked(bookmarked)
                 .build();
     }

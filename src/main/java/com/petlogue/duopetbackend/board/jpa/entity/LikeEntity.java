@@ -14,7 +14,7 @@ import java.util.Date;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-@Table(name= "LIKE")
+@Table(name= "\"LIKE\"")
 public class LikeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -37,6 +37,13 @@ public class LikeEntity {
     @PrePersist
     protected void onCreate() {
         this.createdAt = new Date();
+    }
+
+    // 생성자 수정 (contentId, userId, targetType을 받도록)
+    public LikeEntity(Long targetId, Long userId, String targetType) {
+        this.targetId = targetId;
+        this.userId = userId;
+        this.targetType = targetType;
     }
 
     public Like toLikeDto(){

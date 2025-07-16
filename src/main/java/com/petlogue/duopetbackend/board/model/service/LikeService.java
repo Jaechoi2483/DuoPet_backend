@@ -2,15 +2,14 @@ package com.petlogue.duopetbackend.board.model.service;
 
 import com.petlogue.duopetbackend.board.jpa.entity.BoardEntity;
 import com.petlogue.duopetbackend.board.jpa.entity.LikeEntity;
-import com.petlogue.duopetbackend.board.jpa.repository.LikeRepository;
 import com.petlogue.duopetbackend.board.jpa.repository.BoardRepository;
+import com.petlogue.duopetbackend.board.jpa.repository.LikeRepository;
+import com.petlogue.duopetbackend.board.model.dto.Like;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.petlogue.duopetbackend.board.model.dto.Like;
 
-import java.util.Date;
 import java.util.Optional;
 
 @Service
@@ -18,49 +17,35 @@ import java.util.Optional;
 @Slf4j
 @Transactional
 public class LikeService {
-    private final LikeRepository LikeRepository;
+
+    private final LikeRepository likeRepository;
     private final BoardRepository boardRepository;
 
-    private static final String TARGET_TYPE = "board";
+    public Like toggleLike(Long userId, Long boardId) {
+        String targetType = "board";
 
-    @Transactional
-    public Like toggleLike(Long userId, Long contentId) {
-        // 중복 체크
-        Optional<LikeEntity> existing = LikeRepository
-                .findByUserIdAndTargetIdAndTargetType(userId, contentId, TARGET_TYPE);
+        Optional<LikeEntity> existing = likeRepository.findByUserIdAndTargetIdAndTargetType(userId, boardId, targetType);
 
-        // 게시글 조회
-        BoardEntity board = boardRepository.findById(contentId)
-                .orElseThrow(() -> new IllegalArgumentException("게시글이 존재하지 않습니다."));
-
-        boolean liked;
+        BoardEntity board = boardRepository.findById(boardId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 존재하지 않습니다."));
 
         if (existing.isPresent()) {
-            // 좋아요 취소
-            LikeRepository.delete(existing.get());
-            board.setLikeCount(board.getLikeCount() - 1);
-            liked = false;
+            likeRepository.deleteByUserIdAndTargetIdAndTargetType(userId, boardId, targetType);
+            board.setLikeCount(Math.max(board.getLikeCount() - 1, 0)); // 음수 방지
+            boardRepository.save(board);
+            log.info("좋아요 취소 완료 - contentId: {}, userId: {}", boardId, userId);
+            return new Like(boardId, false);
         } else {
-            // 좋아요 등록
             LikeEntity newLike = LikeEntity.builder()
                     .userId(userId)
-                    .targetId(contentId)
-                    .targetType(TARGET_TYPE)
-                    .createdAt(new Date())
+                    .targetId(boardId)
+                    .targetType(targetType)
                     .build();
-
-            LikeRepository.save(newLike);
+            likeRepository.save(newLike);
             board.setLikeCount(board.getLikeCount() + 1);
-            liked = true;
+            boardRepository.save(board);
+            log.info("좋아요 등록 완료 - contentId: {}, userId: {}", boardId, userId);
+            return new Like(boardId, true);
         }
-
-        // 반환 DTO
-        return Like.builder()
-                .userId(userId)
-                .targetId(contentId)
-                .targetType("board")
-                .createdAt(new Date())
-                .liked(liked)
-                .build();
     }
 }

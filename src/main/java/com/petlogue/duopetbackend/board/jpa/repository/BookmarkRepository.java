@@ -4,6 +4,7 @@ import com.petlogue.duopetbackend.board.jpa.entity.BookmarkEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -14,5 +15,5 @@ public interface BookmarkRepository extends JpaRepository<BookmarkEntity, Long> 
     // 북마크 해제 시 사용
     void deleteByUserIdAndContentIdAndTargetType(Long userId, Long contentId, String targetType);
     // 마이페이지 > 내가 북마크한 게시글 전체 조회
-    java.util.List<BookmarkEntity> findAllByUserId(Long userId);
+    List<BookmarkEntity> findAllByUserId(Long userId);
     }

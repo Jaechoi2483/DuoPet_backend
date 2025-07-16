@@ -22,7 +22,14 @@ public class Like {
     private String targetType;   // 대상 유형 (board, comment 등)
     private Date createdAt;      // 좋아요 생성일자
 
-    private Boolean liked;       // 좋아요 상태
+    private Long contentId;      // 게시물 아이디
+    private boolean liked;       // 좋아요 상태
+
+    // 좋아요 상태만 리턴할 때 사용할 생성자
+    public Like(Long contentId, boolean liked) {
+        this.contentId = contentId;
+        this.liked = liked;
+        }
 
     public LikeEntity toLikeEntity() {
         return LikeEntity.builder()
