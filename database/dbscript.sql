@@ -285,30 +285,6 @@ COMMENT ON COLUMN shelter_animals.rename_filename IS '동물 프로필 이미지
 COMMENT ON COLUMN shelter_animals.original_filename IS '동물 프로필 이미지의 원본 파일명';
 
 
--- 강아지: 코코
-INSERT INTO shelter_animals (
-    shelter_id, name, animal_type, breed, age,
-    gender, neutered, status, intake_date, description, profile_image,
-    created_at, updated_at, rename_filename, original_filename
-) VALUES 
-(1, '코코', '강아지', '푸들', 3, 'F', 'Y', 'AVAILABLE',
- TO_DATE('2024-05-10', 'YYYY-MM-DD'),
- '활발하고 사람을 좋아하는 푸들입니다.',
- NULL, TO_DATE('2024-05-10', 'YYYY-MM-DD'), TO_DATE('2024-06-01', 'YYYY-MM-DD'),
- NULL, NULL);
-
--- 고양이: 나비
-INSERT INTO shelter_animals (
-    shelter_id, name, animal_type, breed, age,
-    gender, neutered, status, intake_date, description, profile_image,
-    created_at, updated_at, rename_filename, original_filename
-) VALUES 
-(1, '나비', '고양이', '코리안숏헤어', 2, 'M', 'N', 'AVAILABLE',
- TO_DATE('2024-05-15', 'YYYY-MM-DD'),
- '온순하고 조용한 성격의 고양이입니다.',
- NULL, TO_DATE('2024-05-15', 'YYYY-MM-DD'), TO_DATE('2024-06-01', 'YYYY-MM-DD'),
- NULL, NULL);
-
 
 CREATE TABLE pet (
     pet_id              NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -328,7 +304,7 @@ CREATE TABLE pet (
     CONSTRAINT fk_pet_user       FOREIGN KEY (user_id) REFERENCES users(user_id)
 );
 
-COMMENT ON TABLE pet                              IS '회원 등록 반려동물 정보';
+COMMENT ON TABLE pet                            IS '회원 등록 반려동물 정보';
 COMMENT ON COLUMN pet.pet_id                    IS 'PK, IDENTITY (반려동물 고유 식별자)';
 COMMENT ON COLUMN pet.user_id                   IS 'FK (USERS 테이블의 user_id 참조), 사용자 고유 식별자';
 COMMENT ON COLUMN pet.pet_name                  IS '반려동물 이름';
@@ -483,7 +459,7 @@ CREATE TABLE pet_vaccin (
     CONSTRAINT fk_vaccin_pet FOREIGN KEY (pet_id) REFERENCES pet(pet_id)
 );
 
-COMMENT ON TABLE pet_vaccin                       IS '반려동물 예방 접종 기록';
+COMMENT ON TABLE pet_vaccin                     IS '반려동물 예방 접종 기록';
 COMMENT ON COLUMN pet_vaccin.vaccination_id     IS 'PK, IDENTITY (접종 기록 고유 식별자)';
 COMMENT ON COLUMN pet_vaccin.pet_id             IS 'FK (PET 테이블의 pet_id 참조), 반려동물 고유 식별자';
 COMMENT ON COLUMN pet_vaccin.vaccine_name       IS '백신 이름';
@@ -521,7 +497,7 @@ CREATE TABLE pet_weight (
     CONSTRAINT fk_weight_pet FOREIGN KEY (pet_id) REFERENCES pet(pet_id)
 );
 
-COMMENT ON TABLE pet_weight                   IS '반려동물 체중 기록';
+COMMENT ON TABLE pet_weight                  IS '반려동물 체중 기록';
 COMMENT ON COLUMN pet_weight.weight_id       IS 'PK, IDENTITY (체중 기록 고유 식별자)';
 COMMENT ON COLUMN pet_weight.pet_id          IS 'FK (PET 테이블의 pet_id 참조), 반려동물 고유 식별자';
 COMMENT ON COLUMN pet_weight.weight_kg       IS '체중 (킬로그램)';
@@ -1954,7 +1930,64 @@ COMMENT ON COLUMN users.status IS '계정 상태 (active: 활성, inactive: 비�
 
 commit;
 
+/*================
+2025-07-11 수정
+SHELTER_ANIMALS 테이블에 공공 API 연동을 위한 컬럼 추가
+=================*/
+-- SHELTER_ANIMALS 테이블에 공공 API 연동을 위한 컬럼 추가
+ALTER TABLE SHELTER_ANIMALS ADD (
+    desertion_no VARCHAR2(50),              -- 유기번호
+    happen_date DATE,                       -- 발견일
+    happen_place VARCHAR2(255),             -- 발견장소
+    special_mark VARCHAR2(1000),            -- 특징
+    public_notice_no VARCHAR2(50),          -- 공고번호
+    public_notice_start DATE,               -- 공고시작일
+    public_notice_end DATE,                 -- 공고종료일
+    image_url VARCHAR2(500),                -- 공공 API 이미지 URL
+    api_source VARCHAR2(50),                -- API 출처 구분
+    weight NUMBER(5,2),                     -- 체중
+    color_cd VARCHAR2(50),                  -- 색상
+    process_state VARCHAR2(20)              -- 상태 (protect, return, adopt 등)
+);
 
+-- 유기번호에 대한 유니크 인덱스 생성
+CREATE UNIQUE INDEX idx_desertion_no ON SHELTER_ANIMALS(desertion_no);
+
+-- 보호소 테이블에 공공 API 연동을 위한 컬럼 추가
+ALTER TABLE SHELTER ADD (
+    care_reg_no VARCHAR2(50),               -- 공공 API 보호소 등록번호
+    api_sync_enabled CHAR(1) DEFAULT 'N',   -- API 동기화 여부
+    last_sync_date DATE                     -- 마지막 동기화 시간
+);
+
+-- 보호소 등록번호 인덱스
+CREATE UNIQUE INDEX idx_care_reg_no ON SHELTER(care_reg_no);
+
+-- 시퀀스 생성 (없는 경우)
+CREATE SEQUENCE SEQ_SHELTER_ANIMALS START WITH 1 INCREMENT BY 1;
+
+-- 보호소 이름으로 조회할 수 있도록 인덱스 추가
+CREATE INDEX idx_shelter_name ON SHELTER(shelter_name);
+
+-- 주석 추가
+COMMENT ON COLUMN SHELTER_ANIMALS.desertion_no IS '공공 API 유기번호';
+COMMENT ON COLUMN SHELTER_ANIMALS.happen_date IS '발견일';
+COMMENT ON COLUMN SHELTER_ANIMALS.happen_place IS '발견장소';
+COMMENT ON COLUMN SHELTER_ANIMALS.special_mark IS '특징';
+COMMENT ON COLUMN SHELTER_ANIMALS.public_notice_no IS '공고번호';
+COMMENT ON COLUMN SHELTER_ANIMALS.public_notice_start IS '공고시작일';
+COMMENT ON COLUMN SHELTER_ANIMALS.public_notice_end IS '공고종료일';
+COMMENT ON COLUMN SHELTER_ANIMALS.image_url IS '공공 API 이미지 URL';
+COMMENT ON COLUMN SHELTER_ANIMALS.api_source IS 'API 출처 구분';
+COMMENT ON COLUMN SHELTER_ANIMALS.weight IS '체중(kg)';
+COMMENT ON COLUMN SHELTER_ANIMALS.color_cd IS '색상';
+COMMENT ON COLUMN SHELTER_ANIMALS.process_state IS '처리상태';
+
+COMMENT ON COLUMN SHELTER.care_reg_no IS '공공 API 보호소 등록번호';
+COMMENT ON COLUMN SHELTER.api_sync_enabled IS 'API 동기화 여부 (Y/N)';
+COMMENT ON COLUMN SHELTER.last_sync_date IS '마지막 동기화 일시';
+
+commit;
 
 /*================
 2025-07-12 수정
@@ -1981,6 +2014,110 @@ commit;
 
 
 
+
+
+
+/*================
+2025-07-14 수정
+공공 API 보호소 정보 컬럼 추가
+=================*/
+
+-- 공공 API 보호소 정보 컬럼 추가
+ALTER TABLE SHELTER_ANIMALS ADD (
+    API_SHELTER_NAME VARCHAR2(200),
+    API_SHELTER_TEL VARCHAR2(50),
+    API_SHELTER_ADDR VARCHAR2(500),
+    API_ORG_NM VARCHAR2(200)
+);
+
+-- 컬럼 설명 추가
+COMMENT ON COLUMN SHELTER_ANIMALS.API_SHELTER_NAME IS '공공 API 보호소명 (FK 매핑 전 임시 저장)';
+COMMENT ON COLUMN SHELTER_ANIMALS.API_SHELTER_TEL IS '공공 API 보호소 전화번호';
+COMMENT ON COLUMN SHELTER_ANIMALS.API_SHELTER_ADDR IS '공공 API 보호소 주소';
+COMMENT ON COLUMN SHELTER_ANIMALS.API_ORG_NM IS '공공 API 관할기관관';
+
+-- 인덱스 생성성
+CREATE INDEX IDX_SHELTER_ANIMALS_PROCESS_STATE ON SHELTER_ANIMALS(PROCESS_STATE);
+CREATE INDEX IDX_SHELTER_ANIMALS_API_SHELTER ON SHELTER_ANIMALS(API_SHELTER_NAME);
+
+-- 통계 정보 갱신
+EXEC DBMS_STATS.GATHER_TABLE_STATS('DUOPET', 'SHELTER_ANIMALS');
+
+-- SHELTER_ANIMALS SHELTER_ID 컬럼 NULL 가능조건 추가가
+ALTER TABLE DUOPET.SHELTER_ANIMALS MODIFY SHELTER_ID NULL;
+
+-- ANIMAL_HOSPITALS 테이블 생성
+CREATE TABLE ANIMAL_HOSPITALS (
+    hospital_id NUMBER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    management_no VARCHAR2(50) UNIQUE,
+    business_name VARCHAR2(200) NOT NULL,
+    road_address VARCHAR2(500),
+    jibun_address VARCHAR2(500),
+    phone VARCHAR2(20),
+    road_postal_code VARCHAR2(10),
+    jibun_postal_code VARCHAR2(10),
+    latitude NUMBER(10,7),
+    longitude NUMBER(10,7),
+    epsg5174_x VARCHAR2(50),
+    epsg5174_y VARCHAR2(50),
+    business_status VARCHAR2(20),
+    business_status_code VARCHAR2(10),
+    detailed_status VARCHAR2(20),
+    detailed_status_code VARCHAR2(10),
+    license_date DATE,
+    closed_date DATE,
+    suspended_start_date DATE,
+    suspended_end_date DATE,
+    reopened_date DATE,
+    city VARCHAR2(50),
+    district VARCHAR2(50),
+    area_size VARCHAR2(100),
+    employee_count NUMBER,
+    data_source VARCHAR2(50) DEFAULT '공공데이터포털',
+    data_update_type VARCHAR2(10),
+    data_update_date TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+-- 인덱스 생성
+CREATE INDEX idx_business_status ON ANIMAL_HOSPITALS(business_status);
+CREATE INDEX idx_city_district ON ANIMAL_HOSPITALS(city, district);
+CREATE INDEX idx_coordinates ON ANIMAL_HOSPITALS(latitude, longitude);
+
+-- 테이블 코멘트
+COMMENT ON TABLE ANIMAL_HOSPITALS IS '동물병원 정보';
+COMMENT ON COLUMN ANIMAL_HOSPITALS.hospital_id IS '병원 ID';
+COMMENT ON COLUMN ANIMAL_HOSPITALS.management_no IS '관리번호';
+COMMENT ON COLUMN ANIMAL_HOSPITALS.business_name IS '사업장명';
+COMMENT ON COLUMN ANIMAL_HOSPITALS.road_address IS '도로명주소';
+COMMENT ON COLUMN ANIMAL_HOSPITALS.jibun_address IS '지번주소';
+COMMENT ON COLUMN ANIMAL_HOSPITALS.phone IS '전화번호';
+COMMENT ON COLUMN ANIMAL_HOSPITALS.road_postal_code IS '도로명우편번호';
+COMMENT ON COLUMN ANIMAL_HOSPITALS.jibun_postal_code IS '지번우편번호';
+COMMENT ON COLUMN ANIMAL_HOSPITALS.latitude IS '위도 (WGS84)';
+COMMENT ON COLUMN ANIMAL_HOSPITALS.longitude IS '경도 (WGS84)';
+COMMENT ON COLUMN ANIMAL_HOSPITALS.epsg5174_x IS '원본 좌표X (EPSG5174)';
+COMMENT ON COLUMN ANIMAL_HOSPITALS.epsg5174_y IS '원본 좌표Y (EPSG5174)';
+COMMENT ON COLUMN ANIMAL_HOSPITALS.business_status IS '영업상태명';
+COMMENT ON COLUMN ANIMAL_HOSPITALS.business_status_code IS '영업상태구분코드';
+COMMENT ON COLUMN ANIMAL_HOSPITALS.detailed_status IS '상세영업상태명';
+COMMENT ON COLUMN ANIMAL_HOSPITALS.detailed_status_code IS '상세영업상태코드';
+COMMENT ON COLUMN ANIMAL_HOSPITALS.license_date IS '인허가일자';
+COMMENT ON COLUMN ANIMAL_HOSPITALS.closed_date IS '폐업일자';
+COMMENT ON COLUMN ANIMAL_HOSPITALS.suspended_start_date IS '휴업시작일자';
+COMMENT ON COLUMN ANIMAL_HOSPITALS.suspended_end_date IS '휴업종료일자';
+COMMENT ON COLUMN ANIMAL_HOSPITALS.reopened_date IS '재개업일자';
+COMMENT ON COLUMN ANIMAL_HOSPITALS.city IS '시도명';
+COMMENT ON COLUMN ANIMAL_HOSPITALS.district IS '시군구명';
+COMMENT ON COLUMN ANIMAL_HOSPITALS.area_size IS '소재지면적';
+COMMENT ON COLUMN ANIMAL_HOSPITALS.employee_count IS '총직원수';
+COMMENT ON COLUMN ANIMAL_HOSPITALS.data_source IS '데이터 출처';
+COMMENT ON COLUMN ANIMAL_HOSPITALS.data_update_type IS '데이터갱신구분';
+COMMENT ON COLUMN ANIMAL_HOSPITALS.data_update_date IS '데이터갱신일자';
+COMMENT ON COLUMN ANIMAL_HOSPITALS.created_at IS '생성일시';
+COMMENT ON COLUMN ANIMAL_HOSPITALS.updated_at IS '수정일시';
+
 /*================
 2025-07-15 수정
 USERS 테이블 USER_PWD, GENDER, ADDRESS null 허용
@@ -1989,5 +2126,4 @@ USERS 테이블 USER_PWD, GENDER, ADDRESS null 허용
 ALTER TABLE USERS MODIFY USER_PWD VARCHAR2(255) NULL;
 ALTER TABLE USERS MODIFY GENDER NULL;
 ALTER TABLE USERS MODIFY ADDRESS  VARCHAR2(255) NULL;
-
 commit;
