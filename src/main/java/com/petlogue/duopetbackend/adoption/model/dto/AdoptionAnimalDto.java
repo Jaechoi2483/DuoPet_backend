@@ -44,6 +44,10 @@ public class AdoptionAnimalDto {
     private String colorCd;
     private String processState;
     
+    // 프론트엔드 호환성을 위한 추가 필드
+    private String sexCd;  // gender와 동일한 값
+    private String kindCd; // breed와 동일한 값
+    
     /**
      * 표시용 이미지 URL 반환 (fallback 처리 포함)
      * @return 이미지 URL 또는 기본 이미지 경로
@@ -96,6 +100,9 @@ public class AdoptionAnimalDto {
                 .weight(entity.getWeight())
                 .colorCd(entity.getColorCd())
                 .processState(entity.getProcessState())
+                // 프론트엔드 호환성을 위한 필드 추가
+                .sexCd(entity.getGender())
+                .kindCd(entity.getBreed())
                 .build();
     }
 }
