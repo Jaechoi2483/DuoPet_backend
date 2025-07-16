@@ -1924,9 +1924,9 @@ ALTER TABLE users DROP CONSTRAINT CK_USERS_STATUS;
 -- 2. 새로운 상태값 포함해서 다시 추가
 ALTER TABLE users
 ADD CONSTRAINT CK_USERS_STATUS
-CHECK (status IN ('active', 'inactive', 'suspended', 'waiting', 'rejected'));
+CHECK (status IN ('active', 'inactive', 'suspended', 'waiting', 'rejected', 'social_temp'));
 
-COMMENT ON COLUMN users.status IS '계정 상태 (active: 활성, inactive: 비활성, suspended: 정지, waiting: 전문가/보호소 승인 대기,rejected: 전문가/보호소 승인 거절)';
+COMMENT ON COLUMN users.status IS '계정 상태 (active: 활성, inactive: 비활성, suspended: 정지, waiting: 전문가/보호소 승인 대기,rejected: 전문가/보호소 승인 거절, social_temp:첫소셜가입자)';
 
 commit;
 
@@ -2011,6 +2011,10 @@ ADD AUTH_FILE_DESCRIPTION VARCHAR2(255 BYTE);
 COMMENT ON COLUMN SHELTER.AUTH_FILE_DESCRIPTION IS '보호소 첨부파일 기타 설명란';
 
 commit;
+
+
+
+
 
 
 /*================
@@ -2114,4 +2118,12 @@ COMMENT ON COLUMN ANIMAL_HOSPITALS.data_update_date IS '데이터갱신일자';
 COMMENT ON COLUMN ANIMAL_HOSPITALS.created_at IS '생성일시';
 COMMENT ON COLUMN ANIMAL_HOSPITALS.updated_at IS '수정일시';
 
+/*================
+2025-07-15 수정
+USERS 테이블 USER_PWD, GENDER, ADDRESS null 허용
+=================*/
+
+ALTER TABLE USERS MODIFY USER_PWD VARCHAR2(255) NULL;
+ALTER TABLE USERS MODIFY GENDER NULL;
+ALTER TABLE USERS MODIFY ADDRESS  VARCHAR2(255) NULL;
 commit;
