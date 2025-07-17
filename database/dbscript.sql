@@ -20,6 +20,7 @@ DROP TABLE vet                      CASCADE CONSTRAINTS;
 DROP TABLE refresh_token            CASCADE CONSTRAINTS;
 DROP TABLE trusted_device           CASCADE CONSTRAINTS;
 DROP TABLE users                    CASCADE CONSTRAINTS;
+DROP TABLE report                   CASCADE CONSTRAINTS;
 
 /*==============================================================
   1.  USERS (회원)
@@ -2130,7 +2131,71 @@ commit;
 
 
 /*================
-2025-07-15 수정
+2025-07-16 테이블 추가
+REPORT 테이블 추가 
+=================*/
+
+CREATE TABLE REPORT (
+    report_id     NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id       NUMBER        NOT NULL,
+    target_id     NUMBER        NOT NULL,
+    target_type   VARCHAR2(50)  NOT NULL,
+    reason        VARCHAR2(1000),
+    status        VARCHAR2(20)  DEFAULT 'PENDING' NOT NULL,
+    created_at    DATE          DEFAULT SYSDATE NOT NULL,
+
+    CONSTRAINT fk_report_user    FOREIGN KEY (user_id) REFERENCES users(user_id),
+    CONSTRAINT chk_report_type   CHECK (target_type IN ('content', 'comment', 'review')),
+    CONSTRAINT chk_report_status CHECK (status IN ('PENDING', 'REVIEWED', 'BLOCKED'))
+);
+
+-- 테이블 코멘트
+
+COMMENT ON TABLE report                           IS '신고 정보';
+COMMENT ON COLUMN report.report_id               IS 'PK, IDENTITY (신고 고유 식별자)';
+COMMENT ON COLUMN report.user_id                 IS 'FK (USERS 테이블의 user_id 참조), 신고자 고유 식별자';
+COMMENT ON COLUMN report.target_id               IS '신고 대상의 고유 ID (게시글, 댓글, 리뷰 등)';
+COMMENT ON COLUMN report.target_type             IS '신고 대상 유형 (content, comment, review)';
+COMMENT ON COLUMN report.reason                  IS '사용자가 작성한 신고 이유';
+COMMENT ON COLUMN report.status                  IS '신고 처리 상태 (PENDING, REVIEWED, BLOCKED)';
+COMMENT ON COLUMN report.created_at              IS '신고 생성일 (SYSDATE)';
+
+commit;
+
+/*================
+2025-07-16 제약 조건 변경
+bookmark 테이블 TARGET_TYPE 제약조건 '자유'에서 null로 변경 
+제약조건 삭제
+=================*/
+
+ALTER TABLE BOOKMARK 
+  MODIFY TARGET_TYPE VARCHAR2(50 BYTE) NOT NULL;
+  
+  ALTER TABLE BOOKMARK 
+  MODIFY TARGET_TYPE DEFAULT NULL;
+  
+  ALTER TABLE BOOKMARK DROP CONSTRAINT CK_BM_TYPE;
+  
+  commit;
+
+/*================
+2025-07-16 컬럼 추가
+content 테이블에 컬럼명 bookmarkCount 삭제 및 
+bookmark_Count 컬럼 추가
+=================*/
+
+ALTER TABLE content DROP COLUMN BOOKMARKCOUNT;
+
+ALTER TABLE content
+ADD BOOKMARK_COUNT NUMBER DEFAULT 0;
+
+COMMENT ON COLUMN content.BOOKMARK_COUNT IS '게시글의 북마크 수';
+
+commit;
+=======
+
+/*================
+2025-07-16 수정
 FAQ 추가
 =================*/
 -- 1. 사료 교체 주기

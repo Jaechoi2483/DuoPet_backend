@@ -49,6 +49,10 @@ public class BoardEntity {
     @Builder.Default
     private Integer  likeCount = 0;
 
+    @Column(name = "BOOKMARK_COUNT")
+    @Builder.Default
+    private Integer bookmarkCount = 0;
+
     @Column(name = "RENAME_FILENAME")
     private String renameFilename;
 
@@ -61,6 +65,30 @@ public class BoardEntity {
     @Column(name = "UPDATE_AT")
     private Date updateAt;
 
+    // 좋아요 카운트 증가
+    public void incrementLikeCount() {
+        this.likeCount = this.likeCount + 1;
+    }
+
+    // 좋아요 카운트 감소
+    public void decrementLikeCount() {
+        if (this.likeCount > 0) {
+            this.likeCount = this.likeCount - 1;
+        }
+    }
+
+    // 북마크 카운트 증가
+    public void incrementBookmarkCount() {
+        this.bookmarkCount = this.bookmarkCount + 1;
+    }
+
+    // 북마크 카운트 감소
+    public void decrementBookmarkCount() {
+        if (this.bookmarkCount > 0) {
+            this.bookmarkCount = this.bookmarkCount - 1;
+        }
+    }
+
     public Board toDto() {
         return Board.builder()
                 .contentId(contentId)
@@ -72,6 +100,7 @@ public class BoardEntity {
                 .tags(tags)
                 .viewCount(viewCount)
                 .likeCount(likeCount)
+                .bookmarkCount(bookmarkCount)
                 .renameFilename(renameFilename)
                 .originalFilename(originalFilename)
                 .createdAt(createdAt)

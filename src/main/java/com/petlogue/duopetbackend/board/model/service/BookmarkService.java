@@ -1,10 +1,13 @@
 package com.petlogue.duopetbackend.board.model.service;
 
+import com.petlogue.duopetbackend.board.jpa.entity.BoardEntity;
 import com.petlogue.duopetbackend.board.jpa.entity.BookmarkEntity;
+import com.petlogue.duopetbackend.board.jpa.repository.BoardRepository;
 import com.petlogue.duopetbackend.board.jpa.repository.BookmarkRepository;
 import com.petlogue.duopetbackend.board.model.dto.Bookmark;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,43 +22,36 @@ import java.util.Optional;
 public class BookmarkService {
 
     private final BookmarkRepository bookmarkRepository;
+    private final BoardRepository boardRepository;
 
-    private static final String TARGET_TYPE = "board"; // 게시판 타입 (DB와 통일해야 함)
+    public Bookmark toggleBookmark(Long userId, Long boardId) {
+        String targetType = "board";  // targetType은 "board"로 고정
 
-    public Bookmark toggleBookmark(Long userId, Long contentId) {
+        // `contentId`를 사용하는 메서드 호출
+        Optional<BookmarkEntity> existing = bookmarkRepository.findByUserIdAndContentIdAndTargetType(userId, boardId, targetType);
 
-        Optional<BookmarkEntity> existing = bookmarkRepository
-                .findByUserIdAndContentIdAndTargetType(userId, contentId, TARGET_TYPE);
-
-        BookmarkEntity bookmarkEntity;
-
-        boolean bookmarked;
+        BoardEntity board = boardRepository.findById(boardId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 존재하지 않습니다."));
 
         if (existing.isPresent()) {
-            // 북마크 해제
-            bookmarkRepository.delete(existing.get());
-            bookmarked = false;
-            log.info("북마크 해제 - userId: {}, contentId: {}", userId, contentId);
-            bookmarkEntity = existing.get(); // 삭제 전 상태 보존용
+            // 북마크가 이미 있으면 삭제
+            bookmarkRepository.deleteByUserIdAndContentIdAndTargetType(userId, boardId, targetType);
+            board.setBookmarkCount(Math.max(board.getBookmarkCount() - 1, 0));  // 음수 방지
+            boardRepository.save(board);
+            log.info("북마크 취소 완료 - contentId: {}, userId: {}", boardId, userId);
+            return new Bookmark(boardId, false);  // 북마크가 취소되었음을 반환
         } else {
-            // 북마크 등록
-            bookmarkEntity = BookmarkEntity.builder()
+            // 북마크가 없으면 추가
+            BookmarkEntity newBookmark = BookmarkEntity.builder()
                     .userId(userId)
-                    .contentId(contentId)
-                    .targetType(TARGET_TYPE)
+                    .contentId(boardId)  // contentId로 boardId 사용
+                    .targetType(targetType)  // targetType은 "board"
                     .build();
-
-            bookmarkRepository.save(bookmarkEntity);
-            bookmarked = true;
-            log.info("북마크 등록 - userId: {}, contentId: {}", userId, contentId);
+            bookmarkRepository.save(newBookmark);
+            board.setBookmarkCount(board.getBookmarkCount() + 1);  // 북마크 수 증가
+            boardRepository.save(board);
+            log.info("북마크 등록 완료 - contentId: {}, userId: {}", boardId, userId);
+            return new Bookmark(boardId, true);  // 북마크가 등록되었음을 반환
         }
-
-        return Bookmark.builder()
-                .userId(userId)
-                .contentId(contentId)
-                .targetType(TARGET_TYPE)
-                .createdAt(bookmarkEntity.getCreatedAt()) // 등록된 날짜 사용
-                .bookmarked(bookmarked)
-                .build();
     }
 }
