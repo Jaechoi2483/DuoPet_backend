@@ -10,13 +10,16 @@ import com.petlogue.duopetbackend.board.jpa.repository.LikeRepository;
 import com.petlogue.duopetbackend.board.model.dto.Board;
 import com.petlogue.duopetbackend.board.model.dto.Bookmark;
 import com.petlogue.duopetbackend.board.model.dto.Like;
+import com.petlogue.duopetbackend.board.model.dto.Report;
 import com.petlogue.duopetbackend.board.model.service.BoardService;
 import com.petlogue.duopetbackend.board.model.service.BookmarkService;
 import com.petlogue.duopetbackend.board.model.service.LikeService;
+import com.petlogue.duopetbackend.board.model.service.ReportService;
 import com.petlogue.duopetbackend.common.FileNameChange;
 import com.petlogue.duopetbackend.common.Paging;
 import com.petlogue.duopetbackend.security.jwt.JWTUtil;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -50,6 +53,8 @@ public class BoardController {
     private final LikeRepository likeRepo;
 
     private final BookmarkRepository bookmarkRepository;
+
+    private final ReportService reportService;
 
     private final JWTUtil jwtUtil;
 
@@ -355,11 +360,40 @@ public class BoardController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("bookmarked", false));
         }
 
+        // findByUserIdAndTargetIdAndTargetType 메서드가 Optional을 반환함
         boolean bookmarked = bookmarkRepository
                 .findByUserIdAndContentIdAndTargetType(userId, contentId, "board")
                 .isPresent();
 
         return ResponseEntity.ok(Map.of("bookmarked", bookmarked));
+    }
+
+    @PostMapping("/report")
+    public ResponseEntity<String> report(@RequestBody Report dto, HttpServletRequest request) {
+        // 세션에서 사용자 ID 추출
+        Long userId = getUserIdFromSession(request);
+
+        if (userId == null) {
+            return ResponseEntity.status(401).body("인증되지 않은 사용자입니다.");
+        }
+
+        // 신고 처리 서비스 호출
+        try {
+            reportService.saveReport(userId, dto);  // 신고 서비스 호출
+            return ResponseEntity.ok("신고가 접수되었습니다.");
+        } catch (Exception e) {
+            log.error("신고 처리 중 오류 발생", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("신고 처리 중 오류 발생");
+        }
+    }
+
+    // 세션에서 사용자 ID 추출
+    public Long getUserIdFromSession(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);  // 세션이 없으면 null 반환
+        if (session != null) {
+            return (Long) session.getAttribute("userId");  // 세션에서 userId 가져오기
+        }
+        return null;  // 세션에 userId가 없으면 null 반환
     }
 
     // 좋아요 목록 조회

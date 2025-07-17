@@ -39,7 +39,7 @@ public class LikeEntity {
         this.createdAt = new Date();
     }
 
-    // 생성자 수정 (contentId, userId, targetType을 받도록)
+    // 생성자 수정 (targetId, userId, targetType을 받도록)
     public LikeEntity(Long targetId, Long userId, String targetType) {
         this.targetId = targetId;
         this.userId = userId;

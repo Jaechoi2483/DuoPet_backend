@@ -61,7 +61,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
             }
 
             ObjectMapper mapper = new ObjectMapper();
-            Map<String, String> requestBody = mapper.readValue(request.getInputStream(), Map.class);
+            Map<String, String> requestBody = mapper.readValue(rawBody, Map.class);
             loginId = requestBody.get("loginId");
             userPwd = requestBody.get("userPwd");
 

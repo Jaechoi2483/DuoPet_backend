@@ -24,6 +24,7 @@ public class Board {
     private String tags;              // 태그 (콤마 구분)
     private Integer  viewCount;        // 조회수
     private Integer  likeCount;        // 좋아요 수
+    private Integer  bookmarkCount;    // 북마크 수
     private String renameFilename;    // 서버 저장 파일명
     private String originalFilename;  // 원본 파일명
     private Date createdAt;      // 작성일
@@ -40,6 +41,7 @@ public class Board {
                 .tags(tags)
                 .viewCount(viewCount)
                 .likeCount(likeCount)
+                .bookmarkCount(bookmarkCount)
                 .renameFilename(renameFilename)
                 .originalFilename(originalFilename)
                 .createdAt(createdAt)

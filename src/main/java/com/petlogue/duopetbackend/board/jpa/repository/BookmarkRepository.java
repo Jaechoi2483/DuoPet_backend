@@ -10,10 +10,9 @@ import java.util.Optional;
 @Repository
 public interface BookmarkRepository extends JpaRepository<BookmarkEntity, Long> {
 
-    // 사용자 + 게시글 + 유형으로 중복 여부 체크
+    // contentId를 사용하는 메서드
     Optional<BookmarkEntity> findByUserIdAndContentIdAndTargetType(Long userId, Long contentId, String targetType);
-    // 북마크 해제 시 사용
+
+    // 북마크 취소 시 사용
     void deleteByUserIdAndContentIdAndTargetType(Long userId, Long contentId, String targetType);
-    // 마이페이지 > 내가 북마크한 게시글 전체 조회
-    List<BookmarkEntity> findAllByUserId(Long userId);
-    }
+}
