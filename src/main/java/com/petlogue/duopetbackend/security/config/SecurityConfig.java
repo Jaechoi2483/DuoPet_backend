@@ -7,7 +7,9 @@ import com.petlogue.duopetbackend.security.handler.CustomOAuth2SuccessHandler;
 import com.petlogue.duopetbackend.security.jwt.JWTUtil;
 import com.petlogue.duopetbackend.security.jwt.model.service.RefreshService;
 import com.petlogue.duopetbackend.security.model.service.CustomUserDetailsService;
+import com.petlogue.duopetbackend.social.model.service.GoogleService;
 import com.petlogue.duopetbackend.social.model.service.KakaoService;
+import com.petlogue.duopetbackend.social.model.service.NaverService;
 import com.petlogue.duopetbackend.user.jpa.repository.UserRepository;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -36,18 +38,23 @@ public class SecurityConfig implements WebMvcConfigurer {
     private final UserRepository userRepository;
     private final RefreshService refreshService;
     private final KakaoService kakaoService;
+    private final NaverService naverService;
+    private final GoogleService googleService;
     private final CustomOAuth2SuccessHandler customOAuth2SuccessHandler;
 
 
     public SecurityConfig(JWTUtil jwtUtil, CustomUserDetailsService userDetailsService,
                           UserRepository userRepository, RefreshService refreshService,
-                          KakaoService kakaoService,
+                          KakaoService kakaoService, NaverService naverService,
+                          GoogleService googleService,
                           CustomOAuth2SuccessHandler customOAuth2SuccessHandler) {
         this.jwtUtil = jwtUtil;
         this.userDetailsService = userDetailsService;
         this.userRepository = userRepository;
         this.refreshService = refreshService;
         this.kakaoService = kakaoService;
+        this.naverService = naverService;
+        this.googleService = googleService;
         this.customOAuth2SuccessHandler = customOAuth2SuccessHandler;
     }
 
@@ -180,10 +187,22 @@ public class SecurityConfig implements WebMvcConfigurer {
                 // 소셜 로그인 설정 추가
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo
-                                .userService(kakaoService)  // 사용자 정보 파싱
+                                .userService(userRequest -> {
+                                    String registrationId = userRequest.getClientRegistration().getRegistrationId();
+                                    if ("kakao".equals(registrationId)) {
+                                        return kakaoService.loadUser(userRequest);
+                                    } else if ("naver".equals(registrationId)) {
+                                        return naverService.loadUser(userRequest);
+                                    } else if ("google".equals(registrationId)) {
+                                        return googleService.loadUser(userRequest);
+                                    } else {
+                                        throw new IllegalArgumentException("Unknown OAuth2 provider: " + registrationId);
+                                    }
+                                })
                         )
-                        .successHandler(customOAuth2SuccessHandler) // 로그인 성공 처리
+                        .successHandler(customOAuth2SuccessHandler)
                 )
+
 
                 // 로그아웃 설정
                 .logout(logout -> logout

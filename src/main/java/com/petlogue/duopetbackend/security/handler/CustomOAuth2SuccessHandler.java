@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 
 @Slf4j
 @Component
@@ -32,30 +34,51 @@ public class CustomOAuth2SuccessHandler implements AuthenticationSuccessHandler 
                                         Authentication authentication) throws IOException, ServletException {
         log.info("소셜 로그인 성공 핸들러 진입");
 
-        // KakaoService에서 처리된 OAuth2User 정보를 가져옵니다.
         OAuth2User oauth2User = (OAuth2User) authentication.getPrincipal();
+        String loginId = null;
+        String providerId = null;
 
-        // KakaoService에서 생성한 loginId 형식("kakao_" + id)으로 사용자를 조회합니다.
-        // KakaoUserDto의 id 필드는 String 타입으로 변환되어 저장되었으므로 getAttribute로 가져옵니다.
-        String providerId = oauth2User.getAttributes().get("id").toString();
-        String loginId = "kakao_" + providerId;
+        String registrationId = ((OAuth2AuthenticationToken) authentication).getAuthorizedClientRegistrationId();
+        log.info("소셜 제공자: {}", registrationId);
 
-        UserEntity user = userRepository.findByLoginId(loginId)
-                .orElseThrow(() -> new RuntimeException("소셜 로그인 처리 중 사용자를 찾을 수 없습니다: " + loginId));
+        switch (registrationId) {
+            case "kakao":
+                providerId = oauth2User.getAttributes().get("id").toString();
+                loginId = "kakao_" + providerId;
+                break;
 
-        // JWT 발급
+            case "naver":
+                Map<String, Object> responseMap = (Map<String, Object>) oauth2User.getAttributes().get("response");
+                providerId = responseMap.get("id").toString();
+                loginId = "naver_" + providerId;
+                break;
+
+            case "google":
+                providerId = oauth2User.getAttributes().get("sub").toString(); // 구글은 "sub" 키
+                loginId = "google_" + providerId;
+                break;
+
+            default:
+                throw new IllegalArgumentException("지원하지 않는 소셜 로그인 제공자입니다: " + registrationId);
+        }
+
+        log.info("loginId: {}, providerId: {}", loginId, providerId);
+
+        final String finalLoginId = loginId;
+        // 사용자 조회
+        UserEntity user = userRepository.findByLoginId(finalLoginId)
+                .orElseThrow(() -> new RuntimeException("소셜 로그인 사용자 없음: " + finalLoginId));
+
+        // JWT 토큰 생성
         String accessToken = jwtUtil.generateToken(user.toDto(), "access");
         String refreshToken = jwtUtil.generateToken(user.toDto(), "refresh");
 
-        // 리프레시 토큰을 DB에 저장 또는 업데이트
-        refreshService.saveOrUpdate(user.getUserId(), refreshToken, request.getRemoteAddr(), request.getHeader("User-Agent"));
+        // Refresh 토큰 저장
+        refreshService.saveOrUpdate(user.getUserId(), refreshToken,
+                request.getRemoteAddr(), request.getHeader("User-Agent"));
 
-        // KakaoService에서 저장한 상태('social_temp')를 기준으로 신규 사용자 여부를 정확히 판단합니다.
-        boolean isNew = "social_temp".equals(user.getStatus());
+        boolean isNew = "social_temp".equalsIgnoreCase(user.getStatus());
 
-        log.info("소셜 로그인 성공 → 토큰 발급 후 리디렉션: isNew={}, loginId={}", isNew, loginId);
-
-        // 리디렉션 URL 구성
         String redirectUrl = String.format("http://localhost:3000/social-redirect?accessToken=%s&refreshToken=%s&isNew=%s",
                 URLEncoder.encode(accessToken, StandardCharsets.UTF_8),
                 URLEncoder.encode(refreshToken, StandardCharsets.UTF_8),

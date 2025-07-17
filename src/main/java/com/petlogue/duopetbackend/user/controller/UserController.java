@@ -94,9 +94,23 @@ public class UserController {
      * 닉네임 중복 확인
      */
     @GetMapping("/check-nickname")
-    public ResponseEntity<Boolean> checkNickname(@RequestParam String nickname) {
-        boolean exists = userRepository.existsByNickname(nickname);
-        return ResponseEntity.ok(exists); // true = 중복 O
+    public ResponseEntity<Boolean> checkNickname(@RequestParam String nickname,
+                                                 @RequestParam(required = false) Long userId) {
+        boolean exists;
+
+        if (userId != null) {
+            // 자기 자신의 닉네임인지 확인
+            UserEntity currentUser = userRepository.findByUserId(userId);
+            if (currentUser != null && nickname.equals(currentUser.getNickname())) {
+                exists = false; // 자기 닉네임은 중복 아님
+            } else {
+                exists = userRepository.existsByNickname(nickname);
+            }
+        } else {
+            exists = userRepository.existsByNickname(nickname);
+        }
+
+        return ResponseEntity.ok(exists);
     }
 
     /**
