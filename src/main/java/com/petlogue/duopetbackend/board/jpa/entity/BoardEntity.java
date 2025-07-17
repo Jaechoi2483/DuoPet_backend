@@ -49,7 +49,7 @@ public class BoardEntity {
     @Builder.Default
     private Integer  likeCount = 0;
 
-    @Column(name = "BOOKMARK_COUNT")
+    @Column(name = "BOOKMARK_COUNT", nullable = false)
     @Builder.Default
     private Integer bookmarkCount = 0;
 

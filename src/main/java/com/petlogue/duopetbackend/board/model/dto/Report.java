@@ -22,6 +22,7 @@ public class Report {
     private Long targetId;         // 신고 대상 ID
     private String targetType;     // 신고 대상 유형 (content, comment, review)
     private String reason;         // 신고 사유
+    private String details;        // 신고 상세 설명
     private String status;         // 신고 상태 (PENDING, REVIEWED, BLOCKED)
     private Date createdAt;        // 신고 접수 시간
 
@@ -31,6 +32,7 @@ public class Report {
                 .targetId(targetId)
                 .targetType(targetType)
                 .reason(reason)
+                .details(details)
                 .status("PENDING") // 기본값
                 .createdAt(new Date()) // 현재 시간을 Date로 설정
                 .build();

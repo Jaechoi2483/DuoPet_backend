@@ -21,6 +21,15 @@ public class ReportService {
 
     @Transactional
     public void saveReport(Long userId, Report dto) {
+
+        // 중복 신고 방지 로직 추가
+        boolean exists = reportRepository.existsByUser_UserIdAndTargetIdAndTargetType(
+                userId, dto.getTargetId(), dto.getTargetType());
+
+        if (exists) {
+            throw new IllegalStateException("이미 해당 게시글을 신고하셨습니다.");
+        }
+
         // 신고자(UserEntity) 정보 조회
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("유효한 사용자 ID가 아닙니다."));
