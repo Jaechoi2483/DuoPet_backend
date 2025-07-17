@@ -210,6 +210,9 @@ public class BoardController {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body("삭제 권한이 없습니다.");
             }
 
+            // 북마크 먼저 삭제
+            bookmarkRepository.deleteAllByContentId(id);
+
             // 4. 첨부파일 삭제 (선택)
             if (board.getRenameFilename() != null) {
                 File file = new File(uploadDir + "/board/" + board.getRenameFilename());
@@ -370,8 +373,7 @@ public class BoardController {
 
     @PostMapping("/report")
     public ResponseEntity<String> report(@RequestBody Report dto, HttpServletRequest request) {
-        // 세션에서 사용자 ID 추출
-        Long userId = getUserIdFromSession(request);
+        Long userId = (Long) request.getAttribute("userId");
 
         if (userId == null) {
             return ResponseEntity.status(401).body("인증되지 않은 사용자입니다.");
@@ -381,6 +383,9 @@ public class BoardController {
         try {
             reportService.saveReport(userId, dto);  // 신고 서비스 호출
             return ResponseEntity.ok("신고가 접수되었습니다.");
+        } catch (IllegalStateException e) {
+            // 중복 신고 시
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
         } catch (Exception e) {
             log.error("신고 처리 중 오류 발생", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("신고 처리 중 오류 발생");

@@ -32,7 +32,7 @@ public class ReportEntity {
     @Column(name = "target_type", nullable = false)
     private String targetType;
 
-    @Column(length = 1000)
+    @Column(length = 30)
     private String reason;
 
     @Column(nullable = false)
@@ -40,6 +40,9 @@ public class ReportEntity {
 
     @Column(name = "created_at", nullable = false)
     private Date createdAt;
+
+    @Column(length = 1000)
+    private String details;  // 상세 설명 (선택사항)
 
     public Report toReportDto() {
         return Report.builder()
@@ -50,6 +53,7 @@ public class ReportEntity {
                 .reason(this.reason)
                 .status(this.status)
                 .createdAt(this.createdAt)
+                .details(this.details)
                 .build();
     }
 }

@@ -48,7 +48,8 @@ public class BookmarkService {
                     .targetType(targetType)  // targetType은 "board"
                     .build();
             bookmarkRepository.save(newBookmark);
-            board.setBookmarkCount(board.getBookmarkCount() + 1);  // 북마크 수 증가
+            int currentCount = Optional.ofNullable(board.getBookmarkCount()).orElse(0);
+            board.setBookmarkCount(currentCount  + 1);  // 북마크 수 증가
             boardRepository.save(board);
             log.info("북마크 등록 완료 - contentId: {}, userId: {}", boardId, userId);
             return new Bookmark(boardId, true);  // 북마크가 등록되었음을 반환

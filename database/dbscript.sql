@@ -2259,3 +2259,19 @@ INSERT INTO faq (user_id, question, answer) VALUES (1, '안전한 장난감을 �
 INSERT INTO faq (user_id, question, answer) VALUES (1, '반려동물을 잃어버렸을 때 어떻게 해야 하나요?', '즉시 잃어버린 장소 주변을 수색하고, 동물보호관리시스템 및 지역 커뮤니티(SNS, 맘카페 등)에 실종 신고 글을 올리세요. 인근 동물병원과 보호소에도 연락해두는 것이 좋습니다.');
 
 COMMIT;
+
+/*================
+2025-07-17 
+Report 테이블
+DETAILS 컬럼 추가 및 REASON 데이터 타입 값 수정
+=================*/
+
+ALTER TABLE REPORT
+MODIFY REASON VARCHAR2(30);
+
+ALTER TABLE REPORT
+ADD DETAILS VARCHAR2(1000);
+
+COMMENT ON COLUMN REPORT.DETAILS IS '신고에 대한 상세 설명 (선택사항)';
+
+commit;
