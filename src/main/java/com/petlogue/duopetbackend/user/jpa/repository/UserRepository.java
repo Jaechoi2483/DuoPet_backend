@@ -32,6 +32,10 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     // userNo로 사용자 조회
     UserEntity findByUserId(Long userId);
 
+    // 소셜 기기 종류와 소셜아이디로 사용자 조회
+    Optional<UserEntity> findByProviderAndProviderId(String provider, String providerId);
+
+
 
 // 관리자 회원목록 조회할때 역할이랑 상태별로 조회할때 쓰는 거에요
 
