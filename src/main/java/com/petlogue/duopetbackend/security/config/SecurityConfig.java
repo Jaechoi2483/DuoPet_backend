@@ -98,7 +98,7 @@ public class SecurityConfig implements WebMvcConfigurer {
                 .httpBasic(basic -> basic.disable())
 
                 .authorizeHttpRequests(auth -> auth
-
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.POST,"/board/write").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/board/free/**").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/board/free/**").authenticated()
@@ -183,13 +183,6 @@ public class SecurityConfig implements WebMvcConfigurer {
                                 .userService(kakaoService)  // 사용자 정보 파싱
                         )
                         .successHandler(customOAuth2SuccessHandler) // 로그인 성공 처리
-                        .failureHandler((request, response, exception) -> {
-                            System.out.println("[소셜 로그인 실패] 이유: " + exception.getMessage());
-                            exception.printStackTrace(); // 디버깅용 스택 출력
-
-                            // 프론트에서 메시지 보여주도록 커스텀 쿼리 파라미터 전달
-                            response.sendRedirect("/login?error=oauth&message=rate_limit");
-                        })
                 )
 
                 // 로그아웃 설정

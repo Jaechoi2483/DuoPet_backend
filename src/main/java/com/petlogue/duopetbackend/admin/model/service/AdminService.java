@@ -9,15 +9,18 @@ import com.petlogue.duopetbackend.user.jpa.repository.UserRepository;
 import com.petlogue.duopetbackend.user.model.dto.UserDetailDto;
 import com.petlogue.duopetbackend.user.model.dto.UserDto;
 import jakarta.persistence.EntityNotFoundException;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.slf4j.Slf4j; // 💡 @RequiredArgsConstructor를 사용하지 않으므로 lombok.RequiredArgsConstructor는 삭제해도 됩니다.
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
 import java.net.MalformedURLException;
 import java.nio.file.Path;
@@ -26,53 +29,58 @@ import java.util.List;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 @Transactional
 public class AdminService {
 
     private final PetRepository petRepository;
     private final UserRepository userRepository;
+    private final String aiApiKey;
+    private final String aiServerUrl;
 
     @Value("${file.upload-dir}")
     private String baseUploadPath;
+
+    // ▼▼▼ 1. @RequiredArgsConstructor 삭제 후, 수동으로 생성자 작성 ▼▼▼
+    public AdminService(
+            PetRepository petRepository,
+            UserRepository userRepository,
+            @Value("${duopet.ai.api-key}") String aiApiKey,
+            @Value("${duopet.ai.server-url}") String aiServerUrl
+    ) {
+        this.petRepository = petRepository;
+        this.userRepository = userRepository;
+        this.aiApiKey = aiApiKey;
+        this.aiServerUrl = aiServerUrl;
+    }
 
     @Transactional(readOnly = true)
     public Page<UserDto> findAllUsers(Pageable pageable, String role, String status) {
         Page<UserEntity> userPage;
 
-        // 파라미터 존재 여부 확인
         boolean hasRole = role != null && !role.trim().isEmpty();
         boolean hasStatus = status != null && !status.trim().isEmpty();
 
         if (hasRole && hasStatus) {
-            // 1. Role과 Status 모두 있는 경우
             userPage = userRepository.findByRoleAndStatus(role, status, pageable);
         } else if (hasRole) {
-            // 2. Role만 있는 경우
             userPage = userRepository.findByRole(role, pageable);
         } else if (hasStatus) {
-            // 3. Status만 있는 경우
             userPage = userRepository.findByStatus(status, pageable);
         } else {
-            // 4. 필터 조건이 모두 없는 경우
             userPage = userRepository.findAll(pageable);
         }
 
-        // 조회된 Page<Entity>를 Page<Dto>로 변환하여 반환
         return userPage.map(UserEntity::toDto);
-
     }
+
     @Transactional(readOnly = true)
     public UserDto findUserDetailById(Long userId) {
-        // 1. Repository의 JOIN 쿼리를 호출하여 UserDetailDto 타입으로 결과를 한 번에 받습니다.
         UserDetailDto result = userRepository.findDetailWithProfiles(userId)
                 .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다. id: " + userId));
 
-        // 2. 결과 객체에서 각 엔티티를 꺼내 최종 UserDto를 조립합니다.
         UserEntity userEntity = result.getUser();
-        UserDto userDto = userEntity.toDto(); // 기본 정보 변환
+        UserDto userDto = userEntity.toDto();
 
-        // 3. 역할에 따라 프로필 정보를 DTO에 추가합니다.
         if (result.getVetProfile() != null) {
             userDto.setVetProfile(result.getVetProfile().toDto());
         }
@@ -83,10 +91,8 @@ public class AdminService {
         return userDto;
     }
 
-
     public Resource loadVetFile(String filename) {
         try {
-            // 기본 경로와 하위 폴더(vet)를 조합하여 전체 경로 생성
             Path filePath = Paths.get(baseUploadPath, "vet").resolve(filename).normalize();
             Resource resource = new UrlResource(filePath.toUri());
 
@@ -102,7 +108,6 @@ public class AdminService {
 
     public Resource loadShelterFile(String filename) {
         try {
-            // 기본 경로와 하위 폴더(shelter)를 조합하여 전체 경로 생성
             Path filePath = Paths.get(baseUploadPath, "shelter").resolve(filename).normalize();
             Resource resource = new UrlResource(filePath.toUri());
 
@@ -117,25 +122,15 @@ public class AdminService {
     }
 
     public void updateUserRole(Long userId, String newRole) {
-        // 1. 사용자 엔티티를 조회합니다.
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("해당 ID의 사용자를 찾을 수 없습니다: " + userId));
-
-
         user.setRole(newRole);
-
-        // 3. @Transactional에 의해 메서드 종료 시 변경된 내용이 자동으로 DB에 반영됩니다.
     }
+
     public void updateUserStatus(Long userId, String newStatus) {
-        // 1. 사용자 엔티티를 조회합니다.
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("해당 ID의 사용자를 찾을 수 없습니다: " + userId));
-
-        // 2. 상태(Status)를 업데이트합니다.
-        // status 필드도 String 타입이므로, 변환 없이 바로 값을 설정합니다.
         user.setStatus(newStatus);
-
-        // 3. @Transactional에 의해 메서드 종료 시 변경된 내용이 자동으로 DB에 반영됩니다.
     }
 
     public DashboardDataDto getDashboardData() {
@@ -151,19 +146,11 @@ public class AdminService {
                 new StatItemDto("보호소 회원", shelterUserCount)
         );
 
-
-        // 성별 통계 데이터 조회
         List<StatItemDto> genderStat = userRepository.findGenderStat();
-
-        // 반려동물 보유 수 통계 데이터 조회
         List<StatItemDto> petCountStat = userRepository.findPetCountStat();
-
-        // 반려동물 종류 통계
         List<StatItemDto> animalTypeStat = petRepository.findAnimalTypeStat();
-// 중성화 비율
         List<StatItemDto> neuteredStat = petRepository.findNeuteredStat();
 
-        // 최종 응답 DTO 조립
         return DashboardDataDto.builder()
                 .summary(summaryList)
                 .genderStat(genderStat)
@@ -171,5 +158,35 @@ public class AdminService {
                 .animalTypeStat(animalTypeStat)
                 .neuteredStat(neuteredStat)
                 .build();
+    }
+
+    // ▼▼▼ 2. resyncChatbotData 메서드 수정 ▼▼▼
+    public void resyncChatbotData() {
+        log.info("챗봇 데이터 동기화 서비스 로직 시작");
+
+        RestTemplate restTemplate = new RestTemplate();
+
+        HttpHeaders headers = new HttpHeaders();
+        // 클래스 필드에 주입된 aiApiKey 사용
+        headers.set("X-API-KEY", this.aiApiKey);
+
+        HttpEntity<String> requestEntity = new HttpEntity<>(null, headers);
+
+        try {
+            // 클래스 필드에 주입된 aiServerUrl 사용
+            // requestEntity를 전송하도록 수정
+            ResponseEntity<String> response = restTemplate.postForEntity(this.aiServerUrl, requestEntity, String.class);
+
+            if (response.getStatusCode().is2xxSuccessful()) {
+                log.info("AI 서버로부터 동기화 성공 응답 받음: {}", response.getBody());
+            } else {
+                log.error("AI 서버 동기화 실패. 응답 코드: {}", response.getStatusCode());
+                throw new RuntimeException("AI 서버 동기화에 실패했습니다.");
+            }
+
+        } catch (Exception e) {
+            log.error("AI 서버 통신 중 오류 발생", e);
+            throw new RuntimeException("AI 서버와 통신할 수 없습니다.", e);
+        }
     }
 }

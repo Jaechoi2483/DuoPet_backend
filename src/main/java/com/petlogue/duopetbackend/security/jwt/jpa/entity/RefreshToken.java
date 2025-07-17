@@ -7,7 +7,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.GregorianCalendar;
 
 @Builder
 @NoArgsConstructor
@@ -34,6 +33,14 @@ public class RefreshToken {
     private java.util.Date expiresAt;
     @Column(name = "token_status", length = 20)
     private String tokenStatus;
+
+    public void updateToken(String refreshToken, String ipAddress, String deviceInfo, java.util.Date expiresAt) {
+        this.refreshToken = refreshToken;
+        this.ipAddress = ipAddress;
+        this.deviceInfo = deviceInfo;
+        this.expiresAt = expiresAt;
+        this.createdAt = LocalDateTime.now(); // 갱신 시각 업데이트
+    }
 
     @PrePersist
     public void onCreate() {

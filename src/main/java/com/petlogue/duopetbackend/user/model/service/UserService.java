@@ -168,24 +168,29 @@ public class UserService {
         // 전문가(VET) / 보호소(SHELTER) insert는 각 컨트롤러에서 별도로 처리
     }
 
-    public void updateSocialUser(UserDto userDto) {
-        // loginId로 기존 유저 조회
-        UserEntity user = userRepository.findByLoginId(userDto.getLoginId())
-                .orElseThrow(() -> new IllegalArgumentException("해당 사용자를 찾을 수 없습니다."));
+    // 사용자 정보 업데이트
+    public void updateUserInfo(Long userId, UserDto userDto) {
+        // 사용자 조회
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
 
-        if (!"SOCIAL_TEMP".equals(user.getStatus())) {
-            throw new IllegalArgumentException("이미 등록된 사용자입니다.");
-        }
-
-        // 추가 정보 입력
-        user.setUserName(userDto.getUserName());
-        user.setNickname(userDto.getNickname());
+        // 전체 사용자 정보 업데이트
         user.setPhone(userDto.getPhone());
         user.setAge(userDto.getAge());
         user.setGender(userDto.getGender());
         user.setAddress(userDto.getAddress());
-        user.setStatus("ACTIVE"); // 상태 활성화
+        user.setUserEmail(userDto.getUserEmail());
+        user.setNickname(userDto.getNickname());
 
+        // 상태 변경 (소셜 로그인 후 첫 가입이므로 'active'로 변경)
+        user.setStatus("active");
+
+        // 업데이트된 사용자 저장
         userRepository.save(user);
+    }
+
+    // 사용자 정보 조회
+    public UserEntity getUserByUserId(Long userId) {
+        return userRepository.findByUserId(userId);  // DB에서 userId로 사용자 정보 조회
     }
 }

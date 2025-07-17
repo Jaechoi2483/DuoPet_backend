@@ -1,17 +1,22 @@
 package com.petlogue.duopetbackend.user.controller;
 
+import com.petlogue.duopetbackend.security.jwt.JWTUtil;
 import com.petlogue.duopetbackend.user.jpa.entity.UserEntity;
 import com.petlogue.duopetbackend.user.model.dto.UserDto;
 import com.petlogue.duopetbackend.user.model.service.UserService;
 import com.petlogue.duopetbackend.user.jpa.repository.UserRepository;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.HttpStatus;
 
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/users")
 @RequiredArgsConstructor
@@ -20,6 +25,7 @@ public class UserController {
 
     private final UserService userService;
     private final UserRepository userRepository;
+    private final JWTUtil jwtUtil;
 
     /**
      * 회원가입 1단계 - 아이디, 비밀번호 입력 처리
@@ -102,16 +108,37 @@ public class UserController {
         return ResponseEntity.ok(exists); // true = 중복 O
     }
 
-    // 소셜 로그인 사용자 정보 보완 (최초 로그인 후)
-    @PatchMapping("/social-update")
-    public ResponseEntity<?> updateSocialUser(@RequestBody UserDto userDto) {
+    // 소셜 로그인 후, 사용자 정보 업데이트 API
+    @PutMapping("/social-update")
+    public ResponseEntity<String> updateUserInfo(@RequestBody UserDto userDto,
+                                                 @RequestHeader("Authorization") String authHeader,
+                                                 HttpServletRequest request) {  // HttpServletRequest 추가
         try {
-            userService.updateSocialUser(userDto);
-            return ResponseEntity.ok("소셜 사용자 정보 업데이트 완료");
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            // Authorization 헤더에서 JWT 토큰 추출
+            String token = authHeader.replace("Bearer ", "");
+
+            // JWT에서 userId 추출
+            Long userId = jwtUtil.getUserIdFromRequest(request);  // 이제 request에서 userId를 추출
+
+            // 사용자 정보 업데이트
+            userService.updateUserInfo(userId, userDto);
+
+            return ResponseEntity.ok("회원 정보가 업데이트되었습니다.");
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body("업데이트 실패: " + e.getMessage());
+            log.error("업데이트 중 오류 발생", e);  // 예외 로그 추가
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("정보 업데이트에 실패했습니다.");
+        }
+    }
+
+    @GetMapping("/{userId}")
+    public ResponseEntity<UserEntity> getUserByUserId(@PathVariable Long userId) {
+        // userNo로 사용자 정보 조회
+        UserEntity user = userRepository.findByUserId(userId);
+
+        if (user != null) {
+            return ResponseEntity.ok(user);  // 사용자 정보 반환
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);  // 사용자 없음
         }
     }
 
