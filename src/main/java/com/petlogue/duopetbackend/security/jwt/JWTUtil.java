@@ -25,6 +25,10 @@ public class JWTUtil {
     @Value("${jwt.refresh_expiration}")
     private Long refreshExpiration;
 
+    public Long getRefreshExpiration() {
+        return refreshExpiration;
+    }
+
     /**
      * JWT 토큰 생성
      * @param userDto 사용자 정보 (id, nickname, role 등 포함)

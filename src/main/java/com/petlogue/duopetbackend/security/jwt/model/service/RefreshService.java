@@ -1,5 +1,6 @@
 package com.petlogue.duopetbackend.security.jwt.model.service;
 
+import com.petlogue.duopetbackend.security.jwt.JWTUtil;
 import com.petlogue.duopetbackend.security.jwt.jpa.entity.RefreshToken;
 import com.petlogue.duopetbackend.security.jwt.jpa.repository.RefreshRepository ;
 import lombok.RequiredArgsConstructor;
@@ -7,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Date;
 import java.util.Optional;
 
 @Slf4j
@@ -16,17 +18,46 @@ import java.util.Optional;
 public class RefreshService {
 
     private final RefreshRepository refreshTokenRepository;
+    private final JWTUtil jwtUtil; // JWTUtil 주입
 
     // 기본 저장
     public void saveRefresh(RefreshToken refreshToken) {
         refreshTokenRepository.save(refreshToken);
     }
 
+    @Transactional
+    public void saveOrUpdate(Long userId, String tokenValue, String ipAddress, String deviceInfo) {
+        Optional<RefreshToken> existingToken = refreshTokenRepository.findByUserId(userId);
+
+        // 만료 시간 계산
+        Date expiresAt = new Date(System.currentTimeMillis() + jwtUtil.getRefreshExpiration());
+
+        RefreshToken tokenToSave;
+        if (existingToken.isPresent()) {
+            // 기존 토큰 업데이트
+            tokenToSave = existingToken.get();
+            tokenToSave.updateToken(tokenValue, ipAddress, deviceInfo, expiresAt);
+        } else {
+            // 새 토큰 생성
+            tokenToSave = RefreshToken.builder()
+                    .userId(userId)
+                    .refreshToken(tokenValue)
+                    .ipAddress(ipAddress)
+                    .deviceInfo(deviceInfo)
+                    .expiresAt(expiresAt) // 만료 시간 설정
+                    .tokenStatus("ACTIVE")
+                    .build();
+        }
+        refreshTokenRepository.save(tokenToSave);
+    }
+
     // 소셜 저장
     public void saveToken(Long userId, String refreshTokenValue) {
+        Date expiresAt = new Date(System.currentTimeMillis() + jwtUtil.getRefreshExpiration());
         RefreshToken refreshToken = RefreshToken.builder()
                 .userId(userId)
                 .refreshToken(refreshTokenValue)
+                .expiresAt(expiresAt)
                 .build();
 
         saveRefresh(refreshToken);
