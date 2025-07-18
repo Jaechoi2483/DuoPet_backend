@@ -52,6 +52,8 @@ public class UserEntity {
     private String originalFilename;
     @Column(name = "face_recognition_id")
     private String faceRecognitionId;
+    @Column(name = "suspended_until")
+    private LocalDateTime suspendedUntil;  // 정지 해제 시간
 
     @PrePersist
     public void prePersist() {
