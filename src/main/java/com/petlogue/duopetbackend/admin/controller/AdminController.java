@@ -3,6 +3,7 @@ package com.petlogue.duopetbackend.admin.controller;
 
 import com.petlogue.duopetbackend.admin.model.dto.DashboardDataDto;
 import com.petlogue.duopetbackend.admin.model.service.AdminService;
+import com.petlogue.duopetbackend.board.model.dto.Report;
 import com.petlogue.duopetbackend.user.model.dto.UserDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +17,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -106,5 +109,21 @@ public class AdminController {
             contentType = "application/octet-stream"; // 타입을 알 수 없을 때의 기본값
         }
         return contentType;
+    }
+
+    @GetMapping("/admin/reports")
+    public ResponseEntity<List<Report>> getAllReports() {
+        List<Report> reports = adminService.getAllReports();
+        return ResponseEntity.ok(reports);
+    }
+
+    @PutMapping("/admin/reports/{reportId}/status")
+    public ResponseEntity<Report> updateReportStatus(
+            @PathVariable Long reportId,
+            @RequestBody Map<String, String> payload
+    ) {
+        String newStatus = payload.get("status");
+        Report updatedReport = adminService.updateReportStatus(reportId, newStatus);
+        return ResponseEntity.ok(updatedReport);
     }
 }

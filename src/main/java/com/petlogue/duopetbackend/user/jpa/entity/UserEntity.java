@@ -2,10 +2,12 @@ package com.petlogue.duopetbackend.user.jpa.entity;
 
 import com.petlogue.duopetbackend.user.model.dto.UserDto;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.GregorianCalendar;
 
 @Table(name = "users")
 @Entity
@@ -53,6 +55,9 @@ public class UserEntity {
     @Column(name = "face_recognition_id")
     private String faceRecognitionId;
 
+    @Column(name = "suspended_until")
+    private LocalDateTime suspendedUntil;
+
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();    //현재 날짜 시간 적용
@@ -78,6 +83,7 @@ public class UserEntity {
                 .userProfileOriginalFilename(originalFilename)
                 .userProfileRenameFilename(renameFilename)
                 .faceRecognitionId(faceRecognitionId)
+                .suspendedUntil(suspendedUntil)
                 .build();
     }
 }
