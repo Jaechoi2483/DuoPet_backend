@@ -2,8 +2,10 @@ package com.petlogue.duopetbackend.info.controller;
 
 import com.petlogue.duopetbackend.info.model.dto.HospitalDto;
 import com.petlogue.duopetbackend.info.model.dto.ShelterDto;
+import com.petlogue.duopetbackend.info.model.dto.ShelterInfoDto;
 import com.petlogue.duopetbackend.info.model.service.HospitalService;
 import com.petlogue.duopetbackend.info.model.service.ShelterService;
+import com.petlogue.duopetbackend.info.model.service.ShelterInfoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -25,11 +27,14 @@ public class InfoController {
 
     private final HospitalService hospitalService;
     private final ShelterService shelterService;
+    private final ShelterInfoService shelterInfoService;
 
     public InfoController(HospitalService hospitalService, 
-                         @Qualifier("shelterInfoService") ShelterService shelterService) {
+                         @Qualifier("infoShelterService") ShelterService shelterService,
+                         ShelterInfoService shelterInfoService) {
         this.hospitalService = hospitalService;
         this.shelterService = shelterService;
+        this.shelterInfoService = shelterInfoService;
     }
 
     /**
@@ -390,5 +395,132 @@ public class InfoController {
             log.error("보호소 데이터베이스 테스트 실패", e);
             return ResponseEntity.status(500).body("보호소 DB 테스트 실패: " + e.getMessage());
         }
+    }
+    
+    // =============== 공공데이터 보호소 조회 API ===============
+    
+    /**
+     * 공공데이터 보호소 전체 조회 (페이징)
+     * GET /api/info/shelters/public?page=0&size=20
+     */
+    @GetMapping("/shelters/public")
+    public ResponseEntity<Page<ShelterInfoDto>> getPublicShelters(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        
+        log.info("공공데이터 보호소 목록 조회 요청 - page: {}, size: {}", page, size);
+        
+        Pageable pageable = PageRequest.of(page, size);
+        Page<ShelterInfoDto> shelters = shelterInfoService.getAllShelters(pageable);
+        
+        log.info("공공 보호소 {}개 조회 완료", shelters.getTotalElements());
+        return ResponseEntity.ok(shelters);
+    }
+    
+    /**
+     * 공공데이터 보호소 상세 조회
+     * GET /api/info/shelters/public/{shelterInfoId}
+     */
+    @GetMapping("/shelters/public/{shelterInfoId}")
+    public ResponseEntity<ShelterInfoDto> getPublicShelterById(@PathVariable Long shelterInfoId) {
+        log.info("공공데이터 보호소 상세 조회 요청 - ID: {}", shelterInfoId);
+        
+        return shelterInfoService.getShelterById(shelterInfoId)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+    
+    /**
+     * 공공데이터 보호소 검색
+     * GET /api/info/shelters/public/search?keyword=서울&orgNm=&divisionNm=법인&animal=개
+     */
+    @GetMapping("/shelters/public/search")
+    public ResponseEntity<Page<ShelterInfoDto>> searchPublicShelters(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String orgNm,
+            @RequestParam(required = false) String divisionNm,
+            @RequestParam(required = false) String animal,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        
+        log.info("공공데이터 보호소 검색 - keyword: {}, orgNm: {}, divisionNm: {}, animal: {}", 
+                keyword, orgNm, divisionNm, animal);
+        
+        Pageable pageable = PageRequest.of(page, size);
+        Page<ShelterInfoDto> shelters = shelterInfoService.searchShelters(
+                keyword, orgNm, divisionNm, animal, pageable);
+        
+        log.info("검색 결과 {}개 조회 완료", shelters.getTotalElements());
+        return ResponseEntity.ok(shelters);
+    }
+    
+    /**
+     * 위치 기반 근처 공공 보호소 조회
+     * GET /api/info/shelters/public/nearby?lat=37.5665&lng=126.9780&radius=10
+     */
+    @GetMapping("/shelters/public/nearby")
+    public ResponseEntity<List<ShelterInfoDto>> getNearbyPublicShelters(
+            @RequestParam Double lat,
+            @RequestParam Double lng,
+            @RequestParam(defaultValue = "10") Double radius) {
+        
+        log.info("근처 공공 보호소 조회 - 위치: ({}, {}), 반경: {}km", lat, lng, radius);
+        
+        List<ShelterInfoDto> shelters = shelterInfoService.getNearbyShelters(lat, lng, radius);
+        
+        log.info("반경 {}km 내 {}개 보호소 조회 완료", radius, shelters.size());
+        return ResponseEntity.ok(shelters);
+    }
+    
+    /**
+     * 지역별 공공 보호소 조회
+     * GET /api/info/shelters/public/region?region=서울
+     */
+    @GetMapping("/shelters/public/region")
+    public ResponseEntity<Page<ShelterInfoDto>> getPublicSheltersByRegion(
+            @RequestParam String region,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        
+        log.info("지역별 공공 보호소 조회 - 지역: {}", region);
+        
+        Pageable pageable = PageRequest.of(page, size);
+        Page<ShelterInfoDto> shelters = shelterInfoService.getSheltersByRegion(region, pageable);
+        
+        log.info("{}지역 보호소 {}개 조회 완료", region, shelters.getTotalElements());
+        return ResponseEntity.ok(shelters);
+    }
+    
+    /**
+     * 동물 종류별 공공 보호소 조회
+     * GET /api/info/shelters/public/animal?type=개
+     */
+    @GetMapping("/shelters/public/animal")
+    public ResponseEntity<Page<ShelterInfoDto>> getPublicSheltersByAnimalType(
+            @RequestParam String type,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        
+        log.info("동물 종류별 공공 보호소 조회 - 동물: {}", type);
+        
+        Pageable pageable = PageRequest.of(page, size);
+        Page<ShelterInfoDto> shelters = shelterInfoService.getSheltersByAnimalType(type, pageable);
+        
+        log.info("{} 수용 가능 보호소 {}개 조회 완료", type, shelters.getTotalElements());
+        return ResponseEntity.ok(shelters);
+    }
+    
+    /**
+     * 공공 보호소 통계 정보 조회
+     * GET /api/info/shelters/public/statistics
+     */
+    @GetMapping("/shelters/public/statistics")
+    public ResponseEntity<ShelterInfoService.ShelterStatisticsDto> getPublicShelterStatistics() {
+        log.info("공공 보호소 통계 정보 조회");
+        
+        ShelterInfoService.ShelterStatisticsDto statistics = shelterInfoService.getShelterStatistics();
+        
+        log.info("공공 보호소 통계 조회 완료 - 총 {}개", statistics.getTotalCount());
+        return ResponseEntity.ok(statistics);
     }
 }

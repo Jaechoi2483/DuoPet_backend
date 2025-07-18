@@ -156,4 +156,66 @@ public class UserController {
         }
     }
 
+    /**
+     * 현재 로그인한 사용자의 정보 조회
+     */
+    @GetMapping("/me")
+    public ResponseEntity<?> getCurrentUser(HttpServletRequest request) {
+        try {
+            // JWT에서 userId 추출
+            Long userId = jwtUtil.getUserIdFromRequest(request);
+            
+            if (userId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("인증되지 않은 사용자입니다.");
+            }
+            
+            // 사용자 정보 조회
+            UserEntity user = userRepository.findByUserId(userId);
+            
+            if (user != null) {
+                // 민감한 정보는 제외하고 DTO로 변환하여 반환
+                UserDto userDto = user.toDto();
+                userDto.setUserPwd(null); // 비밀번호는 제거
+                return ResponseEntity.ok(userDto);
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("사용자를 찾을 수 없습니다.");
+            }
+        } catch (Exception e) {
+            log.error("사용자 정보 조회 중 오류", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("사용자 정보 조회에 실패했습니다.");
+        }
+    }
+
+    /**
+     * 현재 로그인한 사용자의 정보 업데이트 (프로필 이미지 포함)
+     */
+    @PutMapping("/me")
+    public ResponseEntity<?> updateCurrentUser(
+            @RequestPart("data") UserDto userDto,
+            @RequestPart(value = "file", required = false) MultipartFile file,
+            HttpServletRequest request) {
+        try {
+            // JWT에서 userId 추출
+            Long userId = jwtUtil.getUserIdFromRequest(request);
+            
+            if (userId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("인증되지 않은 사용자입니다.");
+            }
+            
+            // 사용자 정보 업데이트
+            UserEntity updatedUser = userService.updateUserProfile(userId, userDto, file);
+            
+            if (updatedUser != null) {
+                UserDto responseDto = updatedUser.toDto();
+                responseDto.setUserPwd(null); // 비밀번호는 제거
+                return ResponseEntity.ok(responseDto);
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("사용자를 찾을 수 없습니다.");
+            }
+        } catch (Exception e) {
+            log.error("사용자 정보 업데이트 중 오류", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("사용자 정보 업데이트에 실패했습니다.");
+        }
+    }
+
 }

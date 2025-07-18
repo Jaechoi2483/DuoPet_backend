@@ -193,4 +193,51 @@ public class UserService {
     public UserEntity getUserByUserId(Long userId) {
         return userRepository.findByUserId(userId);  // DB에서 userId로 사용자 정보 조회
     }
+
+    /**
+     * 사용자 프로필 업데이트 (프로필 이미지 포함)
+     */
+    public UserEntity updateUserProfile(Long userId, UserDto userDto, MultipartFile file) {
+        // 사용자 조회
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+
+        // 사용자 정보 업데이트
+        if (userDto.getUserName() != null) user.setUserName(userDto.getUserName());
+        if (userDto.getUserEmail() != null) user.setUserEmail(userDto.getUserEmail());
+        if (userDto.getPhone() != null) user.setPhone(userDto.getPhone());
+        if (userDto.getAddress() != null) user.setAddress(userDto.getAddress());
+        
+        // 프로필 이미지 처리
+        if (file != null && !file.isEmpty()) {
+            try {
+                String originalFilename = file.getOriginalFilename();
+                String renameFilename = FileNameChange.change(originalFilename, "yyyyMMddHHmmss");
+
+                String uploadDir = "C:/upload_files/userprofile";
+                File dir = new File(uploadDir);
+                if (!dir.exists()) dir.mkdirs();
+
+                // 기존 프로필 이미지 삭제
+                if (user.getRenameFilename() != null) {
+                    File oldFile = new File(uploadDir, user.getRenameFilename());
+                    if (oldFile.exists()) {
+                        oldFile.delete();
+                    }
+                }
+
+                // 새 프로필 이미지 저장
+                File dest = new File(dir, renameFilename);
+                file.transferTo(dest);
+
+                user.setOriginalFilename(originalFilename);
+                user.setRenameFilename(renameFilename);
+            } catch (Exception e) {
+                throw new RuntimeException("프로필 이미지 저장 중 오류 발생", e);
+            }
+        }
+
+        // 업데이트된 사용자 저장
+        return userRepository.save(user);
+    }
 }
