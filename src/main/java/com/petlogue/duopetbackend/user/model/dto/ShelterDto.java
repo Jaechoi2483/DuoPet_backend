@@ -29,6 +29,8 @@ public class ShelterDto {
     private String authFileDescription;         // 인증파일 설명
 
     private MultipartFile shelterProfileFile;   // 업로드된 실제 파일 (DB 저장 안 함)
+    
+    private Long shelterInfoId;                 // 공공데이터 보호소 정보 ID (nullable)
 
     // ShelterEntity로 변환 (UserEntity 연관 필수)
     public ShelterEntity toEntity(UserEntity userEntity) {

@@ -3,7 +3,7 @@ package com.petlogue.duopetbackend.admin.controller;
 
 import com.petlogue.duopetbackend.admin.model.dto.DashboardDataDto;
 import com.petlogue.duopetbackend.admin.model.service.AdminService;
-import com.petlogue.duopetbackend.board.model.dto.Report;
+import com.petlogue.duopetbackend.info.model.service.ShelterDataSyncService;
 import com.petlogue.duopetbackend.user.model.dto.UserDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,8 +17,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -26,6 +24,7 @@ import java.util.Map;
 @CrossOrigin
 public class AdminController {
     private final AdminService adminService;
+    private final ShelterDataSyncService shelterDataSyncService;
 
 
     @GetMapping("/admin/users")
@@ -110,20 +109,50 @@ public class AdminController {
         }
         return contentType;
     }
-
-    @GetMapping("/admin/reports")
-    public ResponseEntity<List<Report>> getAllReports() {
-        List<Report> reports = adminService.getAllReports();
-        return ResponseEntity.ok(reports);
+    
+    // =============== 보호소 데이터 동기화 관리 ===============
+    
+    /**
+     * 공공데이터 보호소 정보 수동 동기화
+     * POST /admin/shelters/sync
+     * 
+     * 관리자 권한 필요
+     * 공공데이터 API에서 최신 보호소 정보를 가져와 DB에 저장
+     */
+    @PostMapping("/admin/shelters/sync")
+    public ResponseEntity<?> syncShelterData() {
+        log.info("관리자 요청: 보호소 데이터 수동 동기화");
+        
+        try {
+            // 비동기로 실행하여 응답 지연 방지
+            new Thread(() -> {
+                shelterDataSyncService.triggerManualSync();
+            }).start();
+            
+            return ResponseEntity.ok().body("{\"message\": \"보호소 데이터 동기화가 시작되었습니다. 완료까지 몇 분이 소요될 수 있습니다.\"}");
+        } catch (Exception e) {
+            log.error("보호소 데이터 동기화 실행 실패", e);
+            return ResponseEntity.status(500).body("{\"error\": \"동기화 실행 실패: " + e.getMessage() + "\"}");
+        }
     }
-
-    @PutMapping("/admin/reports/{reportId}/status")
-    public ResponseEntity<Report> updateReportStatus(
-            @PathVariable Long reportId,
-            @RequestBody Map<String, String> payload
-    ) {
-        String newStatus = payload.get("status");
-        Report updatedReport = adminService.updateReportStatus(reportId, newStatus);
-        return ResponseEntity.ok(updatedReport);
+    
+    /**
+     * 기존 회원 보호소와 공공데이터 매칭
+     * POST /admin/shelters/match
+     * 
+     * 관리자 권한 필요
+     * 전화번호 기반으로 기존 회원 보호소와 공공데이터 연결
+     */
+    @PostMapping("/admin/shelters/match")
+    public ResponseEntity<?> matchShelterData() {
+        log.info("관리자 요청: 보호소 데이터 매칭");
+        
+        try {
+            shelterDataSyncService.matchExistingShelters();
+            return ResponseEntity.ok().body("{\"message\": \"보호소 매칭이 완료되었습니다.\"}");
+        } catch (Exception e) {
+            log.error("보호소 데이터 매칭 실패", e);
+            return ResponseEntity.status(500).body("{\"error\": \"매칭 실패: " + e.getMessage() + "\"}");
+        }
     }
 }

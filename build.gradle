@@ -59,9 +59,6 @@ dependencies {
     implementation 'org.apache.httpcomponents:httpclient:4.5.13'
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
 
-    //CoolSMS 의존성 추가
-    implementation 'net.nurigo:sdk:4.3.0'
-
     // jsp 사용을 위한 라이브러리 의존성 추가
     implementation 'org.apache.tomcat.embed:tomcat-embed-jasper'
     implementation 'jakarta.servlet:jakarta.servlet-api:6.0.0'

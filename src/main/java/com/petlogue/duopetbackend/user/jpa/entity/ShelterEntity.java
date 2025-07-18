@@ -1,5 +1,6 @@
 package com.petlogue.duopetbackend.user.jpa.entity;
 
+import com.petlogue.duopetbackend.info.jpa.entity.ShelterInfo;
 import com.petlogue.duopetbackend.user.model.dto.ShelterDto;
 import jakarta.persistence.*;
 import lombok.*;
@@ -51,20 +52,38 @@ public class ShelterEntity {
     @Column(name = "auth_file_description")
     private String authFileDescription;
 
+    // 공공데이터 보호소 정보와의 연결
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "shelter_info_id")
+    private ShelterInfo shelterInfo;
+
     public ShelterDto toDto() {
+        // shelter_info_id가 있으면 공공데이터에서 정보를 가져옴
+        String finalShelterName = shelterName;
+        String finalPhone = phone;
+        String finalAddress = address;
+        
+        if (shelterInfo != null) {
+            // 공공데이터가 있으면 그 정보를 우선 사용
+            finalShelterName = shelterInfo.getCareNm();
+            finalPhone = shelterInfo.getCareTel();
+            finalAddress = shelterInfo.getCareAddr();
+        }
+        
         return ShelterDto.builder()
                 .shelterId(shelterId)
                 .userId(user != null ? user.getUserId() : null)
-                .shelterName(shelterName)
-                .phone(phone)
+                .shelterName(finalShelterName)
+                .phone(finalPhone)
                 .email(email)
-                .address(address)
+                .address(finalAddress)
                 .website(website)
                 .capacity(capacity)
                 .operatingHours(operatingHours)
                 .shelterFileOriginalFilename(originalFilename)
                 .shelterFileRenameFilename(renameFilename)
                 .authFileDescription(authFileDescription)
+                .shelterInfoId(shelterInfo != null ? shelterInfo.getShelterInfoId() : null)
                 .build();
     }
 }

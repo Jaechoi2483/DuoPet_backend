@@ -18,14 +18,14 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-@Service("shelterInfoService")
+@Service("infoShelterService")
 @Slf4j
 @Transactional(readOnly = true)
 public class ShelterService {
 
     private final ShelterRepository shelterRepository;
     
-    public ShelterService(@Qualifier("shelterInfoRepository") ShelterRepository shelterRepository) {
+    public ShelterService(@Qualifier("infoShelterRepository") ShelterRepository shelterRepository) {
         this.shelterRepository = shelterRepository;
     }
 

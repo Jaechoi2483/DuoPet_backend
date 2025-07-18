@@ -44,8 +44,6 @@ public class ReportEntity {
     @Column(length = 1000)
     private String details;  // 상세 설명 (선택사항)
 
-
-
     public Report toReportDto() {
         return Report.builder()
                 .reportId(this.reportId)

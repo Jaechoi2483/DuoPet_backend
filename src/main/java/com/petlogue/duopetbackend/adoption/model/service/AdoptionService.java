@@ -35,7 +35,7 @@ public class AdoptionService {
     private final ObjectMapper objectMapper = new ObjectMapper();
     
     public AdoptionService(AdoptionAnimalRepository adoptionAnimalRepository,
-                          @Qualifier("shelterInfoRepository") ShelterRepository shelterRepository,
+                          @Qualifier("infoShelterRepository") ShelterRepository shelterRepository,
                           PublicDataApiClient publicDataApiClient) {
         this.adoptionAnimalRepository = adoptionAnimalRepository;
         this.shelterRepository = shelterRepository;
