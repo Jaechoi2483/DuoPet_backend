@@ -2284,3 +2284,108 @@ suspended_until 컬럼 추가
 
 ALTER TABLE USERS ADD (suspended_until TIMESTAMP);
 COMMENT ON COLUMN USERS.suspended_until IS '사용자 정지 만료 시간';
+
+commit;
+
+/*================
+2025-07-18 
+SELTER_INFO 테이블 생성성
+SELTER 테이블 수정정
+=================*/
+
+-- SHELTER_INFO 테이블 생성
+CREATE TABLE SHELTER_INFO (
+    shelter_info_id    NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    care_reg_no        VARCHAR2(50) NOT NULL UNIQUE,
+    care_nm            VARCHAR2(200) NOT NULL,
+    org_nm             VARCHAR2(200),
+    division_nm        VARCHAR2(50),
+    save_trgt_animal   VARCHAR2(100),
+    care_addr          VARCHAR2(500),
+    jibun_addr         VARCHAR2(500),
+    lat                NUMBER(10,7),
+    lng                NUMBER(10,7),
+    care_tel           VARCHAR2(50),
+    dsignation_date    DATE,
+    week_opr_stime     VARCHAR2(10),
+    week_opr_etime     VARCHAR2(10),
+    close_day          VARCHAR2(100),
+    vet_person_cnt     NUMBER,
+    specs_person_cnt   NUMBER,
+    data_std_dt        DATE,
+    created_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 인덱스 생성
+CREATE INDEX idx_shelter_info_location ON SHELTER_INFO(lat, lng);
+CREATE INDEX idx_shelter_info_org ON SHELTER_INFO(org_nm);
+CREATE INDEX idx_shelter_info_status ON SHELTER_INFO(division_nm);
+CREATE INDEX idx_shelter_info_animal ON SHELTER_INFO(save_trgt_animal);
+CREATE INDEX idx_shelter_info_region ON SHELTER_INFO(care_addr);
+
+-- 코멘트 추가
+COMMENT ON TABLE SHELTER_INFO IS '공공데이터 API로부터 수집한 보호소 정보';
+COMMENT ON COLUMN SHELTER_INFO.shelter_info_id IS '보호소 정보 ID (내부 PK)';
+COMMENT ON COLUMN SHELTER_INFO.care_reg_no IS '관리번호 (공공데이터 고유값)';
+COMMENT ON COLUMN SHELTER_INFO.care_nm IS '보호소명';
+COMMENT ON COLUMN SHELTER_INFO.org_nm IS '관할기관';
+COMMENT ON COLUMN SHELTER_INFO.division_nm IS '보호소구분 (법인/개인/단체/기타)';
+COMMENT ON COLUMN SHELTER_INFO.save_trgt_animal IS '보호동물 종류';
+COMMENT ON COLUMN SHELTER_INFO.care_addr IS '도로명주소';
+COMMENT ON COLUMN SHELTER_INFO.jibun_addr IS '지번주소';
+COMMENT ON COLUMN SHELTER_INFO.lat IS '위도 (WGS84)';
+COMMENT ON COLUMN SHELTER_INFO.lng IS '경도 (WGS84)';
+COMMENT ON COLUMN SHELTER_INFO.care_tel IS '전화번호';
+COMMENT ON COLUMN SHELTER_INFO.dsignation_date IS '지정일자';
+COMMENT ON COLUMN SHELTER_INFO.week_opr_stime IS '평일운영시작시간';
+COMMENT ON COLUMN SHELTER_INFO.week_opr_etime IS '평일운영종료시간';
+COMMENT ON COLUMN SHELTER_INFO.close_day IS '휴무일';
+COMMENT ON COLUMN SHELTER_INFO.vet_person_cnt IS '수의사수';
+COMMENT ON COLUMN SHELTER_INFO.specs_person_cnt IS '사양관리사수';
+COMMENT ON COLUMN SHELTER_INFO.data_std_dt IS '데이터기준일자';
+
+-- SHELTER 테이블 수정
+ALTER TABLE SHELTER ADD shelter_info_id NUMBER;
+ALTER TABLE SHELTER MODIFY shelter_name VARCHAR2(100) NULL;
+ALTER TABLE SHELTER MODIFY phone VARCHAR2(20) NULL;
+ALTER TABLE SHELTER MODIFY address VARCHAR2(255) NULL;
+
+-- 외래키 제약조건 추가
+ALTER TABLE SHELTER ADD CONSTRAINT fk_shelter_info 
+    FOREIGN KEY (shelter_info_id) REFERENCES SHELTER_INFO(shelter_info_id);
+
+-- SHELTER 테이블 컬럼 코멘트
+COMMENT ON COLUMN SHELTER.shelter_info_id IS '공공데이터 보호소 정보 참조 (NULL 가능)';
+COMMENT ON COLUMN SHELTER.shelter_name IS '보호소명 (shelter_info_id가 있으면 SHELTER_INFO에서 가져옴)';
+COMMENT ON COLUMN SHELTER.phone IS '전화번호 (shelter_info_id가 있으면 SHELTER_INFO에서 가져옴)';
+COMMENT ON COLUMN SHELTER.address IS '주소 (shelter_info_id가 있으면 SHELTER_INFO에서 가져옴)';
+
+-- 트리거 생성 (updated_at 자동 업데이트)
+CREATE OR REPLACE TRIGGER trg_shelter_info_updated_at
+BEFORE UPDATE ON SHELTER_INFO
+FOR EACH ROW
+BEGIN
+    :NEW.updated_at := CURRENT_TIMESTAMP;
+END;
+/
+
+-- 보호소 매칭 테이블 (선택사항)
+CREATE TABLE SHELTER_MAPPING (
+    mapping_id         NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    shelter_id         NUMBER NOT NULL,
+    shelter_info_id    NUMBER NOT NULL,
+    match_type         VARCHAR2(20) DEFAULT 'auto',
+    match_score        NUMBER(3,2),
+    matched_by         VARCHAR2(100),
+    matched_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_mapping_shelter FOREIGN KEY (shelter_id) REFERENCES SHELTER(shelter_id),
+    CONSTRAINT fk_mapping_shelter_info FOREIGN KEY (shelter_info_id) REFERENCES SHELTER_INFO(shelter_info_id),
+    CONSTRAINT uq_shelter_mapping UNIQUE (shelter_id, shelter_info_id)
+);
+
+COMMENT ON TABLE SHELTER_MAPPING IS '회원 보호소와 공공데이터 보호소 매칭 기록';
+COMMENT ON COLUMN SHELTER_MAPPING.match_type IS '매칭 방식 (auto: 자동, manual: 수동)';
+COMMENT ON COLUMN SHELTER_MAPPING.match_score IS '매칭 신뢰도 (0~1)';
+
+commit;
