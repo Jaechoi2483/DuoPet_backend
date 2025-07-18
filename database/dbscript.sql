@@ -2275,3 +2275,12 @@ ADD DETAILS VARCHAR2(1000);
 COMMENT ON COLUMN REPORT.DETAILS IS '신고에 대한 상세 설명 (선택사항)';
 
 commit;
+
+/*================
+2025-07-18
+Users 테이블
+suspended_until 컬럼 추가
+=================*/
+
+ALTER TABLE USERS ADD (suspended_until TIMESTAMP);
+COMMENT ON COLUMN USERS.suspended_until IS '사용자 정지 만료 시간';
