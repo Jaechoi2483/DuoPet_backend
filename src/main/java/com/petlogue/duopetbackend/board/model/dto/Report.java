@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import java.time.LocalDateTime;
 import java.util.Date;
 
 @Slf4j
@@ -25,6 +26,12 @@ public class Report {
     private String details;        // 신고 상세 설명
     private String status;         // 신고 상태 (PENDING, REVIEWED, BLOCKED)
     private Date createdAt;        // 신고 접수 시간
+
+    // 신고관리용
+    private String userLoginId;    // 신고자 로그인 ID
+    private String targetLoginId;   // 신고대상자 로그인 ID
+
+    private LocalDateTime suspendedUntil; // 정지 만료 시간
 
     public ReportEntity toReportEntity(UserEntity user) {
         return ReportEntity.builder()
