@@ -4,7 +4,10 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import com.petlogue.duopetbackend.user.jpa.entity.UserEntity;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 
 import java.time.LocalDateTime;
@@ -42,6 +45,8 @@ public class UserDto {
 
     private VetDto vetProfile;
     private ShelterDto shelterProfile;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    private LocalDateTime suspendedUntil;
 
     public UserEntity toEntity() {
         return UserEntity.builder()
@@ -63,6 +68,7 @@ public class UserDto {
                 .renameFilename(userProfileRenameFilename)
                 .originalFilename(userProfileOriginalFilename)
                 .faceRecognitionId(faceRecognitionId)
+                .renameFilename(userProfileRenameFilename)
                 .build();
     }
 }
