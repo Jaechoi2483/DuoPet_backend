@@ -13,6 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import java.time.LocalDateTime;
 import java.util.Date;
+import java.util.Optional;
 
 @Service
 @Transactional
@@ -239,5 +240,58 @@ public class UserService {
 
         // 업데이트된 사용자 저장
         return userRepository.save(user);
+    }
+
+    /**
+     * [아이디 찾기] 이름 + 전화번호로 loginId 조회
+     */
+    public String findLoginIdByNameAndPhone(String userName, String phone) {
+        if (userName == null || phone == null) {
+            throw new IllegalArgumentException("이름과 전화번호는 필수입니다.");
+        }
+
+        String trimmedName = userName.trim();
+        String normalizedPhone = phone.replaceAll("-", "").trim();
+
+        return userRepository.findByUserNameAndPhoneWithoutHyphen(trimmedName, normalizedPhone)
+                .map(UserEntity::getLoginId)
+                .orElseThrow(() -> new RuntimeException("일치하는 사용자를 찾을 수 없습니다."));
+    }
+
+    /**
+     * [비밀번호 찾기] loginId + 전화번호가 일치하는 사용자가 존재하는지 확인
+     */
+    public boolean existsByLoginIdAndPhone(String loginId, String phone) {
+        String normalizedPhone = phone.replaceAll("-", "");
+
+        Optional<UserEntity> user = userRepository.findByLoginId(loginId);
+        return user
+                .map(u -> {
+                    String userPhone = u.getPhone();
+                    return userPhone != null &&
+                            userPhone.replaceAll("-", "").equals(normalizedPhone);
+                })
+                .orElse(false);
+    }
+
+    /**
+     * 비밀번호 재설정
+     */
+    public void resetPassword(String loginId, String newPassword) {
+        UserEntity user = userRepository.findByLoginId(loginId)
+                .orElseThrow(() -> new RuntimeException("해당 ID의 사용자를 찾을 수 없습니다."));
+
+        // 회원가입과 동일한 방식의 조건부 암호화 적용
+        if (!newPassword.startsWith("{bcrypt}")) {
+            String encodedPwd = passwordEncoder.encode(newPassword);
+            newPassword = encodedPwd;
+        }
+
+        user.setUserPwd(newPassword);
+        userRepository.save(user);
+    }
+
+    private String normalizePhone(String phone) {
+        return phone == null ? "" : phone.replaceAll("-", "");
     }
 }

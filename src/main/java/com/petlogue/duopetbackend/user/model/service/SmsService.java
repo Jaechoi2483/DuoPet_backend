@@ -39,8 +39,10 @@ public class SmsService {
     }
 
     public void sendAuthCode(String phoneNumber) throws NurigoEmptyResponseException, NurigoUnknownException {
+        String normalizedPhone = normalizePhone(phoneNumber);
+
         String authCode = createRandomCode();
-        log.info("발송 대상: {}, 인증번호: {}", phoneNumber, authCode);
+        log.info("발송 대상: {}, 인증번호: {}", normalizedPhone, authCode);
 
         Message message = new Message();
         message.setFrom(senderPhone);
@@ -54,21 +56,22 @@ public class SmsService {
             throw new RuntimeException("SMS 전송 실패");
         }
 
-        // 인증번호 저장 (3분 후 만료)
-        authCodeMap.put(phoneNumber, new AuthCodeInfo(authCode, System.currentTimeMillis() + (3 * 60 * 1000)));
+
+        authCodeMap.put(normalizedPhone, new AuthCodeInfo(authCode, System.currentTimeMillis() + (3 * 60 * 1000)));
     }
 
     public boolean verifyAuthCode(String phoneNumber, String inputCode) {
-        AuthCodeInfo info = authCodeMap.get(phoneNumber);
+        String normalizedPhone = normalizePhone(phoneNumber);
+        AuthCodeInfo info = authCodeMap.get(normalizedPhone);
 
         if (info == null) return false;
         if (System.currentTimeMillis() > info.expireTime) {
-            authCodeMap.remove(phoneNumber);
+            authCodeMap.remove(normalizedPhone);
             return false;
         }
 
         boolean matched = info.code.equals(inputCode);
-        if (matched) authCodeMap.remove(phoneNumber); // 사용 후 삭제
+        if (matched) authCodeMap.remove(normalizedPhone);
         return matched;
     }
 
@@ -86,5 +89,9 @@ public class SmsService {
             this.code = code;
             this.expireTime = expireTime;
         }
+    }
+
+    private String normalizePhone(String phone) {
+        return phone == null ? "" : phone.replaceAll("-", "");
     }
 }
