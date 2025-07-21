@@ -1,5 +1,6 @@
 package com.petlogue.duopetbackend.health.model.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -14,6 +15,7 @@ public class PetHealthScheduleDto {
         private Long petId;
         private String scheduleType;
         private String title;
+        @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
         private LocalDate scheduleDate;
         private String scheduleTime;
         private String memo;
@@ -25,6 +27,7 @@ public class PetHealthScheduleDto {
         private Long scheduleId;
         private String scheduleType;
         private String title;
+        @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
         private LocalDate scheduleDate;
         private String scheduleTime;
         private String memo;
