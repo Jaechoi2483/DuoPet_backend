@@ -111,13 +111,15 @@ public class SecurityConfig implements WebMvcConfigurer {
                         .requestMatchers(HttpMethod.DELETE, "/board/free/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/like/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/bookmark/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/comments/insert").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/comments/delete/**").authenticated()
 
 
 
                         .requestMatchers(HttpMethod.DELETE, "/notice/{id}", "/faq/{id}" ).hasAuthority("admin")
                         .requestMatchers(HttpMethod.POST, "/faq").hasAuthority("admin")
                         .requestMatchers(HttpMethod.PUT, "/notice/{id}", "/faq/{id}").hasAuthority("admin")
-                        .requestMatchers("/board/write").authenticated()
+
 
 
                         // 인증 없이 접근 가능한 경로 목록
@@ -145,6 +147,7 @@ public class SecurityConfig implements WebMvcConfigurer {
                                 "/board/top-liked",
                                 "/board/top-viewed",
                                 "/board/freeList",
+                                "/comments/view",
                                 "/favicon.ico",
                                 "/faq",
                                 "/qna",
