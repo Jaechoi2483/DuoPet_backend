@@ -1,5 +1,6 @@
 package com.petlogue.duopetbackend.admin.model.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.petlogue.duopetbackend.admin.jpa.entity.QnaEntity;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,7 +20,9 @@ public class Qna {
     private int likeCount;
     private String renameFilename;
     private String originalFilename;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime createdAt;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime updatedAt;
     private int userId;
     private String title;
