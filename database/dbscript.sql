@@ -2288,7 +2288,7 @@ COMMENT ON COLUMN USERS.suspended_until IS '사용자 정지 만료 시간';
 commit;
 
 /*================
-2025-07-18 
+2025-07-18
 SELTER_INFO 테이블 생성성
 SELTER 테이블 수정정
 =================*/
@@ -2352,7 +2352,7 @@ ALTER TABLE SHELTER MODIFY phone VARCHAR2(20) NULL;
 ALTER TABLE SHELTER MODIFY address VARCHAR2(255) NULL;
 
 -- 외래키 제약조건 추가
-ALTER TABLE SHELTER ADD CONSTRAINT fk_shelter_info 
+ALTER TABLE SHELTER ADD CONSTRAINT fk_shelter_info
     FOREIGN KEY (shelter_info_id) REFERENCES SHELTER_INFO(shelter_info_id);
 
 -- SHELTER 테이블 컬럼 코멘트

@@ -93,7 +93,11 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
 
     Long userId(Long userId);
 
+
     // 신고관리용
+
+    
+
     @Query("SELECT u FROM UserEntity u WHERE UPPER(u.status) = 'SUSPENDED' AND u.suspendedUntil IS NOT NULL AND u.suspendedUntil <= :now")
     List<UserEntity> findExpiredSuspensions(@Param("now") LocalDateTime now);
 }

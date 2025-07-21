@@ -71,6 +71,9 @@ dependencies {
     //jsonObject 사용 라이브러리 의존성 추가
     implementation 'com.googlecode.json-simple:json-simple:1.1.1'
 
+    // Gradle (build.gradle)
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+
     // WebClient for API calls
     implementation 'org.springframework.boot:spring-boot-starter-webflux'
 
@@ -90,6 +93,11 @@ dependencies {
     // Configuration processor
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
     //스프링 부트 설정과 관련된 어노테이션과 기능을 제공하는 라이브러리
+
+    // 한글 깨짐 문제 해결(컴파일 인코딩을 UTF-8로 강제하는 설정을 추가)
+    tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
 
     // Test : 테스트를 위한 라이브러리임. 테스트 코드 작성시 이용됨, 테스트 코드는 서버 구동없이 실행함
     testImplementation 'org.springframework.boot:spring-boot-starter-test'

@@ -40,6 +40,8 @@ public class UserSuspensionScheduler {
             user.setSuspendedUntil(null); // 만료 시간 초기화
         }
 
+
+
         userRepository.saveAll(expiredUsers);
         log.info("총 {}명의 사용자의 정지를 해제했습니다.", expiredUsers.size());
     }
