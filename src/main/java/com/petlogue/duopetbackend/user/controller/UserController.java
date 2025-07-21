@@ -2,6 +2,7 @@ package com.petlogue.duopetbackend.user.controller;
 
 import com.petlogue.duopetbackend.security.jwt.JWTUtil;
 import com.petlogue.duopetbackend.user.jpa.entity.UserEntity;
+import com.petlogue.duopetbackend.user.model.dto.SmsRequestDto;
 import com.petlogue.duopetbackend.user.model.dto.UserDto;
 import com.petlogue.duopetbackend.user.model.service.UserService;
 import com.petlogue.duopetbackend.user.jpa.repository.UserRepository;
@@ -218,4 +219,56 @@ public class UserController {
         }
     }
 
+    /**
+     * [아이디 찾기] 이름 + 전화번호로 loginId 반환
+     */
+    @PostMapping("/find-id")
+    public ResponseEntity<?> findId(@RequestBody SmsRequestDto dto) {
+        try {
+            String userName = dto.getUserName();
+            String phone = dto.getPhone();
+
+            // 입력값 유효성 검사
+            if (userName == null || phone == null || userName.trim().isEmpty() || phone.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("이름과 전화번호를 모두 입력해주세요.");
+            }
+
+            String loginId = userService.findLoginIdByNameAndPhone(userName, phone);
+            return ResponseEntity.ok().body(Map.of("loginId", loginId));
+
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("일치하는 아이디가 없습니다.");
+        }
+    }
+
+    /**
+     * [비밀번호 찾기] loginId + 전화번호 일치 여부 확인
+     */
+    @PostMapping("/check-user")
+    public ResponseEntity<?> checkUserExists(@RequestBody SmsRequestDto dto) {
+        boolean exists = userService.existsByLoginIdAndPhone(dto.getLoginId(), dto.getPhone());
+
+        if (exists) {
+            return ResponseEntity.ok(Map.of("userExists", true));
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "일치하는 계정을 찾을 수 없습니다."));
+        }
+    }
+
+    /**
+     * 비밀번호 재설정
+     */
+    @PostMapping("/reset-password")
+    public ResponseEntity<String> resetPassword(@RequestBody Map<String, String> request) {
+        String loginId = request.get("loginId");
+        String newPassword = request.get("newPassword");
+
+        try {
+            userService.resetPassword(loginId, newPassword);
+            return ResponseEntity.ok("비밀번호 변경 완료");
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("비밀번호 변경 실패: " + e.getMessage());
+        }
+    }
 }

@@ -37,6 +37,11 @@ public class JWTFilter extends OncePerRequestFilter {
                 || url.equals("/shelter/register")
                 || url.equals("/shelter/check")
                 || url.equals("/pet/register")
+                || url.equals("/sms/send")
+                || url.equals("/sms/verify")
+                || url.equals("/users/find-id")
+                || url.equals("/users/check-user")
+                || url.equals("/users/reset-password")
 
                 || url.equals("/reissue")
 

@@ -36,6 +36,13 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     // 소셜 기기 종류와 소셜아이디로 사용자 조회
     Optional<UserEntity> findByProviderAndProviderId(String provider, String providerId);
 
+    // loginId와 phone이 일치하는 사용자가 있는지 확인
+    @Query("SELECT u FROM UserEntity u WHERE u.userName = :userName AND REPLACE(u.phone, '-', '') = :phone")
+    Optional<UserEntity> findByUserNameAndPhoneWithoutHyphen(@Param("userName") String userName, @Param("phone") String phone);
+
+    // 유저 아이디와 일치하는 전화번
+    @Query("SELECT u FROM UserEntity u WHERE u.loginId = :loginId AND REPLACE(u.phone, '-', '') = :phone")
+    Optional<UserEntity> findByLoginIdAndPhoneWithoutHyphen(@Param("loginId") String loginId, @Param("phone") String phone);
 
 
 // 관리자 회원목록 조회할때 역할이랑 상태별로 조회할때 쓰는 거에요
@@ -86,7 +93,11 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
 
     Long userId(Long userId);
 
-     // 신고관리용
+
+    // 신고관리용
+
+    
+
     @Query("SELECT u FROM UserEntity u WHERE UPPER(u.status) = 'SUSPENDED' AND u.suspendedUntil IS NOT NULL AND u.suspendedUntil <= :now")
     List<UserEntity> findExpiredSuspensions(@Param("now") LocalDateTime now);
 }
