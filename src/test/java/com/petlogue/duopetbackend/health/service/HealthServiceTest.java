@@ -1,19 +1,20 @@
 package com.petlogue.duopetbackend.health.service;
 
-import com.petlogue.duopetbackend.health.dto.PetHealthScheduleDto;
-import com.petlogue.duopetbackend.health.dto.PetMedicalVisitDto;
-import com.petlogue.duopetbackend.health.dto.PetVaccinDto;
-import com.petlogue.duopetbackend.health.dto.PetWeightDto;
-import com.petlogue.duopetbackend.health.entity.PetHealthSchedule;
-import com.petlogue.duopetbackend.health.entity.PetMedicalVisit;
-import com.petlogue.duopetbackend.health.entity.PetVaccin;
-import com.petlogue.duopetbackend.health.entity.PetWeight;
-import com.petlogue.duopetbackend.health.repository.PetHealthScheduleRepository;
-import com.petlogue.duopetbackend.health.repository.PetMedicalVisitRepository;
-import com.petlogue.duopetbackend.health.repository.PetVaccinRepository;
-import com.petlogue.duopetbackend.health.repository.PetWeightRepository;
-import com.petlogue.duopetbackend.pet.entity.Pet;
-import com.petlogue.duopetbackend.pet.repository.PetRepository;
+import com.petlogue.duopetbackend.health.model.dto.PetHealthScheduleDto;
+import com.petlogue.duopetbackend.health.model.dto.PetMedicalVisitDto;
+import com.petlogue.duopetbackend.health.model.dto.PetVaccinDto;
+import com.petlogue.duopetbackend.health.model.dto.PetWeightDto;
+import com.petlogue.duopetbackend.health.jpa.entity.PetHealthSchedule;
+import com.petlogue.duopetbackend.health.jpa.entity.PetMedicalVisit;
+import com.petlogue.duopetbackend.health.jpa.entity.PetVaccin;
+import com.petlogue.duopetbackend.health.jpa.entity.PetWeight;
+import com.petlogue.duopetbackend.health.jpa.repository.PetHealthScheduleRepository;
+import com.petlogue.duopetbackend.health.jpa.repository.PetMedicalVisitRepository;
+import com.petlogue.duopetbackend.health.jpa.repository.PetVaccinRepository;
+import com.petlogue.duopetbackend.health.jpa.repository.PetWeightRepository;
+import com.petlogue.duopetbackend.health.model.service.HealthService;
+import com.petlogue.duopetbackend.pet.jpa.entity.PetEntity;
+import com.petlogue.duopetbackend.pet.jpa.repository.PetRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -48,11 +49,11 @@ public class HealthServiceTest {
     @InjectMocks
     private HealthService healthService;
 
-    private Pet testPet;
+    private PetEntity testPet;
 
     @BeforeEach
     void setUp() {
-        testPet = new Pet();
+        testPet = new PetEntity();
         testPet.setPetId(1L);
         testPet.setPetName("TestPet");
     }

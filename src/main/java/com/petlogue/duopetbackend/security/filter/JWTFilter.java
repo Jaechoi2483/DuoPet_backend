@@ -56,6 +56,7 @@ public class JWTFilter extends OncePerRequestFilter {
                 || url.startsWith("/board/detail")
                 || url.equals("/board/top-liked")
                 || url.equals("/board/top-viewed")
+                || url.startsWith("/comments/view")
                 || url.equals("/notice")
                 || url.startsWith("/upload/");
 

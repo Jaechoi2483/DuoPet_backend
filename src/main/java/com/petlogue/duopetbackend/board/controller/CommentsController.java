@@ -2,6 +2,7 @@ package com.petlogue.duopetbackend.board.controller;
 
 import com.petlogue.duopetbackend.board.model.dto.Comments;
 import com.petlogue.duopetbackend.board.model.service.CommentsService;
+import com.petlogue.duopetbackend.security.jwt.JWTUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,8 +21,10 @@ public class CommentsController {
 
     private final CommentsService commentsService;
 
+    private final JWTUtil jwtUtil;
+
     // 댓글 + 대댓글 조회
-    @GetMapping("/{contentId}")
+    @GetMapping("/view/{contentId}")
     public ResponseEntity<ArrayList<Comments>> selectCommentList(@PathVariable Long contentId) {
         ArrayList<Comments> list = commentsService.selectCommentList(contentId);
         return ResponseEntity.ok(list);
@@ -29,8 +32,14 @@ public class CommentsController {
 
     // 댓글 등록
     @PostMapping("/insert")
-    public ResponseEntity<?> insertComment(@RequestBody Comments dto) {
+    public ResponseEntity<?> insertComment(@RequestBody Comments dto, HttpServletRequest request) {
         log.info("insertComment: {}", dto);
+
+        String token = request.getHeader("Authorization").replace("Bearer ", "");
+        Long userId = jwtUtil.getUserIdFromRequest(request);
+
+        dto.setUserId(userId);
+
         if (commentsService.insertComment(dto) != null) {
             return ResponseEntity.ok().build();
         } else {
