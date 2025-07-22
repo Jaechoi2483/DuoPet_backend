@@ -148,14 +148,20 @@ public class SecurityConfig implements WebMvcConfigurer {
                                 "/shelter/register",
                                 "/shelter/check",
                                 "/pet/register",
+
+                                "/users/face-upload",
+
                                 "/pet/list/**",
                                 "/pet/image/**",
                                 "/pet/*",
+
                                 "/sms/send",
                                 "/sms/verify",
                                 "/users/find-id",
                                 "/users/check-user",
                                 "/users//reset-password",
+                                "/users/check-face",
+                                "/face-login/verify",
                                 "/notice/**",
                                 "/board/detail/**",
                                 "/board/view-count",

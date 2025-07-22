@@ -55,8 +55,11 @@ public class UserEntity {
     @Column(name = "face_recognition_id")
     private String faceRecognitionId;
     @Column(name = "suspended_until")
-
     private LocalDateTime suspendedUntil;
+    @Column(name = "face_original_filename")
+    private String faceOriginalFilename;
+    @Column(name = "face_rename_filename")
+    private String faceRenameFilename;
 
  
 
@@ -89,6 +92,8 @@ public class UserEntity {
                 .userProfileRenameFilename(renameFilename)
                 .faceRecognitionId(faceRecognitionId)
                 .suspendedUntil(suspendedUntil)
+                .faceOriginalFilename(faceOriginalFilename)
+                .faceRenameFilename(faceRenameFilename)
                 .build();
     }
 }

@@ -47,6 +47,8 @@ public class UserDto {
     private ShelterDto shelterProfile;
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime suspendedUntil;
+    private String faceOriginalFilename;
+    private String faceRenameFilename;
 
     public UserEntity toEntity() {
         return UserEntity.builder()
@@ -69,6 +71,8 @@ public class UserDto {
                 .originalFilename(userProfileOriginalFilename)
                 .faceRecognitionId(faceRecognitionId)
                 .renameFilename(userProfileRenameFilename)
+                .faceRenameFilename(faceRenameFilename)
+                .faceOriginalFilename(faceOriginalFilename)
                 .build();
     }
 }
