@@ -237,9 +237,15 @@ public class AdminService {
         Map<Long, Long> commentIdToUserIdMap = new HashMap<>();
         if (targetIdsByType.containsKey("comment")) {
             List<Long> commentIds = targetIdsByType.get("comment");
-            // [수정] commentsRepository는 Iterable<Long>을 요구하므로, 변환 없이 commentIds를 바로 사용합니다.
             List<CommentsEntity> comments = commentsRepository.findAllById(commentIds);
-            comments.forEach(comment -> commentIdToUserIdMap.put(comment.getCommentId(), comment.getUserId()));
+
+            // ✅ 수정된 코드
+            comments.forEach(comment ->
+                    commentIdToUserIdMap.put(
+                            comment.getCommentId(),
+                            comment.getUser().getUserId() // UserEntity에서 Long 타입의 ID를 추출
+                    )
+            );
         }
 
         Set<Long> allUserIds = new HashSet<>();
@@ -310,7 +316,12 @@ public class AdminService {
         if ("content".equalsIgnoreCase(targetType)) {
             targetUserId = boardRepository.findById(targetId).map(BoardEntity::getUserId).orElse(null);
         } else if ("comment".equalsIgnoreCase(targetType)) {
-            targetUserId = commentsRepository.findById(targetId).map(CommentsEntity::getUserId).orElse(null);
+            // ✅ 수정된 코드
+            targetUserId = commentsRepository.findById(targetId)
+                    .map(CommentsEntity::getUser)       // 1. UserEntity 객체를 추출
+                    .map(UserEntity::getUserId)         // 2. UserEntity에서 Long 타입 ID를 추출
+                    .orElse(null);
+
         }
 
         // [핵심] 정지 또는 보류 액션에 대해서만 상태를 변경합니다.
@@ -363,7 +374,8 @@ public class AdminService {
                     .orElse(null);
         } else if ("comment".equalsIgnoreCase(targetType)) {
             targetUserId = commentsRepository.findById(contentOrCommentId)
-                    .map(CommentsEntity::getUserId)
+                    .map(CommentsEntity::getUser)       // Optional<UserEntity>
+                    .map(UserEntity::getUserId)         // Optional<Long>
                     .orElse(null);
         }
 
@@ -424,11 +436,10 @@ public class AdminService {
                     .flatMap(board -> userRepository.findById(board.getUserId())) // [수정] flatMap을 사용해 연계 조회
                     .orElse(null); // 최종적으로 사용자를 찾지 못하면 null 반환
         } else if ("comment".equalsIgnoreCase(targetType)) {
-            // 1. 댓글 ID로 CommentsEntity를 찾고,
-            // 2. 찾은 댓글의 userId로 UserRepository에서 UserEntity를 찾습니다.
             return commentsRepository.findById(targetId)
-                    .flatMap(comment -> userRepository.findById(comment.getUserId())) // [수정] flatMap을 사용해 연계 조회
-                    .orElse(null); // 최종적으로 사용자를 찾지 못하면 null 반환
+                    // UserEntity 객체에서 Long 타입의 ID를 가져와 전달합니다.
+                    .flatMap(comment -> userRepository.findById(comment.getUser().getUserId()))
+                    .orElse(null);
         }
 
         return null;
