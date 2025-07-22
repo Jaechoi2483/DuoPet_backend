@@ -1,6 +1,5 @@
 package com.petlogue.duopetbackend.board.model.dto;
 
-import com.petlogue.duopetbackend.board.jpa.entity.BoardEntity;
 import com.petlogue.duopetbackend.board.jpa.entity.CommentsEntity;
 import com.petlogue.duopetbackend.user.jpa.entity.UserEntity;
 import lombok.AllArgsConstructor;
@@ -28,6 +27,8 @@ public class Comments {
     private int likeCount;          // 댓글 좋아요 카운트
     private int reportCount;        // 댓글 신고하기 카운트
     private String nickname;        // 닉네임
+    @Builder.Default
+    private String status = "ACTIVE";
 
 
     public CommentsEntity toEntity(UserEntity user) {
@@ -41,6 +42,7 @@ public class Comments {
                 .likeCount(likeCount)
                 .reportCount(reportCount)
                 .user(user)
+                .status(this.status)
                 .build();
     }
 }

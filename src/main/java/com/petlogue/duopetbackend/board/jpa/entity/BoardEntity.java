@@ -65,6 +65,10 @@ public class BoardEntity {
     @Column(name = "UPDATE_AT")
     private Date updateAt;
 
+    @Column(name = "status", nullable = false)
+    @Builder.Default
+    private String status = "ACTIVE"; ;
+
     // 좋아요 카운트 증가
     public void incrementLikeCount() {
         this.likeCount = this.likeCount + 1;
@@ -105,6 +109,7 @@ public class BoardEntity {
                 .originalFilename(originalFilename)
                 .createdAt(createdAt)
                 .updateAt(updateAt)
+                .status(status)
                 .build();
     }
 }

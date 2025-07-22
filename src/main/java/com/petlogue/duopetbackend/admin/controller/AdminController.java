@@ -4,7 +4,10 @@ package com.petlogue.duopetbackend.admin.controller;
 import com.petlogue.duopetbackend.admin.model.dto.DashboardDataDto;
 import com.petlogue.duopetbackend.admin.model.dto.UserReportCountDto;
 import com.petlogue.duopetbackend.admin.model.service.AdminService;
+import com.petlogue.duopetbackend.board.model.dto.Board;
+import com.petlogue.duopetbackend.board.model.dto.Comments;
 import com.petlogue.duopetbackend.board.model.dto.Report;
+import com.petlogue.duopetbackend.board.model.service.BoardService;
 import com.petlogue.duopetbackend.info.model.service.ShelterDataSyncService;
 import com.petlogue.duopetbackend.user.model.dto.UserDto;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +32,8 @@ import java.util.Map;
 public class AdminController {
     private final AdminService adminService;
     private final ShelterDataSyncService shelterDataSyncService;
+    private final BoardService boardService;
+
 
 
     @GetMapping("/admin/users")
@@ -118,6 +123,24 @@ public class AdminController {
     public ResponseEntity<List<Report>> getAllReports() {
         List<Report> reports = adminService.getAllReports();
         return ResponseEntity.ok(reports);
+    }
+    @GetMapping("/admin/board/{boardId}")
+    public ResponseEntity<Board> getBoardForAdmin(@PathVariable Long boardId) {
+        Board board = boardService.getBoardDetailForAdmin(boardId); // 관리자용 메서드 호출
+        if (board == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(board);
+    }
+    @GetMapping("/admin/comments/{commentId}")
+    public ResponseEntity<Comments> getCommentForAdmin(@PathVariable Long commentId) {
+        log.info("관리자: 댓글 상세 조회 API 호출됨 - Comment ID: {}", commentId);
+        Comments comment = boardService.getCommentDetailForAdmin(commentId); // BoardService의 새 메서드 호출
+        if (comment == null) {
+            log.warn("댓글을 찾을 수 없습니다 - Comment ID: {}", commentId);
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(comment);
     }
 
     @PutMapping("/admin/reports/{reportId}/status")
