@@ -301,7 +301,7 @@ public class UserService {
      * - 얼굴 이미지 업로드 시 서버에 저장하고, 파일명을 DB에 반영한다.
      * - 등록 여부는 faceOriginalFilename / faceRenameFilename 존재 여부로 판단한다.
      */
-    public void saveFaceImageByLoginId(Long userId, MultipartFile faceImage) {
+    public String saveFaceImageByLoginId(Long userId, MultipartFile faceImage) {
         // 1. 사용자 조회
         UserEntity entity = userRepository.findByUserId(userId);
         if (entity == null) {
@@ -316,6 +316,7 @@ public class UserService {
         try {
             // 3. 파일명 처리
             String originalName = faceImage.getOriginalFilename(); // 예: "face.png"
+            String userAwareOriginal = userId + "_" + originalName;
             String rename = FileNameChange.change(originalName, "'face_'yyyyMMdd_HHmmss"); // 예: face_20250721_211000.png
 
             // 4. 저장 경로 설정
@@ -331,11 +332,12 @@ public class UserService {
             faceImage.transferTo(file);
 
             // 7. DB에 파일명 저장 (등록 여부 판단 기준)
-            entity.setFaceOriginalFilename(originalName);
+            entity.setFaceOriginalFilename(userAwareOriginal);
             entity.setFaceRenameFilename(rename);
 
             // 8. 사용자 정보 저장
             userRepository.save(entity);
+            return rename;
 
         } catch (IOException | IllegalStateException e) {
             throw new RuntimeException("얼굴 이미지 저장 중 오류 발생", e);

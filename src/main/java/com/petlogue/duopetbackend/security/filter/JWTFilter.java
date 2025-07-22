@@ -44,7 +44,8 @@ public class JWTFilter extends OncePerRequestFilter {
                 || url.equals("/users/reset-password")
                 || url.equals("/users/face-upload")
                 || url.equals("/users/check-face")
-                || url.equals("/face-login/verify")
+                || url.equals("/api/v1/face-login/verify")
+                || url.equals("/face-login/success")
 
                 || url.equals("/reissue")
 

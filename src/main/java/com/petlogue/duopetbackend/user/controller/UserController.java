@@ -10,10 +10,13 @@ import com.petlogue.duopetbackend.user.jpa.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.http.*;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.http.HttpStatus;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -284,9 +287,29 @@ public class UserController {
     public ResponseEntity<?> uploadFaceImage(@RequestParam("userId") Long userId,
                                              @RequestParam("faceImage") MultipartFile faceImage) {
         try {
-            userService.saveFaceImageByLoginId(userId, faceImage);
+            // 1. 얼굴 이미지 저장
+            String savedFileName = userService.saveFaceImageByLoginId(userId, faceImage);
+
+            // 2. FastAPI 호출 (임베딩 저장)
+            String filePath = "C:/upload_files/face/" + savedFileName;
+
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+            body.add("user_id", userId.toString());
+            body.add("image", new FileSystemResource(filePath));
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+            HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+
+            RestTemplate restTemplate = new RestTemplate();
+            String fastApiUrl = "http://localhost:8000/api/v1/face-login/register";
+            ResponseEntity<String> response = restTemplate.postForEntity(fastApiUrl, requestEntity, String.class);
+
+            System.out.println("FastAPI 응답: " + response.getBody());
+
             return ResponseEntity.ok(Map.of(
-                    "message", "얼굴 이미지 저장 완료",
+                    "message", "얼굴 이미지 저장 및 등록 완료",
                     "userId", userId
             ));
         } catch (Exception e) {
@@ -295,6 +318,7 @@ public class UserController {
         }
     }
 
+
     /**
      * 얼굴 등록 여부 확인 API
      * 요청: GET /users/check-face?userId=123
@@ -302,7 +326,11 @@ public class UserController {
      */
     @GetMapping("/check-face")
     public ResponseEntity<Map<String, Object>> checkFaceRegistered(@RequestParam Long userId) {
+        log.info("얼굴 등록 여부 요청 수신: userId = {}", userId);
+
         boolean isRegistered = userService.isFaceRegistered(userId);
+        log.info("사용자 [{}] 얼굴 등록 여부: {}", userId, isRegistered);
+
         Map<String, Object> body = new HashMap<>();
         body.put("userId", userId);
         body.put("faceRegistered", isRegistered);
