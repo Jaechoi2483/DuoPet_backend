@@ -1,5 +1,6 @@
 package com.petlogue.duopetbackend.user.controller;
 
+import com.petlogue.duopetbackend.common.FileNameChange;
 import com.petlogue.duopetbackend.security.jwt.JWTUtil;
 import com.petlogue.duopetbackend.user.jpa.entity.UserEntity;
 import com.petlogue.duopetbackend.user.model.dto.SmsRequestDto;
@@ -14,6 +15,10 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.http.HttpStatus;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -270,5 +275,37 @@ public class UserController {
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("비밀번호 변경 실패: " + e.getMessage());
         }
+    }
+
+    /**
+     * 얼굴 이미지 저장 처리 (촬영 이미지 등록)
+     */
+    @PostMapping("/face-upload")
+    public ResponseEntity<?> uploadFaceImage(@RequestParam("userId") Long userId,
+                                             @RequestParam("faceImage") MultipartFile faceImage) {
+        try {
+            userService.saveFaceImageByLoginId(userId, faceImage);
+            return ResponseEntity.ok(Map.of(
+                    "message", "얼굴 이미지 저장 완료",
+                    "userId", userId
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "저장 실패", "detail", e.getMessage()));
+        }
+    }
+
+    /**
+     * 얼굴 등록 여부 확인 API
+     * 요청: GET /users/check-face?userId=123
+     * 응답: { "userId": 123, "faceRegistered": true }
+     */
+    @GetMapping("/check-face")
+    public ResponseEntity<Map<String, Object>> checkFaceRegistered(@RequestParam Long userId) {
+        boolean isRegistered = userService.isFaceRegistered(userId);
+        Map<String, Object> body = new HashMap<>();
+        body.put("userId", userId);
+        body.put("faceRegistered", isRegistered);
+        return ResponseEntity.ok(body);
     }
 }

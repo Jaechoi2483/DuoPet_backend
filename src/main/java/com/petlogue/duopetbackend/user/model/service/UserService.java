@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.Optional;
@@ -293,5 +294,62 @@ public class UserService {
 
     private String normalizePhone(String phone) {
         return phone == null ? "" : phone.replaceAll("-", "");
+    }
+
+    /**
+     * 얼굴 이미지 저장 처리
+     * - 얼굴 이미지 업로드 시 서버에 저장하고, 파일명을 DB에 반영한다.
+     * - 등록 여부는 faceOriginalFilename / faceRenameFilename 존재 여부로 판단한다.
+     */
+    public void saveFaceImageByLoginId(Long userId, MultipartFile faceImage) {
+        // 1. 사용자 조회
+        UserEntity entity = userRepository.findByUserId(userId);
+        if (entity == null) {
+            throw new RuntimeException("해당 사용자를 찾을 수 없습니다: " + userId);
+        }
+
+        // 2. 파일 유효성 검사
+        if (faceImage == null || faceImage.isEmpty()) {
+            throw new RuntimeException("업로드할 얼굴 이미지가 비어있습니다.");
+        }
+
+        try {
+            // 3. 파일명 처리
+            String originalName = faceImage.getOriginalFilename(); // 예: "face.png"
+            String rename = FileNameChange.change(originalName, "'face_'yyyyMMdd_HHmmss"); // 예: face_20250721_211000.png
+
+            // 4. 저장 경로 설정
+            String savePath = "C:/upload_files/face/" + rename;
+            File file = new File(savePath);
+
+            // 5. 디렉토리 없을 경우 생성
+            if (!file.getParentFile().exists()) {
+                file.getParentFile().mkdirs();
+            }
+
+            // 6. 실제 파일 저장
+            faceImage.transferTo(file);
+
+            // 7. DB에 파일명 저장 (등록 여부 판단 기준)
+            entity.setFaceOriginalFilename(originalName);
+            entity.setFaceRenameFilename(rename);
+
+            // 8. 사용자 정보 저장
+            userRepository.save(entity);
+
+        } catch (IOException | IllegalStateException e) {
+            throw new RuntimeException("얼굴 이미지 저장 중 오류 발생", e);
+        }
+    }
+
+    /**
+     * 얼굴 등록 여부 확인.
+     * FACE_ORIGINAL_FILENAME, FACE_RENAME_FILENAME 둘 다 값이 있을 때 true.
+     */
+    @Transactional(readOnly = true)
+    public boolean isFaceRegistered(Long userId) {
+        return userRepository.findById(userId)
+                .map(u -> u.getFaceOriginalFilename() != null && u.getFaceRenameFilename() != null)
+                .orElse(false);
     }
 }

@@ -2389,3 +2389,160 @@ COMMENT ON COLUMN SHELTER_MAPPING.match_type IS '매칭 방식 (auto: 자동, ma
 COMMENT ON COLUMN SHELTER_MAPPING.match_score IS '매칭 신뢰도 (0~1)';
 
 commit;
+
+/*================
+2025-07-21
+USERS 테이블 컬럼 추가
+FACE_ORIGINAL_FILENAME , FACE_RENAME_FILENAME
+=================*/
+
+ALTER TABLE USERS ADD FACE_ORIGINAL_FILENAME VARCHAR2(255);
+ALTER TABLE USERS ADD FACE_RENAME_FILENAME VARCHAR2(255);
+
+COMMENT ON COLUMN USERS.FACE_ORIGINAL_FILENAME IS '회원 프로필 이미지의 원본 파일명';
+COMMENT ON COLUMN USERS.FACE_RENAME_FILENAME IS '회원 페이스 이미지의 서버 저장 파일명';
+
+commit;
+
+
+/*================
+2025-07-21
+PET_HEALTH_RECORD 테이블 생성
+PET_HEALTH_FILE 테이블 생성
+=================*/
+
+-- PET_HEALTH_RECORD 테이블 생성
+-- 시퀀스 생성 (Oracle 11g 호환)
+CREATE SEQUENCE PET_HEALTH_RECORD_SEQ
+    START WITH 1
+    INCREMENT BY 1
+    NOCACHE
+    NOCYCLE;
+
+-- PET_HEALTH_RECORD 테이블 생성
+CREATE TABLE PET_HEALTH_RECORD (
+    record_id NUMBER(19) PRIMARY KEY,
+    pet_id NUMBER(19) NOT NULL,
+    record_type VARCHAR2(50) NOT NULL,
+    title VARCHAR2(200) NOT NULL,
+    record_date DATE NOT NULL,
+    veterinarian VARCHAR2(100),
+    content CLOB,
+    status VARCHAR2(20) DEFAULT '완료',
+    created_at TIMESTAMP DEFAULT SYSTIMESTAMP NOT NULL,
+    updated_at TIMESTAMP DEFAULT SYSTIMESTAMP NOT NULL,
+    CONSTRAINT fk_pet_health_record_pet FOREIGN KEY (pet_id) REFERENCES PET(pet_id)
+);
+
+-- PET_HEALTH_RECORD 테이블 주석
+COMMENT ON TABLE PET_HEALTH_RECORD IS '반려동물 건강 기록 테이블';
+COMMENT ON COLUMN PET_HEALTH_RECORD.record_id IS '건강기록 ID';
+COMMENT ON COLUMN PET_HEALTH_RECORD.pet_id IS '반려동물 ID';
+COMMENT ON COLUMN PET_HEALTH_RECORD.record_type IS '기록 유형 (정기검진, 예방접종, 치료, 응급처치, 기타)';
+COMMENT ON COLUMN PET_HEALTH_RECORD.title IS '제목';
+COMMENT ON COLUMN PET_HEALTH_RECORD.record_date IS '기록 날짜';
+COMMENT ON COLUMN PET_HEALTH_RECORD.veterinarian IS '담당 수의사';
+COMMENT ON COLUMN PET_HEALTH_RECORD.content IS '상세 내용';
+COMMENT ON COLUMN PET_HEALTH_RECORD.status IS '상태 (완료, 예정)';
+COMMENT ON COLUMN PET_HEALTH_RECORD.created_at IS '생성일시';
+COMMENT ON COLUMN PET_HEALTH_RECORD.updated_at IS '수정일시';
+
+-- PET_HEALTH_FILE 시퀀스 생성
+CREATE SEQUENCE PET_HEALTH_FILE_SEQ
+    START WITH 1
+    INCREMENT BY 1
+    NOCACHE
+    NOCYCLE;
+
+-- PET_HEALTH_FILE 테이블 생성
+CREATE TABLE PET_HEALTH_FILE (
+    file_id NUMBER(19) PRIMARY KEY,
+    record_id NUMBER(19) NOT NULL,
+    original_filename VARCHAR2(255) NOT NULL,
+    stored_filename VARCHAR2(255) NOT NULL,
+    file_size NUMBER(19) NOT NULL,
+    content_type VARCHAR2(100) NOT NULL,
+    file_path VARCHAR2(500) NOT NULL,
+    created_at TIMESTAMP DEFAULT SYSTIMESTAMP NOT NULL,
+    CONSTRAINT fk_pet_health_file_record FOREIGN KEY (record_id) REFERENCES PET_HEALTH_RECORD(record_id) ON DELETE CASCADE
+);
+
+-- PET_HEALTH_FILE 테이블 주석
+COMMENT ON TABLE PET_HEALTH_FILE IS '반려동물 건강 기록 첨부 파일 테이블';
+COMMENT ON COLUMN PET_HEALTH_FILE.file_id IS '파일 ID';
+COMMENT ON COLUMN PET_HEALTH_FILE.record_id IS '건강기록 ID';
+COMMENT ON COLUMN PET_HEALTH_FILE.original_filename IS '원본 파일명';
+COMMENT ON COLUMN PET_HEALTH_FILE.stored_filename IS '저장된 파일명';
+COMMENT ON COLUMN PET_HEALTH_FILE.file_size IS '파일 크기';
+COMMENT ON COLUMN PET_HEALTH_FILE.content_type IS '파일 타입';
+COMMENT ON COLUMN PET_HEALTH_FILE.file_path IS '파일 저장 경로';
+COMMENT ON COLUMN PET_HEALTH_FILE.created_at IS '생성일시';
+
+-- PET_HEALTH_RECORD 트리거 생성 (INSERT 시 ID 자동 생성)
+CREATE OR REPLACE TRIGGER PET_HEALTH_RECORD_BI_TRG
+BEFORE INSERT ON PET_HEALTH_RECORD
+FOR EACH ROW
+BEGIN
+    IF :NEW.record_id IS NULL THEN
+        SELECT PET_HEALTH_RECORD_SEQ.NEXTVAL INTO :NEW.record_id FROM DUAL;
+    END IF;
+    :NEW.created_at := SYSTIMESTAMP;
+    :NEW.updated_at := SYSTIMESTAMP;
+END;
+/
+
+-- PET_HEALTH_RECORD 트리거 생성 (UPDATE 시 updated_at 자동 갱신)
+CREATE OR REPLACE TRIGGER PET_HEALTH_RECORD_BU_TRG
+BEFORE UPDATE ON PET_HEALTH_RECORD
+FOR EACH ROW
+BEGIN
+    :NEW.updated_at := SYSTIMESTAMP;
+END;
+/
+
+-- PET_HEALTH_FILE 트리거 생성 (INSERT 시 ID 자동 생성)
+CREATE OR REPLACE TRIGGER PET_HEALTH_FILE_BI_TRG
+BEFORE INSERT ON PET_HEALTH_FILE
+FOR EACH ROW
+BEGIN
+    IF :NEW.file_id IS NULL THEN
+        SELECT PET_HEALTH_FILE_SEQ.NEXTVAL INTO :NEW.file_id FROM DUAL;
+    END IF;
+    :NEW.created_at := SYSTIMESTAMP;
+END;
+/
+
+-- 인덱스 생성 (성능 향상)
+CREATE INDEX idx_pet_health_record_pet_id ON PET_HEALTH_RECORD(pet_id);
+CREATE INDEX idx_pet_health_record_date ON PET_HEALTH_RECORD(record_date);
+CREATE INDEX idx_pet_health_file_record_id ON PET_HEALTH_FILE(record_id);
+
+-- 권한 부여 (필요 시)
+-- GRANT ALL ON PET_HEALTH_RECORD TO duopet;
+-- GRANT ALL ON PET_HEALTH_FILE TO duopet;
+-- GRANT ALL ON PET_HEALTH_RECORD_SEQ TO duopet;
+-- GRANT ALL ON PET_HEALTH_FILE_SEQ TO duopet;
+
+COMMIT;
+
+
+/*================
+2025-07-21
+PET_VACCIN 테이블 수정
+병원명 컬럼 추가
+=================*/
+ALTER TABLE pet_vaccin
+ADD hospital_name VARCHAR2(100);
+
+COMMENT ON COLUMN pet_vaccin.hospital_name IS '예방접종을 실시한 병원명';
+
+COMMIT;
+
+  -- 건강 기록 테이블
+  
+ALTER TABLE PET_HEALTH_RECORD
+ADD hospital_name VARCHAR2(100);
+
+COMMENT ON COLUMN PET_HEALTH_RECORD.hospital_name IS '병원명';
+  
+COMMIT;
