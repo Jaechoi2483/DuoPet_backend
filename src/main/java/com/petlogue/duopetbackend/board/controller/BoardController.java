@@ -300,7 +300,7 @@ public class BoardController {
 
     // 좋아요 등록
     @PostMapping("/like/{id}")
-    public ResponseEntity<?> toggleLike(@PathVariable Long id, HttpServletRequest request) {
+    public ResponseEntity<?> toggleBoardLike(@PathVariable Long id, HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
         log.info("Controller 도달 - request.getAttribute(userId): {}", request.getAttribute("userId"));
 
@@ -311,7 +311,7 @@ public class BoardController {
 
         log.info("좋아요 토글 요청 - userId: {}, contentId: {}", userId, id);
 
-        Like result = likeService.toggleLike(userId, id);
+        Like result = likeService.toggleBoardLike(userId, id);
         log.info("좋아요 토글 결과 - liked: {}", result.isLiked());
 
         return ResponseEntity.ok(Map.of("liked", result.isLiked(), "message", result.isLiked() ? "좋아요 등록됨" : "좋아요 취소됨"));

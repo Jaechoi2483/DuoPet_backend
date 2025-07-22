@@ -16,4 +16,6 @@ public interface LikeRepository extends JpaRepository<LikeEntity, Long> {
     void deleteByUserIdAndTargetIdAndTargetType(Long userId, Long targetId, String targetType);
     // 마이페이지용: 특정 사용자의 좋아요 전체 목록 조회
     List<LikeEntity> findAllByUserId(Long userId);
+
+    boolean existsByUserIdAndTargetIdAndTargetType(Long userId, Long targetId, String targetType);
 }

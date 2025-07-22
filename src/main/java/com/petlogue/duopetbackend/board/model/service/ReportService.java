@@ -10,6 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Date;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -41,4 +43,27 @@ public class ReportService {
         reportRepository.save(report);
     }
 
+    // 댓글 신고하기
+    public String toggleCommentReport(Long userId, Long commentId, Report dto) {
+        String targetType = "comment";
+
+        boolean alreadyReported = reportRepository.existsByUser_UserIdAndTargetIdAndTargetType(userId, commentId, targetType);
+
+        if (alreadyReported) {
+            return "이미 신고한 댓글입니다.";
+        }
+
+        ReportEntity report = ReportEntity.builder()
+                .user(userRepository.findById(userId).orElseThrow())
+                .targetId(commentId)
+                .targetType(targetType)
+                .reason(dto.getReason())
+                .details(dto.getDetails())
+                .status("PENDING")
+                .createdAt(new Date())
+                .build();
+
+        reportRepository.save(report);
+        return "신고가 접수되었습니다.";
+    }
 }

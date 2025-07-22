@@ -40,9 +40,9 @@ public class LikeEntity {
     }
 
     // 생성자 수정 (targetId, userId, targetType을 받도록)
-    public LikeEntity(Long targetId, Long userId, String targetType) {
-        this.targetId = targetId;
+    public LikeEntity(Long userId, Long targetId, String targetType) {
         this.userId = userId;
+        this.targetId = targetId;
         this.targetType = targetType;
     }
 
