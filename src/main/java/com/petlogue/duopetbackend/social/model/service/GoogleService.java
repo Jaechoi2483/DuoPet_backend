@@ -38,7 +38,7 @@ public class GoogleService extends DefaultOAuth2UserService {
                     .provider("GOOGLE")
                     .providerId(googleUser.getId())
                     .userName(googleUser.getName())
-                    .nickname(googleUser.getName())
+                    .nickname(loginId)
                     .userEmail(googleUser.getEmail())
                     .phone("소셜가입")
                     .role("user")

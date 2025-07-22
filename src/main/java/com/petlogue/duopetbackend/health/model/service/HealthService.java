@@ -63,6 +63,29 @@ public class HealthService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional
+    public void updateMedicalVisit(Long visitId, PetMedicalVisitDto.CreateRequest dto) {
+        PetMedicalVisit visit = petMedicalVisitRepository.findById(visitId)
+                .orElseThrow(() -> new IllegalArgumentException("Medical visit not found"));
+        
+        visit.setHospitalName(dto.getHospitalName());
+        visit.setVeterinarian(dto.getVeterinarian());
+        visit.setVisitDate(dto.getVisitDate());
+        visit.setVisitReason(dto.getVisitReason());
+        visit.setDiagnosis(dto.getDiagnosis());
+        visit.setTreatment(dto.getTreatment());
+        visit.setCost(dto.getCost());
+        
+        petMedicalVisitRepository.save(visit);
+    }
+
+    @Transactional
+    public void deleteMedicalVisit(Long visitId) {
+        PetMedicalVisit visit = petMedicalVisitRepository.findById(visitId)
+                .orElseThrow(() -> new IllegalArgumentException("Medical visit not found"));
+        petMedicalVisitRepository.delete(visit);
+    }
+
     // Vaccination Service Methods
     @Transactional
     public void createVaccination(PetVaccinDto.CreateRequest dto) {
@@ -73,6 +96,7 @@ public class HealthService {
         vaccin.setScheduledDate(dto.getScheduledDate());
         vaccin.setDescription(dto.getDescription());
         vaccin.setAdministeredDate(dto.getAdministeredDate());
+        vaccin.setHospitalName(dto.getHospitalName());
         petVaccinRepository.save(vaccin);
     }
 
@@ -84,8 +108,30 @@ public class HealthService {
                         .scheduledDate(vaccin.getScheduledDate())
                         .description(vaccin.getDescription())
                         .administeredDate(vaccin.getAdministeredDate())
+                        .hospitalName(vaccin.getHospitalName())
                         .build())
                 .collect(Collectors.toList());
+    }
+    
+    @Transactional
+    public void updateVaccination(Long vaccinationId, PetVaccinDto.CreateRequest dto) {
+        PetVaccin vaccin = petVaccinRepository.findById(vaccinationId)
+                .orElseThrow(() -> new IllegalArgumentException("Vaccination not found"));
+        
+        vaccin.setVaccineName(dto.getVaccineName());
+        vaccin.setScheduledDate(dto.getScheduledDate());
+        vaccin.setDescription(dto.getDescription());
+        vaccin.setAdministeredDate(dto.getAdministeredDate());
+        vaccin.setHospitalName(dto.getHospitalName());
+        
+        petVaccinRepository.save(vaccin);
+    }
+    
+    @Transactional
+    public void deleteVaccination(Long vaccinationId) {
+        PetVaccin vaccin = petVaccinRepository.findById(vaccinationId)
+                .orElseThrow(() -> new IllegalArgumentException("Vaccination not found"));
+        petVaccinRepository.delete(vaccin);
     }
 
     // Weight Service Methods
@@ -109,6 +155,25 @@ public class HealthService {
                         .memo(weight.getMemo())
                         .build())
                 .collect(Collectors.toList());
+    }
+    
+    @Transactional
+    public void updateWeight(Long weightId, PetWeightDto.CreateRequest dto) {
+        PetWeight weight = petWeightRepository.findById(weightId)
+                .orElseThrow(() -> new IllegalArgumentException("Weight record not found"));
+        
+        weight.setWeightKg(dto.getWeightKg());
+        weight.setMeasuredDate(dto.getMeasuredDate());
+        weight.setMemo(dto.getMemo());
+        
+        petWeightRepository.save(weight);
+    }
+    
+    @Transactional
+    public void deleteWeight(Long weightId) {
+        PetWeight weight = petWeightRepository.findById(weightId)
+                .orElseThrow(() -> new IllegalArgumentException("Weight record not found"));
+        petWeightRepository.delete(weight);
     }
 
     // Health Schedule Service Methods
@@ -136,5 +201,26 @@ public class HealthService {
                         .memo(schedule.getMemo())
                         .build())
                 .collect(Collectors.toList());
+    }
+    
+    @Transactional
+    public void updateHealthSchedule(Long scheduleId, PetHealthScheduleDto.CreateRequest dto) {
+        PetHealthSchedule schedule = petHealthScheduleRepository.findById(scheduleId)
+                .orElseThrow(() -> new IllegalArgumentException("Health schedule not found"));
+        
+        schedule.setScheduleType(dto.getScheduleType());
+        schedule.setTitle(dto.getTitle());
+        schedule.setScheduleDate(dto.getScheduleDate());
+        schedule.setScheduleTime(dto.getScheduleTime());
+        schedule.setMemo(dto.getMemo());
+        
+        petHealthScheduleRepository.save(schedule);
+    }
+    
+    @Transactional
+    public void deleteHealthSchedule(Long scheduleId) {
+        PetHealthSchedule schedule = petHealthScheduleRepository.findById(scheduleId)
+                .orElseThrow(() -> new IllegalArgumentException("Health schedule not found"));
+        petHealthScheduleRepository.delete(schedule);
     }
 }

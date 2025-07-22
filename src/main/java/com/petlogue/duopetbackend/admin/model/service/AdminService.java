@@ -3,6 +3,7 @@ package com.petlogue.duopetbackend.admin.model.service;
 
 import com.petlogue.duopetbackend.admin.model.dto.DashboardDataDto;
 import com.petlogue.duopetbackend.admin.model.dto.StatItemDto;
+import com.petlogue.duopetbackend.admin.model.dto.UserReportCountDto;
 import com.petlogue.duopetbackend.board.jpa.entity.BoardEntity;
 import com.petlogue.duopetbackend.board.jpa.entity.CommentsEntity;
 import com.petlogue.duopetbackend.board.jpa.entity.ReportEntity;
@@ -32,11 +33,9 @@ import org.springframework.web.client.RestTemplate;
 import java.net.MalformedURLException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -216,157 +215,232 @@ public class AdminService {
     @Transactional(readOnly = true)
     public List<Report> getAllReports() {
         List<ReportEntity> reportEntities = reportRepository.findAllByOrderByCreatedAtDesc();
+        if (reportEntities.isEmpty()) {
+            return new ArrayList<>();
+        }
 
-        // --- 신고 대상 콘텐츠 존재 여부 일괄 확인 (성능 최적화) ---
-        // 1. 신고 대상을 타입(content, comment)별로 ID를 그룹화합니다.
-        List<Long> contentIds = reportEntities.stream()
-                .filter(r -> "content".equalsIgnoreCase(r.getTargetType()))
-                .map(ReportEntity::getTargetId).distinct().toList();
-        List<Long> commentIds = reportEntities.stream()
-                .filter(r -> "comment".equalsIgnoreCase(r.getTargetType()))
-                .map(ReportEntity::getTargetId).distinct().toList();
-        List<Number> numberContentIds = new ArrayList<>(contentIds);
-        Set<Long> existingContentIds = boardRepository.findAllById(numberContentIds).stream()
-                .map(BoardEntity::getContentId).collect(Collectors.toSet());
+        Map<String, List<Long>> targetIdsByType = reportEntities.stream()
+                .collect(Collectors.groupingBy(
+                        report -> report.getTargetType().toLowerCase(),
+                        Collectors.mapping(ReportEntity::getTargetId, Collectors.toList())
+                ));
 
-        // [수정] CommentsRepository는 Long 타입을 사용하므로, 변환 없이 commentIds를 바로 사용합니다.
-        Set<Long> existingCommentIds = commentsRepository.findAllById(commentIds).stream()
-                .map(CommentsEntity::getCommentId).collect(Collectors.toSet());
-        // -----------------------------------------------------------------
+        Map<Long, Long> contentIdToUserIdMap = new HashMap<>();
+        if (targetIdsByType.containsKey("content")) {
+            List<Long> contentIds = targetIdsByType.get("content");
+            // boardRepository는 Iterable<Number>를 요구하므로 변환 유지
+            List<Number> numberContentIds = new ArrayList<>(contentIds);
+            List<BoardEntity> boards = boardRepository.findAllById(numberContentIds);
+            boards.forEach(board -> contentIdToUserIdMap.put(board.getContentId(), board.getUserId()));
+        }
 
-        // --- 기존 로직 (사용자 정보 조회) ---
-        List<Long> targetUserIds = reportEntities.stream().map(ReportEntity::getTargetId).distinct().toList();
-        Map<Long, UserEntity> targetUserMap = userRepository.findAllById(targetUserIds).stream()
+        Map<Long, Long> commentIdToUserIdMap = new HashMap<>();
+        if (targetIdsByType.containsKey("comment")) {
+            List<Long> commentIds = targetIdsByType.get("comment");
+            // [수정] commentsRepository는 Iterable<Long>을 요구하므로, 변환 없이 commentIds를 바로 사용합니다.
+            List<CommentsEntity> comments = commentsRepository.findAllById(commentIds);
+            comments.forEach(comment -> commentIdToUserIdMap.put(comment.getCommentId(), comment.getUserId()));
+        }
+
+        Set<Long> allUserIds = new HashSet<>();
+        reportEntities.forEach(report -> allUserIds.add(report.getUser().getUserId()));
+        allUserIds.addAll(contentIdToUserIdMap.values());
+        allUserIds.addAll(commentIdToUserIdMap.values());
+
+        Map<Long, UserEntity> userMap = userRepository.findAllById(allUserIds).stream()
                 .collect(Collectors.toMap(UserEntity::getUserId, user -> user));
 
-        // --- 최종 DTO 생성 ---
         return reportEntities.stream()
                 .map(entity -> {
-                    String finalStatus = entity.getStatus(); // 기본 상태는 DB 값
+                    UserEntity reporter = userMap.get(entity.getUser().getUserId());
+                    UserEntity reportedUser = null;
+                    Long reportedUserId = null;
 
-                    // [신규 로직] 상태가 PENDING일 때만 존재 여부 확인
-                    if ("PENDING".equals(entity.getStatus())) {
-                        boolean isDeleted = false;
-                        if ("content".equalsIgnoreCase(entity.getTargetType())) {
-                            if (!existingContentIds.contains(entity.getTargetId())) {
-                                isDeleted = true;
-                            }
-                        } else if ("comment".equalsIgnoreCase(entity.getTargetType())) {
-                            if (!existingCommentIds.contains(entity.getTargetId())) {
-                                isDeleted = true;
-                            }
-                        }
-                        if (isDeleted) {
-                            finalStatus = "DELETED_CONTENT"; // 존재하지 않으면 DTO의 상태를 변경
-                        }
+                    if ("content".equalsIgnoreCase(entity.getTargetType())) {
+                        reportedUserId = contentIdToUserIdMap.get(entity.getTargetId());
+                    } else if ("comment".equalsIgnoreCase(entity.getTargetType())) {
+                        reportedUserId = commentIdToUserIdMap.get(entity.getTargetId());
                     }
 
-                    // ... (기존 사용자 정보 매핑 로직) ...
-                    UserEntity targetUser = targetUserMap.get(entity.getTargetId());
-                    String targetLoginId = (targetUser != null) ? targetUser.getLoginId() : "알 수 없음";
-                    LocalDateTime suspendedUntil = (targetUser != null) ? targetUser.getSuspendedUntil() : null;
+                    if (reportedUserId != null) {
+                        reportedUser = userMap.get(reportedUserId);
+                    }
 
                     return Report.builder()
                             .reportId(entity.getReportId())
-                            .userId(entity.getUser().getUserId())
+                            .userId(reporter != null ? reporter.getUserId() : null)
+                            .userLoginId(reporter != null ? reporter.getLoginId() : "알 수 없음")
                             .targetId(entity.getTargetId())
                             .targetType(entity.getTargetType())
+                            .targetLoginId(reportedUser != null ? reportedUser.getLoginId() : "알 수 없음")
+                            .suspendedUntil(reportedUser != null ? reportedUser.getSuspendedUntil() : null)
                             .reason(entity.getReason())
-                            .status(finalStatus) // <-- 최종 결정된 상태를 사용
+                            .status(entity.getStatus())
                             .createdAt(entity.getCreatedAt())
                             .details(entity.getDetails())
-                            .userLoginId(entity.getUser().getLoginId())
-                            .targetLoginId(targetLoginId)
-                            .suspendedUntil(suspendedUntil)
                             .build();
                 })
                 .collect(Collectors.toList());
     }
     @Transactional
-    public Report updateReportStatus(Long reportId, String action) { // 변수명을 newStatus에서 action으로 변경하여 명확화
+    public Report updateReportStatus(Long reportId, String action) {
         ReportEntity reportEntity = reportRepository.findById(reportId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 ID의 신고를 찾을 수 없습니다: " + reportId));
 
-        UserEntity targetUser = userRepository.findById(reportEntity.getTargetId())
-                .orElse(null);
-
-        // '삭제' 액션은 별도로 먼저 처리
+        // [핵심] '삭제' 액션일 경우, 컨텐츠만 삭제하고 신고 레코드의 상태는 변경하지 않습니다.
         if ("DELETED".equals(action)) {
             String targetType = reportEntity.getTargetType();
             Long targetId = reportEntity.getTargetId();
 
             if ("content".equalsIgnoreCase(targetType)) {
+                commentsRepository.deleteAllByContentId(targetId);
                 boardRepository.deleteById(targetId);
             } else if ("comment".equalsIgnoreCase(targetType)) {
                 commentsRepository.deleteById(targetId);
             }
-
-            reportEntity.setStatus("REVIEWED"); // 콘텐츠 삭제 후 신고 상태는 '처리완료'로 변경
-            return reportRepository.save(reportEntity).toReportDto();
+            // 상태 변경 없이, 현재 상태 그대로의 DTO를 반환합니다.
+            return reportEntity.toReportDto();
         }
 
-        // 사용자 정지 관련 로직
-        if (targetUser != null) {
-            switch (action) {
-                case "BLOCK_3DAYS":
-                    targetUser.setStatus("suspended");
-                    targetUser.setSuspendedUntil(LocalDateTime.now().plusDays(3));
-                    reportEntity.setStatus("BLOCKED"); // [수정] 신고 상태를 DB 허용 값인 'BLOCKED'로 설정
-                    break;
-                case "BLOCK_7DAYS":
-                    targetUser.setStatus("suspended");
-                    targetUser.setSuspendedUntil(LocalDateTime.now().plusDays(7));
-                    reportEntity.setStatus("BLOCKED"); // [수정] 신고 상태를 DB 허용 값인 'BLOCKED'로 설정
-                    break;
-                case "BLOCK_1MONTH":
-                    targetUser.setStatus("suspended");
-                    targetUser.setSuspendedUntil(LocalDateTime.now().plusMonths(1));
-                    reportEntity.setStatus("BLOCKED"); // [수정] 신고 상태를 DB 허용 값인 'BLOCKED'로 설정
-                    break;
-                case "BLOCK_PERMANENT":
-                    targetUser.setStatus("inactive");
-                    targetUser.setSuspendedUntil(null);
-                    reportEntity.setStatus("BLOCKED"); // [수정] 신고 상태를 DB 허용 값인 'BLOCKED'로 설정
-                    break;
-                case "REVIEWED":
-                    reportEntity.setStatus("REVIEWED"); // [수정] 신고 상태를 DB 허용 값인 'REVIEWED'로 설정
-                    break;
-                default:
-                    throw new IllegalArgumentException("알 수 없는 액션 값입니다: " + action);
-            }
-            userRepository.save(targetUser);
-        } else if ("REVIEWED".equals(action)) {
-            // 신고 대상 유저가 없더라도, 신고 상태는 변경 가능
-            reportEntity.setStatus("REVIEWED");
+        // --- 이하 사용자 정지 또는 보류 처리 로직 ---
+        String targetType = reportEntity.getTargetType();
+        Long targetId = reportEntity.getTargetId();
+        Long targetUserId = null;
+
+        if ("content".equalsIgnoreCase(targetType)) {
+            targetUserId = boardRepository.findById(targetId).map(BoardEntity::getUserId).orElse(null);
+        } else if ("comment".equalsIgnoreCase(targetType)) {
+            targetUserId = commentsRepository.findById(targetId).map(CommentsEntity::getUserId).orElse(null);
+        }
+
+        // [핵심] 정지 또는 보류 액션에 대해서만 상태를 변경합니다.
+        switch (action) {
+            case "BLOCK_3DAYS":
+            case "BLOCK_7DAYS":
+            case "BLOCK_1MONTH":
+            case "BLOCK_PERMANENT":
+                UserEntity targetUser = (targetUserId != null) ? userRepository.findById(targetUserId).orElse(null) : null;
+                if (targetUser == null) {
+                    log.warn("신고 대상 사용자(ID: {})를 찾을 수 없어 정지 처리를 할 수 없습니다. Report ID: {}", targetUserId, reportId);
+                    return reportEntity.toReportDto(); // 사용자를 못 찾으면 아무것도 안 함
+                }
+
+                if ("BLOCK_3DAYS".equals(action)) targetUser.setSuspendedUntil(LocalDateTime.now().plusDays(3));
+                if ("BLOCK_7DAYS".equals(action)) targetUser.setSuspendedUntil(LocalDateTime.now().plusDays(7));
+                if ("BLOCK_1MONTH".equals(action)) targetUser.setSuspendedUntil(LocalDateTime.now().plusMonths(1));
+                if ("BLOCK_PERMANENT".equals(action)) targetUser.setSuspendedUntil(null);
+
+                targetUser.setStatus("suspended");
+                reportEntity.setStatus("BLOCKED"); // 신고 상태는 'BLOCKED'로 변경
+                userRepository.save(targetUser);
+                break;
+
+            case "REVIEWED":
+                reportEntity.setStatus("REVIEWED"); // 신고 상태는 'REVIEWED'로 변경
+                break;
+
+            default:
+                throw new IllegalArgumentException("알 수 없는 액션 값입니다: " + action);
         }
 
         ReportEntity updatedReportEntity = reportRepository.save(reportEntity);
         return updatedReportEntity.toReportDto();
     }
 
-    @Transactional // 트랜잭션 관리
+    @Transactional
     public void unblockUserByReportId(Long reportId) {
-        // 1. reportId로 해당 신고 내역을 조회합니다.
         ReportEntity report = reportRepository.findById(reportId)
                 .orElseThrow(() -> new IllegalArgumentException("Report not found with ID: " + reportId));
 
-        // 2. 신고 대상(targetId)은 항상 정지될 사용자의 userId이므로, targetId로 바로 UserEntity를 찾습니다.
-        UserEntity targetUser = userRepository.findById(report.getTargetId())
-                .orElseThrow(() -> new IllegalArgumentException("Target user not found with ID: " + report.getTargetId() + " for report ID: " + reportId));
+        // 신고 대상자를 정확히 찾는 로직
+        Long targetUserId = null;
+        String targetType = report.getTargetType();
+        Long contentOrCommentId = report.getTargetId();
 
-        // 3. 사용자의 정지 상태를 'ACTIVE'로 변경하고, 정지 해제 시간을 null로 설정합니다.
-        targetUser.setStatus("active"); // UserEntity의 status 필드를 "ACTIVE"로 변경
-        targetUser.setSuspendedUntil(null); // suspendedUntil 필드를 null로 설정하여 정지 해제
+        if ("content".equalsIgnoreCase(targetType)) {
+            targetUserId = boardRepository.findById(contentOrCommentId)
+                    .map(BoardEntity::getUserId)
+                    .orElse(null);
+        } else if ("comment".equalsIgnoreCase(targetType)) {
+            targetUserId = commentsRepository.findById(contentOrCommentId)
+                    .map(CommentsEntity::getUserId)
+                    .orElse(null);
+        }
 
-        // 4. 변경된 사용자 정보를 저장합니다.
+        if (targetUserId == null) {
+            throw new IllegalArgumentException("정지 해제 대상 사용자를 찾을 수 없습니다. Report ID: " + reportId);
+        }
+
+        // [수정] 람다에서 사용하기 위해 final 변수에 값을 복사합니다.
+        final Long finalTargetUserId = targetUserId;
+        UserEntity targetUser = userRepository.findById(finalTargetUserId)
+                .orElseThrow(() -> new IllegalArgumentException("Target user not found with ID: " + finalTargetUserId));
+
+        targetUser.setStatus("active");
+        targetUser.setSuspendedUntil(null);
         userRepository.save(targetUser);
 
-        // 5. (선택 사항) 해당 신고의 상태를 'BLOCKED'에서 'REVIEWED' 등으로 변경합니다.
-        // 정지 해제는 'BLOCKED' 상태의 신고에 대해 이루어지므로, 이 상태를 업데이트하는 것이 좋습니다.
         if ("BLOCKED".equals(report.getStatus())) {
-            report.setStatus("REVIEWED"); // 예시: '처리 완료 (정지 안함)'과 유사한 'REVIEWED'로 변경
+            report.setStatus("REVIEWED");
             reportRepository.save(report);
         }
+    }
+
+    public List<UserReportCountDto> getAggregatedReportCounts() {
+        // 1. DB에서 모든 ReportEntity를 조회합니다.
+        List<ReportEntity> allReports = reportRepository.findAll();
+
+        // 2. 신고 엔티티를 '신고당한 사용자(UserEntity)'를 기준으로 그룹화합니다.
+        //    - findReportedUser 헬퍼 메서드를 사용해 신고 대상자를 찾습니다.
+        //    - 신고 대상자를 찾을 수 없는 경우(탈퇴, 컨텐츠 삭제 등)는 집계에서 제외합니다.
+        Map<UserEntity, Set<String>> reportsByReportedUser = allReports.stream()
+                .filter(report -> findReportedUser(report) != null) // 신고 대상자가 있는 경우만 필터링
+                .collect(Collectors.groupingBy(
+                        this::findReportedUser, // 신고당한 사용자를 기준으로 그룹핑
+                        Collectors.mapping(
+                                this::generateUniqueReportKey, // 각 신고를 고유 식별자로 변환
+                                Collectors.toSet()             // Set으로 중복 제거
+                        )
+                ));
+
+        // 3. 그룹화된 데이터를 UserReportCountDto 리스트로 변환합니다.
+        return reportsByReportedUser.entrySet().stream()
+                .map(entry -> new UserReportCountDto(
+                        entry.getKey().getUserId(),
+                        entry.getKey().getLoginId(),      // UserEntity에서 로그인 ID 가져오기
+                        entry.getValue().size()           // Set의 크기가 누적 신고 횟수
+                ))
+                .collect(Collectors.toList());
+    }
+
+    private UserEntity findReportedUser(ReportEntity reportEntity) {
+        String targetType = reportEntity.getTargetType();
+        Long targetId = reportEntity.getTargetId(); // 신고된 게시물 ID 또는 댓글 ID
+
+        if ("content".equalsIgnoreCase(targetType)) {
+            // 1. 게시물 ID로 BoardEntity를 찾고,
+            // 2. 찾은 게시물의 userId로 UserRepository에서 UserEntity를 찾습니다.
+            return boardRepository.findById(targetId)
+                    .flatMap(board -> userRepository.findById(board.getUserId())) // [수정] flatMap을 사용해 연계 조회
+                    .orElse(null); // 최종적으로 사용자를 찾지 못하면 null 반환
+        } else if ("comment".equalsIgnoreCase(targetType)) {
+            // 1. 댓글 ID로 CommentsEntity를 찾고,
+            // 2. 찾은 댓글의 userId로 UserRepository에서 UserEntity를 찾습니다.
+            return commentsRepository.findById(targetId)
+                    .flatMap(comment -> userRepository.findById(comment.getUserId())) // [수정] flatMap을 사용해 연계 조회
+                    .orElse(null); // 최종적으로 사용자를 찾지 못하면 null 반환
+        }
+
+        return null;
+    }
+
+
+    private String generateUniqueReportKey(ReportEntity reportEntity) {
+        // java.util.Date를 LocalDate로 변환합니다.
+        LocalDate reportDate = reportEntity.getCreatedAt().toInstant()
+                .atZone(java.time.ZoneId.systemDefault())
+                .toLocalDate();
+        return reportEntity.getTargetId() + ":" + reportEntity.getTargetType() + ":" + reportDate.toString();
     }
 
 }
