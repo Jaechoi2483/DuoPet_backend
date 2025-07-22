@@ -2572,3 +2572,515 @@ ALTER TABLE REPORT DROP COLUMN SUSPENDED_UNTIL;
 
 
 COMMIT;
+
+
+/*==============================================================
+  수의사 상담 기능 데이터베이스 스키마
+  생성일: 2025-07-22
+  설명: 기존 VET 테이블을 활용한 실시간 채팅 상담 기능
+  
+  주의사항:
+  - 기존 VET 테이블은 수정하지 않음
+  - VET_PROFILE로 상담 관련 추가 정보만 관리
+  - 모든 테이블은 기존 스키마와 호환되도록 설계
+==============================================================*/
+
+-- 기존 테이블 삭제 (필요시 백업 후 실행)
+DROP TABLE chat_message CASCADE CONSTRAINTS;
+DROP TABLE consultation_review CASCADE CONSTRAINTS;
+DROP TABLE consultation_room CASCADE CONSTRAINTS;
+DROP TABLE vet_schedule CASCADE CONSTRAINTS;
+DROP TABLE vet_profile CASCADE CONSTRAINTS;
+
+/*==============================================================
+  1. VET_PROFILE (수의사 상담 프로필 - VET 테이블 확장)
+==============================================================*/
+CREATE TABLE vet_profile (
+    profile_id          NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    vet_id              NUMBER NOT NULL,
+    introduction        CLOB,
+    consultation_fee    NUMBER(10,2) DEFAULT 30000,
+    is_available        CHAR(1) DEFAULT 'Y' NOT NULL,
+    is_online           CHAR(1) DEFAULT 'N' NOT NULL,
+    last_online_at      DATE,
+    rating_avg          NUMBER(3,2) DEFAULT 0,
+    rating_count        NUMBER DEFAULT 0,
+    consultation_count  NUMBER DEFAULT 0,
+    response_time_avg   NUMBER DEFAULT 0,  -- 평균 응답 시간(분)
+    created_at          DATE DEFAULT SYSDATE NOT NULL,
+    updated_at          DATE,
+    CONSTRAINT fk_vp_vet FOREIGN KEY (vet_id) REFERENCES vet(vet_id),
+    CONSTRAINT uq_vp_vet UNIQUE (vet_id),
+    CONSTRAINT ck_vp_available CHECK (is_available IN ('Y', 'N')),
+    CONSTRAINT ck_vp_online CHECK (is_online IN ('Y', 'N'))
+);
+
+COMMENT ON TABLE vet_profile IS '수의사 상담 프로필 (상담 서비스 추가 정보)';
+COMMENT ON COLUMN vet_profile.profile_id IS 'PK, 프로필 고유 ID';
+COMMENT ON COLUMN vet_profile.vet_id IS 'FK, VET 테이블 참조';
+COMMENT ON COLUMN vet_profile.introduction IS '상담 전문가 소개글';
+COMMENT ON COLUMN vet_profile.consultation_fee IS '기본 상담료 (30분 기준)';
+COMMENT ON COLUMN vet_profile.is_available IS '상담 서비스 제공 여부';
+COMMENT ON COLUMN vet_profile.is_online IS '현재 온라인 상태';
+COMMENT ON COLUMN vet_profile.last_online_at IS '마지막 접속 시간';
+COMMENT ON COLUMN vet_profile.rating_avg IS '평균 평점 (5점 만점)';
+COMMENT ON COLUMN vet_profile.rating_count IS '평가 횟수';
+COMMENT ON COLUMN vet_profile.consultation_count IS '총 상담 횟수';
+COMMENT ON COLUMN vet_profile.response_time_avg IS '평균 응답 시간(분)';
+
+/*==============================================================
+  2. VET_SCHEDULE (수의사 상담 가능 일정)
+==============================================================*/
+CREATE TABLE vet_schedule (
+    schedule_id         NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    vet_id              NUMBER NOT NULL,
+    schedule_date       DATE NOT NULL,
+    start_time          VARCHAR2(5) NOT NULL,  -- 'HH:MI'
+    end_time            VARCHAR2(5) NOT NULL,
+    max_consultations   NUMBER DEFAULT 10,      -- 시간대별 최대 상담 수
+    current_bookings    NUMBER DEFAULT 0,       -- 현재 예약 수
+    is_available        CHAR(1) DEFAULT 'Y' NOT NULL,
+    created_at          DATE DEFAULT SYSDATE NOT NULL,
+    updated_at          DATE,
+    CONSTRAINT fk_vs_vet FOREIGN KEY (vet_id) REFERENCES vet(vet_id),
+    CONSTRAINT ck_vs_available CHECK (is_available IN ('Y', 'N')),
+    CONSTRAINT ck_vs_time CHECK (start_time < end_time)
+);
+
+COMMENT ON TABLE vet_schedule IS '수의사 상담 가능 일정';
+COMMENT ON COLUMN vet_schedule.schedule_id IS 'PK, 일정 고유 ID';
+COMMENT ON COLUMN vet_schedule.vet_id IS 'FK, VET 테이블 참조';
+COMMENT ON COLUMN vet_schedule.schedule_date IS '상담 가능 날짜';
+COMMENT ON COLUMN vet_schedule.start_time IS '시작 시간 (HH:MI)';
+COMMENT ON COLUMN vet_schedule.end_time IS '종료 시간 (HH:MI)';
+COMMENT ON COLUMN vet_schedule.max_consultations IS '시간대별 최대 상담 수';
+COMMENT ON COLUMN vet_schedule.current_bookings IS '현재 예약된 상담 수';
+
+/*==============================================================
+  3. CONSULTATION_ROOM (상담방)
+==============================================================*/
+CREATE TABLE consultation_room (
+    room_id             NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    room_uuid           VARCHAR2(36) DEFAULT SYS_GUID() NOT NULL,
+    user_id             NUMBER NOT NULL,
+    vet_id              NUMBER NOT NULL,
+    pet_id              NUMBER,
+    schedule_id         NUMBER,
+    room_status         VARCHAR2(20) DEFAULT 'CREATED' NOT NULL,
+    consultation_type   VARCHAR2(20) DEFAULT 'CHAT' NOT NULL,
+    scheduled_datetime  DATE,
+    started_at          DATE,
+    ended_at            DATE,
+    duration_minutes    NUMBER,
+    consultation_fee    NUMBER(10,2),
+    payment_status      VARCHAR2(20) DEFAULT 'PENDING',
+    payment_method      VARCHAR2(20),
+    paid_at             DATE,
+    chief_complaint     CLOB,        -- 주 증상
+    consultation_notes  CLOB,        -- 상담 내용 요약
+    prescription        CLOB,        -- 처방/권고사항
+    created_at          DATE DEFAULT SYSDATE NOT NULL,
+    updated_at          DATE,
+    CONSTRAINT fk_cr_user FOREIGN KEY (user_id) REFERENCES users(user_id),
+    CONSTRAINT fk_cr_vet FOREIGN KEY (vet_id) REFERENCES vet(vet_id),
+    CONSTRAINT fk_cr_pet FOREIGN KEY (pet_id) REFERENCES pet(pet_id),
+    CONSTRAINT fk_cr_schedule FOREIGN KEY (schedule_id) REFERENCES vet_schedule(schedule_id),
+    CONSTRAINT ck_cr_status CHECK (room_status IN ('CREATED', 'WAITING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_SHOW')),
+    CONSTRAINT ck_cr_type CHECK (consultation_type IN ('CHAT', 'VIDEO', 'PHONE')),
+    CONSTRAINT ck_cr_payment CHECK (payment_status IN ('PENDING', 'PAID', 'REFUNDED', 'FAILED'))
+);
+
+COMMENT ON TABLE consultation_room IS '상담방 정보';
+COMMENT ON COLUMN consultation_room.room_id IS 'PK, 상담방 고유 ID';
+COMMENT ON COLUMN consultation_room.room_uuid IS '상담방 UUID (URL용)';
+COMMENT ON COLUMN consultation_room.user_id IS 'FK, 상담 신청 사용자';
+COMMENT ON COLUMN consultation_room.vet_id IS 'FK, 담당 수의사';
+COMMENT ON COLUMN consultation_room.pet_id IS 'FK, 상담 대상 반려동물';
+COMMENT ON COLUMN consultation_room.schedule_id IS 'FK, 예약 일정';
+COMMENT ON COLUMN consultation_room.room_status IS '상담방 상태';
+COMMENT ON COLUMN consultation_room.consultation_type IS '상담 유형';
+COMMENT ON COLUMN consultation_room.chief_complaint IS '주 증상/상담 사유';
+COMMENT ON COLUMN consultation_room.consultation_notes IS '상담 내용 요약';
+COMMENT ON COLUMN consultation_room.prescription IS '처방 및 권고사항';
+
+/*==============================================================
+  4. CHAT_MESSAGE (채팅 메시지)
+==============================================================*/
+CREATE TABLE chat_message (
+    message_id          NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    room_id             NUMBER NOT NULL,
+    sender_id           NUMBER NOT NULL,
+    sender_type         VARCHAR2(10) NOT NULL,   -- 'USER', 'VET', 'SYSTEM'
+    message_type        VARCHAR2(20) DEFAULT 'TEXT' NOT NULL,
+    content             CLOB,
+    file_url            VARCHAR2(500),
+    file_name           VARCHAR2(255),
+    file_size           NUMBER,
+    thumbnail_url       VARCHAR2(500),
+    is_read             CHAR(1) DEFAULT 'N' NOT NULL,
+    read_at             DATE,
+    is_important        CHAR(1) DEFAULT 'N' NOT NULL,
+    created_at          DATE DEFAULT SYSDATE NOT NULL,
+    CONSTRAINT fk_cm_room FOREIGN KEY (room_id) REFERENCES consultation_room(room_id),
+    CONSTRAINT fk_cm_sender FOREIGN KEY (sender_id) REFERENCES users(user_id),
+    CONSTRAINT ck_cm_sender_type CHECK (sender_type IN ('USER', 'VET', 'SYSTEM')),
+    CONSTRAINT ck_cm_type CHECK (message_type IN ('TEXT', 'IMAGE', 'FILE', 'SYSTEM', 'NOTICE')),
+    CONSTRAINT ck_cm_read CHECK (is_read IN ('Y', 'N')),
+    CONSTRAINT ck_cm_important CHECK (is_important IN ('Y', 'N'))
+);
+
+COMMENT ON TABLE chat_message IS '상담 채팅 메시지';
+COMMENT ON COLUMN chat_message.message_id IS 'PK, 메시지 고유 ID';
+COMMENT ON COLUMN chat_message.room_id IS 'FK, 상담방 ID';
+COMMENT ON COLUMN chat_message.sender_id IS 'FK, 발신자 ID';
+COMMENT ON COLUMN chat_message.sender_type IS '발신자 유형';
+COMMENT ON COLUMN chat_message.message_type IS '메시지 유형';
+COMMENT ON COLUMN chat_message.content IS '메시지 내용';
+COMMENT ON COLUMN chat_message.is_important IS '중요 메시지 여부 (처방 등)';
+
+/*==============================================================
+  5. CONSULTATION_REVIEW (상담 리뷰)
+==============================================================*/
+CREATE TABLE consultation_review (
+    review_id           NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    room_id             NUMBER NOT NULL,
+    user_id             NUMBER NOT NULL,
+    vet_id              NUMBER NOT NULL,
+    rating              NUMBER(1) NOT NULL,
+    kindness_score      NUMBER(1),              -- 친절도
+    professional_score  NUMBER(1),              -- 전문성
+    response_score      NUMBER(1),              -- 응답속도
+    review_content      CLOB,
+    vet_reply           CLOB,                   -- 수의사 답변
+    is_visible          CHAR(1) DEFAULT 'Y' NOT NULL,
+    created_at          DATE DEFAULT SYSDATE NOT NULL,
+    updated_at          DATE,
+    replied_at          DATE,
+    CONSTRAINT fk_crv_room FOREIGN KEY (room_id) REFERENCES consultation_room(room_id),
+    CONSTRAINT fk_crv_user FOREIGN KEY (user_id) REFERENCES users(user_id),
+    CONSTRAINT fk_crv_vet FOREIGN KEY (vet_id) REFERENCES vet(vet_id),
+    CONSTRAINT ck_crv_rating CHECK (rating BETWEEN 1 AND 5),
+    CONSTRAINT ck_crv_kindness CHECK (kindness_score BETWEEN 1 AND 5),
+    CONSTRAINT ck_crv_professional CHECK (professional_score BETWEEN 1 AND 5),
+    CONSTRAINT ck_crv_response CHECK (response_score BETWEEN 1 AND 5),
+    CONSTRAINT ck_crv_visible CHECK (is_visible IN ('Y', 'N')),
+    CONSTRAINT uq_crv_room UNIQUE (room_id)
+);
+
+COMMENT ON TABLE consultation_review IS '상담 리뷰';
+COMMENT ON COLUMN consultation_review.review_id IS 'PK, 리뷰 고유 ID';
+COMMENT ON COLUMN consultation_review.rating IS '종합 평점 (1-5)';
+COMMENT ON COLUMN consultation_review.kindness_score IS '친절도 점수';
+COMMENT ON COLUMN consultation_review.professional_score IS '전문성 점수';
+COMMENT ON COLUMN consultation_review.response_score IS '응답속도 점수';
+COMMENT ON COLUMN consultation_review.vet_reply IS '수의사 답변';
+
+-- 인덱스 생성 (성능 최적화)
+CREATE INDEX idx_vp_online ON vet_profile(is_online, is_available);
+CREATE INDEX idx_vs_vet_date ON vet_schedule(vet_id, schedule_date);
+CREATE INDEX idx_cr_user ON consultation_room(user_id);
+CREATE INDEX idx_cr_vet ON consultation_room(vet_id);
+CREATE INDEX idx_cr_status ON consultation_room(room_status);
+CREATE INDEX idx_cr_created ON consultation_room(created_at);
+CREATE INDEX idx_cm_room ON chat_message(room_id);
+CREATE INDEX idx_cm_created ON chat_message(created_at);
+CREATE INDEX idx_crv_vet ON consultation_review(vet_id);
+CREATE INDEX idx_crv_visible ON consultation_review(is_visible);
+
+-- 시퀀스 (필요시 사용)
+-- CREATE SEQUENCE seq_room_id START WITH 1000 INCREMENT BY 1;
+-- CREATE SEQUENCE seq_message_id START WITH 1 INCREMENT BY 1;
+
+COMMIT;
+
+/*==============================================================
+  수의사 상담 기능 샘플 데이터
+  생성일: 2025-07-22
+  설명: 테스트용 샘플 데이터
+  
+  전제조건:
+  - vet_consultation_schema.sql 실행 완료
+  - VET 테이블에 vet_id = 1 존재 (user_id = 2)
+  - USERS 테이블에 일반 사용자 존재 (user_id = 4)
+  - PET 테이블에 반려동물 데이터 존재
+==============================================================*/
+
+-- 1. VET_PROFILE 데이터 (수의사 프로필)
+INSERT INTO vet_profile (
+    vet_id, 
+    introduction, 
+    consultation_fee,
+    is_available,
+    is_online,
+    rating_avg,
+    rating_count,
+    consultation_count,
+    response_time_avg
+) VALUES (
+    1, 
+    '안녕하세요, 15년 경력의 반려동물 전문 수의사입니다.' || CHR(10) || CHR(10) ||
+    '【전문 분야】' || CHR(10) ||
+    '• 내과: 소화기, 호흡기, 순환기 질환' || CHR(10) ||
+    '• 외과: 중성화 수술, 종양 제거' || CHR(10) ||
+    '• 피부과: 아토피, 알레르기 치료' || CHR(10) ||
+    '• 노령 동물 케어' || CHR(10) || CHR(10) ||
+    '【진료 철학】' || CHR(10) ||
+    '반려동물도 가족입니다. 보호자님의 마음으로 최선의 치료를 제공하겠습니다.',
+    30000,  -- 30분 기본 상담료
+    'Y',    -- 상담 가능
+    'N',    -- 현재 오프라인
+    4.8,    -- 평균 평점
+    125,    -- 평가 횟수
+    1250,   -- 총 상담 횟수
+    3       -- 평균 응답 시간 3분
+);
+
+-- 2. VET_SCHEDULE 데이터 (향후 7일간 스케줄)
+DECLARE
+    v_date DATE;
+    v_vet_id NUMBER := 1;
+BEGIN
+    FOR i IN 0..6 LOOP
+        v_date := TRUNC(SYSDATE) + i;
+        
+        -- 오전 시간대 (09:00-12:00)
+        INSERT INTO vet_schedule (vet_id, schedule_date, start_time, end_time, max_consultations)
+        VALUES (v_vet_id, v_date, '09:00', '12:00', 6);
+        
+        -- 오후 시간대 (14:00-18:00)
+        INSERT INTO vet_schedule (vet_id, schedule_date, start_time, end_time, max_consultations)
+        VALUES (v_vet_id, v_date, '14:00', '18:00', 8);
+        
+        -- 저녁 시간대 (19:00-21:00) - 월,수,금만
+        IF MOD(i, 2) = 0 THEN
+            INSERT INTO vet_schedule (vet_id, schedule_date, start_time, end_time, max_consultations)
+            VALUES (v_vet_id, v_date, '19:00', '21:00', 4);
+        END IF;
+    END LOOP;
+END;
+/
+
+-- 3. 완료된 상담 샘플 (리뷰 포함)
+-- 상담방 1
+INSERT INTO consultation_room (
+    user_id, vet_id, pet_id, room_status, consultation_type,
+    scheduled_datetime, started_at, ended_at, duration_minutes,
+    consultation_fee, payment_status, payment_method,
+    chief_complaint, consultation_notes, prescription
+) VALUES (
+    4, 1, 1, 'COMPLETED', 'CHAT',
+    SYSDATE - 7, SYSDATE - 7 + (1/24), SYSDATE - 7 + (1.5/24), 30,
+    30000, 'PAID', 'CARD',
+    '최근 3일간 식욕 부진과 구토 증상이 있습니다.',
+    '증상: 식욕부진, 구토 (3일간)' || CHR(10) ||
+    '검사 권고: 혈액검사, 복부 초음파' || CHR(10) ||
+    '임시 처방: 위장 보호제, 수액 처치',
+    '1. 메토클로프라미드 5mg - 하루 2회' || CHR(10) ||
+    '2. 수크랄페이트 500mg - 하루 3회' || CHR(10) ||
+    '3. 금식 12시간 후 소량씩 급여'
+);
+
+-- 상담방 1의 채팅 메시지
+INSERT INTO chat_message (room_id, sender_id, sender_type, message_type, content, is_read, read_at)
+VALUES (1, 4, 'USER', 'TEXT', '안녕하세요, 선생님. 우리 강아지가 3일째 밥을 잘 안 먹어요.', 'Y', SYSDATE - 7 + (1/24));
+
+INSERT INTO chat_message (room_id, sender_id, sender_type, message_type, content, is_read, read_at)
+VALUES (1, 2, 'VET', 'TEXT', '안녕하세요. 걱정이 많으시겠네요. 구토 증상도 있나요?', 'Y', SYSDATE - 7 + (1/24));
+
+INSERT INTO chat_message (room_id, sender_id, sender_type, message_type, content, is_read, read_at)
+VALUES (1, 4, 'USER', 'TEXT', '네, 어제 2번 정도 토했어요. 노란색 거품이었어요.', 'Y', SYSDATE - 7 + (1/24));
+
+INSERT INTO chat_message (room_id, sender_id, sender_type, message_type, content, is_read, read_at, is_important)
+VALUES (1, 2, 'VET', 'TEXT', 
+'공복 시간이 길어져서 나타나는 증상으로 보입니다. 일단 급한 상황은 아니지만, 증상이 지속되면 병원 방문을 권합니다.' || CHR(10) || CHR(10) ||
+'【임시 대처법】' || CHR(10) ||
+'1. 소량씩 자주 급여 (4-6시간 간격)' || CHR(10) ||
+'2. 미지근한 물 제공' || CHR(10) ||
+'3. 스트레스 요인 제거', 
+'Y', SYSDATE - 7 + (1/24), 'Y');
+
+-- 상담방 1의 리뷰
+INSERT INTO consultation_review (
+    room_id, user_id, vet_id, rating,
+    kindness_score, professional_score, response_score,
+    review_content
+) VALUES (
+    1, 4, 1, 5,
+    5, 5, 5,
+    '친절하고 자세한 설명 감사합니다. 알려주신 대로 했더니 많이 좋아졌어요!'
+);
+
+-- 4. 진행 중인 상담 샘플
+INSERT INTO consultation_room (
+    user_id, vet_id, pet_id, room_status, consultation_type,
+    scheduled_datetime, started_at,
+    consultation_fee, payment_status,
+    chief_complaint
+) VALUES (
+    4, 1, 2, 'IN_PROGRESS', 'CHAT',
+    SYSDATE, SYSDATE,
+    30000, 'PAID',
+    '고양이 눈에서 눈물이 계속 나와요.'
+);
+
+-- 5. 예약된 상담 샘플
+INSERT INTO consultation_room (
+    user_id, vet_id, pet_id, schedule_id, room_status, consultation_type,
+    scheduled_datetime, consultation_fee, payment_status,
+    chief_complaint
+) VALUES (
+    4, 1, 1, 1, 'CREATED', 'CHAT',
+    TRUNC(SYSDATE) + 1 + (14/24), -- 내일 오후 2시
+    30000, 'PENDING',
+    '정기 건강 검진 상담'
+);
+
+-- 통계 업데이트 (트리거가 없는 경우 수동 업데이트)
+UPDATE vet_profile 
+SET last_online_at = SYSDATE
+WHERE vet_id = 1;
+
+COMMIT;
+
+
+-- 1. 수의사 사용자 계정 생성 (비밀번호: password123)
+-- 주의: 실제 비밀번호는 BCrypt로 암호화되어야 함
+-- $2a$10$dS0.gUl8gYr6LCJvwY9AOe6kVv0tNNLMAWnrsfUvKUoKFsVvDJUEe = password123
+
+-- 수의사 1
+INSERT INTO USERS (LOGIN_ID, USER_PWD, USER_NAME, NICKNAME, USER_EMAIL, PHONE, GENDER, AGE, ADDRESS, ROLE)
+VALUES ('vet004', '$2a$10$dS0.gUl8gYr6LCJvwY9AOe6kVv0tNNLMAWnrsfUvKUoKFsVvDJUEe', 
+        '김수의', '강아지전문의', 'vet004@duopet.com', '010-1111-2222', 'M', 
+        38, '서울시 강남구', 'vet');
+
+-- 수의사 2
+INSERT INTO USERS (LOGIN_ID, USER_PWD, USER_NAME, NICKNAME, USER_EMAIL, PHONE, GENDER, AGE, ADDRESS, ROLE)
+VALUES ('vet005', '$2a$10$dS0.gUl8gYr6LCJvwY9AOe6kVv0tNNLMAWnrsfUvKUoKFsVvDJUEe', 
+        '이수의', '고양이전문의', 'vet005@duopet.com', '010-3333-4444', 'F', 
+        33, '서울시 서초구', 'vet');
+
+-- 수의사 3
+INSERT INTO USERS (LOGIN_ID, USER_PWD, USER_NAME, NICKNAME, USER_EMAIL, PHONE, GENDER, AGE, ADDRESS, ROLE)
+VALUES ('vet006', '$2a$10$dS0.gUl8gYr6LCJvwY9AOe6kVv0tNNLMAWnrsfUvKUoKFsVvDJUEe', 
+        '박수의', '특수동물전문의', 'vet006@duopet.com', '010-5555-6666', 'M', 
+        35, '서울시 송파구', 'vet');
+
+-- 2. VET 테이블에 수의사 정보 추가
+INSERT INTO VET (USER_ID, NAME, LICENSE_NUMBER, PHONE, EMAIL, ADDRESS, SPECIALIZATION)
+SELECT USER_ID, '김수의', 'VET2024-' || LPAD(USER_ID, 4, '0'), '010-1111-2222', 'vet004@duopet.com', 
+       '서울시 강남구', '강아지 내과, 피부과'
+FROM USERS WHERE LOGIN_ID = 'vet004';
+
+INSERT INTO VET (USER_ID, NAME, LICENSE_NUMBER, PHONE, EMAIL, ADDRESS, SPECIALIZATION)
+SELECT USER_ID, '이수의', 'VET2024-' || LPAD(USER_ID, 4, '0'), '010-3333-4444', 'vet005@duopet.com',
+       '서울시 서초구', '고양이 내과, 행동학'
+FROM USERS WHERE LOGIN_ID = 'vet005';
+
+INSERT INTO VET (USER_ID, NAME, LICENSE_NUMBER, PHONE, EMAIL, ADDRESS, SPECIALIZATION)
+SELECT USER_ID, '박수의', 'VET2024-' || LPAD(USER_ID, 4, '0'), '010-5555-6666', 'vet006@duopet.com',
+       '서울시 송파구', '특수동물, 외과'
+FROM USERS WHERE LOGIN_ID = 'vet006';
+
+-- 3. VET_PROFILE 테이블에 수의사 프로필 추가
+INSERT INTO VET_PROFILE (VET_ID, INTRODUCTION, CONSULTATION_FEE, IS_AVAILABLE, IS_ONLINE, RATING_AVG, CONSULTATION_COUNT)
+SELECT VET_ID, '안녕하세요. 강아지 전문 수의사 김수의입니다. 10년 이상의 임상 경험을 바탕으로 반려견의 건강을 책임지겠습니다.',
+       30000, 'Y', 'Y', 4.8, 150
+FROM VET WHERE USER_ID = (SELECT USER_ID FROM USERS WHERE LOGIN_ID = 'vet004');
+
+INSERT INTO VET_PROFILE (VET_ID, INTRODUCTION, CONSULTATION_FEE, IS_AVAILABLE, IS_ONLINE, RATING_AVG, CONSULTATION_COUNT)
+SELECT VET_ID, '고양이 전문 수의사 이수의입니다. 고양이의 특성을 이해하고 맞춤형 진료를 제공합니다.',
+       25000, 'Y', 'Y', 4.9, 230
+FROM VET WHERE USER_ID = (SELECT USER_ID FROM USERS WHERE LOGIN_ID = 'vet005');
+
+INSERT INTO VET_PROFILE (VET_ID, INTRODUCTION, CONSULTATION_FEE, IS_AVAILABLE, IS_ONLINE, RATING_AVG, CONSULTATION_COUNT)
+SELECT VET_ID, '토끼, 햄스터, 파충류 등 특수동물 진료 전문입니다. 각 동물의 특성에 맞는 세심한 진료를 약속드립니다.',
+       35000, 'Y', 'N', 4.7, 80
+FROM VET WHERE USER_ID = (SELECT USER_ID FROM USERS WHERE LOGIN_ID = 'vet006');
+
+-- 4. 수의사 일정 추가 (오늘부터 7일간)
+-- 수의사 1의 일정 (오전 9-10시)
+INSERT INTO VET_SCHEDULE (VET_ID, SCHEDULE_DATE, START_TIME, END_TIME, MAX_CONSULTATIONS, CURRENT_BOOKINGS, IS_AVAILABLE)
+SELECT VET_ID, TRUNC(SYSDATE) + LEVEL - 1, '09:00', '10:00', 3, 0, 'Y'
+FROM VET WHERE USER_ID = (SELECT USER_ID FROM USERS WHERE LOGIN_ID = 'vet004')
+CONNECT BY LEVEL <= 7;
+
+-- 수의사 1의 일정 (오후 2-3시)
+INSERT INTO VET_SCHEDULE (VET_ID, SCHEDULE_DATE, START_TIME, END_TIME, MAX_CONSULTATIONS, CURRENT_BOOKINGS, IS_AVAILABLE)
+SELECT VET_ID, TRUNC(SYSDATE) + LEVEL - 1, '14:00', '15:00', 3, 0, 'Y'
+FROM VET WHERE USER_ID = (SELECT USER_ID FROM USERS WHERE LOGIN_ID = 'vet004')
+CONNECT BY LEVEL <= 7;
+
+-- 수의사 2의 일정 (오전 10-11시)
+INSERT INTO VET_SCHEDULE (VET_ID, SCHEDULE_DATE, START_TIME, END_TIME, MAX_CONSULTATIONS, CURRENT_BOOKINGS, IS_AVAILABLE)
+SELECT VET_ID, TRUNC(SYSDATE) + LEVEL - 1, '10:00', '11:00', 4, 0, 'Y'
+FROM VET WHERE USER_ID = (SELECT USER_ID FROM USERS WHERE LOGIN_ID = 'vet005')
+CONNECT BY LEVEL <= 7;
+
+-- 수의사 2의 일정 (오후 4-5시)
+INSERT INTO VET_SCHEDULE (VET_ID, SCHEDULE_DATE, START_TIME, END_TIME, MAX_CONSULTATIONS, CURRENT_BOOKINGS, IS_AVAILABLE)
+SELECT VET_ID, TRUNC(SYSDATE) + LEVEL - 1, '16:00', '17:00', 4, 0, 'Y'
+FROM VET WHERE USER_ID = (SELECT USER_ID FROM USERS WHERE LOGIN_ID = 'vet005')
+CONNECT BY LEVEL <= 7;
+
+-- 수의사 3의 일정 (오전 11시-12시)
+INSERT INTO VET_SCHEDULE (VET_ID, SCHEDULE_DATE, START_TIME, END_TIME, MAX_CONSULTATIONS, CURRENT_BOOKINGS, IS_AVAILABLE)
+SELECT VET_ID, TRUNC(SYSDATE) + LEVEL - 1, '11:00', '12:00', 2, 0, 'Y'
+FROM VET WHERE USER_ID = (SELECT USER_ID FROM USERS WHERE LOGIN_ID = 'vet006')
+CONNECT BY LEVEL <= 7;
+
+-- 수의사 3의 일정 (오후 3-4시)
+INSERT INTO VET_SCHEDULE (VET_ID, SCHEDULE_DATE, START_TIME, END_TIME, MAX_CONSULTATIONS, CURRENT_BOOKINGS, IS_AVAILABLE)
+SELECT VET_ID, TRUNC(SYSDATE) + LEVEL - 1, '15:00', '16:00', 2, 0, 'Y'
+FROM VET WHERE USER_ID = (SELECT USER_ID FROM USERS WHERE LOGIN_ID = 'vet006')
+CONNECT BY LEVEL <= 7;
+
+-- 커밋
+COMMIT;
+
+
+-- 페이지네이션 테스트를 위한 추가 수의사 데이터 생성 (최종 수정본)
+
+-- 기존 데이터 확인
+SELECT COUNT(*) FROM VET_PROFILE;
+
+-- 5번째 수의사 추가
+INSERT INTO USERS (LOGIN_ID, USER_PWD, USER_NAME, NICKNAME, PHONE, USER_EMAIL, ROLE, CREATED_AT, STATUS)
+VALUES ('vet5', '$2a$10$Jrg0k3f7gXJvN7k9W6T9tOAeGCfKKcnUxzD7RvxrX.MYuP6/pKq36', '박안과', '박안과', '010-5555-5555', 'vet5@duopet.com', 'VET', SYSDATE, 'active');
+
+INSERT INTO VET (USER_ID, NAME, LICENSE_NUMBER, SPECIALIZATION, ADDRESS, EMAIL, ORIGINAL_FILENAME, RENAME_FILENAME)
+VALUES ((SELECT USER_ID FROM USERS WHERE LOGIN_ID = 'vet5'), '박안과', 'VET-2024-005', '안과', '서울시 마포구', 'vet5@duopet.com', 'license5.jpg', 'license5_rename.jpg');
+
+INSERT INTO VET_PROFILE (VET_ID, INTRODUCTION, CONSULTATION_FEE, IS_AVAILABLE, IS_ONLINE, RATING_AVG, RATING_COUNT, CONSULTATION_COUNT, RESPONSE_TIME_AVG, CREATED_AT)
+VALUES ((SELECT VET_ID FROM VET WHERE NAME = '박안과'), '안과 질환 전문 진료 15년차입니다.', 35000, 'Y', 'N', 4.8, 120, 350, 12, SYSDATE);
+
+-- 6번째 수의사 추가
+INSERT INTO USERS (LOGIN_ID, USER_PWD, USER_NAME, NICKNAME, PHONE, USER_EMAIL, ROLE, CREATED_AT, STATUS)
+VALUES ('vet6', '$2a$10$Jrg0k3f7gXJvN7k9W6T9tOAeGCfKKcnUxzD7RvxrX.MYuP6/pKq36', '최치과', '최치과', '010-6666-6666', 'vet6@duopet.com', 'VET', SYSDATE, 'active');
+
+INSERT INTO VET (USER_ID, NAME, LICENSE_NUMBER, SPECIALIZATION, ADDRESS, EMAIL, ORIGINAL_FILENAME, RENAME_FILENAME)
+VALUES ((SELECT USER_ID FROM USERS WHERE LOGIN_ID = 'vet6'), '최치과', 'VET-2024-006', '치과', '서울시 용산구', 'vet6@duopet.com', 'license6.jpg', 'license6_rename.jpg');
+
+INSERT INTO VET_PROFILE (VET_ID, INTRODUCTION, CONSULTATION_FEE, IS_AVAILABLE, IS_ONLINE, RATING_AVG, RATING_COUNT, CONSULTATION_COUNT, RESPONSE_TIME_AVG, CREATED_AT)
+VALUES ((SELECT VET_ID FROM VET WHERE NAME = '최치과'), '치과 및 구강 질환 전문입니다.', 40000, 'Y', 'Y', 4.7, 98, 280, 13, SYSDATE);
+
+-- 7번째 수의사 추가
+INSERT INTO USERS (LOGIN_ID, USER_PWD, USER_NAME, NICKNAME, PHONE, USER_EMAIL, ROLE, CREATED_AT, STATUS)
+VALUES ('vet7', '$2a$10$Jrg0k3f7gXJvN7k9W6T9tOAeGCfKKcnUxzD7RvxrX.MYuP6/pKq36', '윤정형', '윤정형', '010-7777-7777', 'vet7@duopet.com', 'VET', SYSDATE, 'active');
+
+INSERT INTO VET (USER_ID, NAME, LICENSE_NUMBER, SPECIALIZATION, ADDRESS, EMAIL, ORIGINAL_FILENAME, RENAME_FILENAME)
+VALUES ((SELECT USER_ID FROM USERS WHERE LOGIN_ID = 'vet7'), '윤정형', 'VET-2024-007', '정형외과', '서울시 서대문구', 'vet7@duopet.com', 'license7.jpg', 'license7_rename.jpg');
+
+INSERT INTO VET_PROFILE (VET_ID, INTRODUCTION, CONSULTATION_FEE, IS_AVAILABLE, IS_ONLINE, RATING_AVG, RATING_COUNT, CONSULTATION_COUNT, RESPONSE_TIME_AVG, CREATED_AT)
+VALUES ((SELECT VET_ID FROM VET WHERE NAME = '윤정형'), '정형외과 및 재활치료 전문입니다.', 50000, 'Y', 'N', 4.9, 150, 420, 11, SYSDATE);
+
+-- 8번째 수의사 추가
+INSERT INTO USERS (LOGIN_ID, USER_PWD, USER_NAME, NICKNAME, PHONE, USER_EMAIL, ROLE, CREATED_AT, STATUS)
+VALUES ('vet8', '$2a$10$Jrg0k3f7gXJvN7k9W6T9tOAeGCfKKcnUxzD7RvxrX.MYuP6/pKq36', '한영상', '한영상', '010-8888-8888', 'vet8@duopet.com', 'VET', SYSDATE, 'active');
+
+INSERT INTO VET (USER_ID, NAME, LICENSE_NUMBER, SPECIALIZATION, ADDRESS, EMAIL, ORIGINAL_FILENAME, RENAME_FILENAME)
+VALUES ((SELECT USER_ID FROM USERS WHERE LOGIN_ID = 'vet8'), '한영상', 'VET-2024-008', '영상의학과', '서울시 은평구', 'vet8@duopet.com', 'license8.jpg', 'license8_rename.jpg');
+
+INSERT INTO VET_PROFILE (VET_ID, INTRODUCTION, CONSULTATION_FEE, IS_AVAILABLE, IS_ONLINE, RATING_AVG, RATING_COUNT, CONSULTATION_COUNT, RESPONSE_TIME_AVG, CREATED_AT)
+VALUES ((SELECT VET_ID FROM VET WHERE NAME = '한영상'), 'X-ray, 초음파 판독 전문입니다.', 45000, 'Y', 'Y', 4.6, 80, 220, 15, SYSDATE);
+
+COMMIT;

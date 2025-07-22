@@ -32,6 +32,8 @@ public class UserController {
     private final UserService userService;
     private final UserRepository userRepository;
     private final JWTUtil jwtUtil;
+    private final com.petlogue.duopetbackend.user.jpa.repository.VetRepository vetRepository;
+    private final com.petlogue.duopetbackend.consultation.jpa.repository.VetProfileRepository vetProfileRepository;
 
     /**
      * 회원가입 1단계 - 아이디, 비밀번호 입력 처리
@@ -307,5 +309,49 @@ public class UserController {
         body.put("userId", userId);
         body.put("faceRegistered", isRegistered);
         return ResponseEntity.ok(body);
+    }
+
+    /**
+     * 사용자 ID로 수의사 정보 조회
+     * 요청: GET /users/{userId}/vet
+     * 응답: { "vetId": 1, "licenseNo": "...", ... }
+     */
+    @GetMapping("/{userId}/vet")
+    public ResponseEntity<?> getVetByUserId(@PathVariable Long userId) {
+        try {
+            // userId로 수의사 정보 조회
+            var vetOptional = vetRepository.findByUser_UserId(userId);
+            
+            if (vetOptional.isPresent()) {
+                var vet = vetOptional.get();
+                // 수의사 정보를 Map으로 변환하여 반환
+                Map<String, Object> response = new HashMap<>();
+                response.put("vetId", vet.getVetId());
+                response.put("licenseNumber", vet.getLicenseNumber());
+                response.put("specialization", vet.getSpecialization());
+                response.put("name", vet.getName());
+                response.put("address", vet.getAddress());
+                response.put("phone", vet.getPhone());
+                response.put("email", vet.getEmail());
+                response.put("website", vet.getWebsite());
+                
+                // VetProfile의 온라인 상태도 함께 반환
+                var vetProfileOptional = vetProfileRepository.findByVet_VetId(vet.getVetId());
+                if (vetProfileOptional.isPresent()) {
+                    response.put("isOnline", vetProfileOptional.get().getIsOnline());
+                } else {
+                    response.put("isOnline", "N");
+                }
+                
+                return ResponseEntity.ok(response);
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "해당 사용자의 수의사 정보를 찾을 수 없습니다."));
+            }
+        } catch (Exception e) {
+            log.error("수의사 정보 조회 중 오류 발생", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "수의사 정보 조회에 실패했습니다."));
+        }
     }
 }

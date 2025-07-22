@@ -64,7 +64,17 @@ public class JWTFilter extends OncePerRequestFilter {
                 || url.startsWith("/upload/")
                 || url.startsWith("/pet/list/")
                 || url.startsWith("/pet/image/")
-                || url.matches("/pet/\\d+");
+                || url.matches("/pet/\\d+")
+                
+                // 전문가 상담 공개 API 추가
+                || url.equals("/api/consultation/vet-profiles/available")
+                || url.equals("/api/consultation/vet-profiles/online")
+                || url.equals("/api/consultation/vet-profiles/search")
+                || url.equals("/api/consultation/vet-profiles/top-rated")
+                || url.equals("/api/consultation/vet-profiles/test/all")
+                || url.matches("/api/consultation/vet-profiles/vet/\\d+")
+                || url.matches("/api/consultation/consultation-reviews/vet/\\d+")
+                || url.matches("/api/consultation/vet-schedules/vet/\\d+/available");
 
     }
 

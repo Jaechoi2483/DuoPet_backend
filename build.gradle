@@ -79,6 +79,11 @@ dependencies {
 
     // OpenCSV for CSV parsing
     implementation 'com.opencsv:opencsv:5.9'
+    
+    // WebSocket for real-time consultation
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
+    implementation 'org.springframework:spring-messaging'
+    implementation 'org.springframework.security:spring-security-messaging'
 
     //Lombok
     compileOnly 'org.projectlombok:lombok'
