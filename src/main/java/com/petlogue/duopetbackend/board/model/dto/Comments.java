@@ -25,17 +25,22 @@ public class Comments {
     private Long parentCommentId;   // 부모 댓글 ID (null이면 일반 댓글)
     private Date createdAt;         // 댓글 작성일시
     private Date updateAt;          // 댓글 수정일시
+    private int likeCount;          // 댓글 좋아요 카운트
+    private int reportCount;        // 댓글 신고하기 카운트
+    private String nickname;        // 닉네임
 
 
-    public CommentsEntity toEntity() {
+    public CommentsEntity toEntity(UserEntity user) {
         return CommentsEntity.builder()
                 .commentId(commentId)
                 .contentId(contentId)
-                .userId(userId)
                 .content(content)
                 .parentCommentId(parentCommentId)
                 .createdAt(createdAt)
                 .updateAt(updateAt)
+                .likeCount(likeCount)
+                .reportCount(reportCount)
+                .user(user)
                 .build();
     }
 }

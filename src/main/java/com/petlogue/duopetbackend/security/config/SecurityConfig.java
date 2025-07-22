@@ -113,6 +113,7 @@ public class SecurityConfig implements WebMvcConfigurer {
                         .requestMatchers(HttpMethod.POST, "/bookmark/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/comments/insert").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/comments/delete/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/comments/comment-like/**").authenticated()
 
 
 
@@ -152,7 +153,7 @@ public class SecurityConfig implements WebMvcConfigurer {
                                 "/board/top-liked",
                                 "/board/top-viewed",
                                 "/board/freeList",
-                                "/comments/view",
+                                "/comments/view/**",
                                 "/favicon.ico",
                                 "/faq",
                                 "/qna",

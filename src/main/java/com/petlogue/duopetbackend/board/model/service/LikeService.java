@@ -3,6 +3,7 @@ package com.petlogue.duopetbackend.board.model.service;
 import com.petlogue.duopetbackend.board.jpa.entity.BoardEntity;
 import com.petlogue.duopetbackend.board.jpa.entity.LikeEntity;
 import com.petlogue.duopetbackend.board.jpa.repository.BoardRepository;
+import com.petlogue.duopetbackend.board.jpa.repository.CommentsRepository;
 import com.petlogue.duopetbackend.board.jpa.repository.LikeRepository;
 import com.petlogue.duopetbackend.board.model.dto.Like;
 import lombok.RequiredArgsConstructor;
@@ -20,8 +21,10 @@ public class LikeService {
 
     private final LikeRepository likeRepository;
     private final BoardRepository boardRepository;
+    private final CommentsRepository commentsRepository;
 
-    public Like toggleLike(Long userId, Long boardId) {
+
+    public Like toggleBoardLike(Long userId, Long boardId) {
         String targetType = "board";
 
         Optional<LikeEntity> existing = likeRepository.findByUserIdAndTargetIdAndTargetType(userId, boardId, targetType);
@@ -47,5 +50,30 @@ public class LikeService {
             log.info("좋아요 등록 완료 - contentId: {}, userId: {}", boardId, userId);
             return new Like(boardId, true);
         }
+    }
+
+    // 댓글용 좋아요 메서드 추가 (boardId 대신 targetId + targetType 받음)
+    public int toggleCommentLike(Long userId, Long targetId) {
+        String targetType = "comment";
+
+        boolean alreadyLiked = likeRepository.existsByUserIdAndTargetIdAndTargetType(userId, targetId, targetType);
+
+        if (alreadyLiked) {
+            // 현재 좋아요 수 조회
+            int currentCount = commentsRepository.findLikeCountByCommentId(targetId);
+            // 0 이상일 때만 감소
+            if (currentCount > 0) {
+                commentsRepository.decrementLikeCount(targetId);
+            }
+            likeRepository.deleteByUserIdAndTargetIdAndTargetType(userId, targetId, targetType);
+            log.info("댓글 좋아요 취소 - commentId: {}, userId: {}", targetId, userId);
+        } else {
+            LikeEntity like = new LikeEntity(userId, targetId, targetType);
+            likeRepository.save(like);
+            commentsRepository.incrementLikeCount(targetId);
+            log.info("댓글 좋아요 등록 - commentId: {}, userId: {}", targetId, userId);
+        }
+
+        return commentsRepository.findLikeCountByCommentId(targetId);
     }
 }
