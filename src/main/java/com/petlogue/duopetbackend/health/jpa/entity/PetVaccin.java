@@ -37,6 +37,9 @@ public class PetVaccin {
     @Column(name = "administered_date")
     private LocalDate administeredDate;
 
+    @Column(name = "hospital_name", length = 100)
+    private String hospitalName;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

@@ -113,6 +113,9 @@ public class SecurityConfig implements WebMvcConfigurer {
                         .requestMatchers(HttpMethod.POST, "/bookmark/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/comments/insert").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/comments/delete/**").authenticated()
+                        
+                        // 건강 기록 관련 - 인증 필요
+                        .requestMatchers("/api/health/**").authenticated()
 
 
 
@@ -141,6 +144,9 @@ public class SecurityConfig implements WebMvcConfigurer {
                                 "/shelter/register",
                                 "/shelter/check",
                                 "/pet/register",
+                                "/pet/list/**",
+                                "/pet/image/**",
+                                "/pet/*",
                                 "/sms/send",
                                 "/sms/verify",
                                 "/users/find-id",

@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import java.time.LocalDate;
 
 public class PetMedicalVisitDto {
@@ -15,6 +16,7 @@ public class PetMedicalVisitDto {
         private Long petId;
         private String hospitalName;
         private String veterinarian;
+        @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
         private LocalDate visitDate;
         private String visitReason;
         private String diagnosis;
@@ -28,6 +30,7 @@ public class PetMedicalVisitDto {
         private Long visitId;
         private String hospitalName;
         private String veterinarian;
+        @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
         private LocalDate visitDate;
         private String visitReason;
         private String diagnosis;
