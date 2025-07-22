@@ -2,9 +2,10 @@ package com.petlogue.duopetbackend.admin.controller;
 
 
 import com.petlogue.duopetbackend.admin.model.dto.DashboardDataDto;
+import com.petlogue.duopetbackend.admin.model.dto.UserReportCountDto;
 import com.petlogue.duopetbackend.admin.model.service.AdminService;
-import com.petlogue.duopetbackend.info.model.service.ShelterDataSyncService;
 import com.petlogue.duopetbackend.board.model.dto.Report;
+import com.petlogue.duopetbackend.info.model.service.ShelterDataSyncService;
 import com.petlogue.duopetbackend.user.model.dto.UserDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -133,6 +134,12 @@ public class AdminController {
     public ResponseEntity<Void> unblockUser(@PathVariable Long reportId) {
         adminService.unblockUserByReportId(reportId); // AdminService의 새 메서드 호출
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/admin/users/report-counts")
+    public ResponseEntity<List<UserReportCountDto>> getAggregatedReportCounts() {
+        List<UserReportCountDto> reportCounts = adminService.getAggregatedReportCounts();
+        return ResponseEntity.ok(reportCounts);
     }
 
     // =============== 보호소 데이터 동기화 관리 ===============

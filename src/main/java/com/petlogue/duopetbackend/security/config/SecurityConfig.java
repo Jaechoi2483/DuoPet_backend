@@ -114,6 +114,13 @@ public class SecurityConfig implements WebMvcConfigurer {
                         .requestMatchers(HttpMethod.POST, "/comments/insert").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/comments/delete/**").authenticated()
 
+                        .requestMatchers(HttpMethod.POST, "/comments/comment-like/**").authenticated()
+
+                        
+                        // 건강 기록 관련 - 인증 필요
+                        .requestMatchers("/api/health/**").authenticated()
+
+
 
 
                         .requestMatchers(HttpMethod.DELETE, "/notice/{id}", "/faq/{id}" ).hasAuthority("admin")
@@ -141,7 +148,13 @@ public class SecurityConfig implements WebMvcConfigurer {
                                 "/shelter/register",
                                 "/shelter/check",
                                 "/pet/register",
+
                                 "/users/face-upload",
+
+                                "/pet/list/**",
+                                "/pet/image/**",
+                                "/pet/*",
+
                                 "/sms/send",
                                 "/sms/verify",
                                 "/users/find-id",
@@ -155,7 +168,7 @@ public class SecurityConfig implements WebMvcConfigurer {
                                 "/board/top-liked",
                                 "/board/top-viewed",
                                 "/board/freeList",
-                                "/comments/view",
+                                "/comments/view/**",
                                 "/favicon.ico",
                                 "/faq",
                                 "/qna",

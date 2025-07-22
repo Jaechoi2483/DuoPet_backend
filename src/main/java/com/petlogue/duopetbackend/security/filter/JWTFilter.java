@@ -61,7 +61,10 @@ public class JWTFilter extends OncePerRequestFilter {
                 || url.equals("/board/top-viewed")
                 || url.startsWith("/comments/view")
                 || url.equals("/notice")
-                || url.startsWith("/upload/");
+                || url.startsWith("/upload/")
+                || url.startsWith("/pet/list/")
+                || url.startsWith("/pet/image/")
+                || url.matches("/pet/\\d+");
 
     }
 
@@ -100,10 +103,15 @@ public class JWTFilter extends OncePerRequestFilter {
 
         String accessTokenHeader = request.getHeader("Authorization");
         String refreshTokenHeader = request.getHeader("RefreshToken");
+        
+        log.info("받은 헤더 - Authorization: {}", accessTokenHeader != null ? "있음" : "없음");
+        log.info("받은 헤더 - RefreshToken: {}", refreshTokenHeader != null ? "있음" : "없음");
 
         if (accessTokenHeader == null || accessTokenHeader.isEmpty() ||
                 refreshTokenHeader == null || refreshTokenHeader.isEmpty()) {
-            log.warn("토큰 누락 - Authorization or RefreshToken 헤더 없음");
+            log.warn("토큰 누락 - Authorization: {}, RefreshToken: {}", 
+                    accessTokenHeader != null ? "있음" : "없음",
+                    refreshTokenHeader != null ? "있음" : "없음");
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.getWriter().write("{\"error\":\"missing or invalid tokens\"}");
             return;

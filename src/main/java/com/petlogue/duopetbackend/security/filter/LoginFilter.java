@@ -97,6 +97,10 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
             return;
         }
 
+        // 사용자 정보 로그 추가
+        log.info("로그인 성공 - userId: {}, loginId: {}, nickname: {}", 
+                user.getUserId(), user.getLoginId(), user.getNickname());
+        
         // 1. 토큰 생성
         String accessToken = jwtUtil.generateToken(user.toDto(), "access");
         String refreshToken = jwtUtil.generateToken(user.toDto(), "refresh");

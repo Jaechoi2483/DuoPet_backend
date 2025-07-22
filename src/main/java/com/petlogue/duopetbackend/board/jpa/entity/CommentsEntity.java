@@ -26,8 +26,9 @@ public class CommentsEntity {
     @Column(name = "CONTENT_ID", nullable = false)
     private Long contentId;  // 댓글이 달린 게시글 ID (FK)
 
-    @Column(name = "USER_ID", nullable = false)
-    private Long userId;     // 댓글 작성자 ID (FK)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "USER_ID")
+    private UserEntity user;    // 유저 연관관계 추가 닉네임, 댓글 작성자 ID (FK)
 
     @Column(name = "CONTENT", nullable = false, length = 1000)
     private String content;  // 댓글 내용
@@ -40,6 +41,12 @@ public class CommentsEntity {
 
     @Column(name = "UPDATE_AT")
     private Date updateAt;   // 댓글 수정일 (nullable)
+
+    @Column(name = "LIKE_COUNT", nullable = false)
+    private int likeCount;  // 댓글 좋아요 카운트
+
+    @Column(name = "REPORT_COUNT", nullable = false)
+    private int reportCount;    // 댓글 신고하기 카운트
 
     /**
      * INSERT 시 자동으로 현재 시간으로 createdAt 값 설정
@@ -54,11 +61,14 @@ public class CommentsEntity {
         return Comments.builder()
                 .commentId(commentId)
                 .contentId(contentId)
-                .userId(userId)
                 .content(content)
                 .parentCommentId(parentCommentId)
                 .createdAt(createdAt)
                 .updateAt(updateAt)
+                .likeCount(likeCount)
+                .reportCount(reportCount)
+                .userId(user != null ? user.getUserId() : null)
+                .nickname(user != null ? user.getNickname() : "알 수 없음")
                 .build();
     }
 }
