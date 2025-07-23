@@ -20,6 +20,8 @@ public class CustomLogoutHandler implements LogoutHandler {
     private final JWTUtil jwtUtil;
     private final RefreshService refreshService;
     private final UserRepository userRepository;  // 추가됨
+    private final com.petlogue.duopetbackend.user.jpa.repository.VetRepository vetRepository;
+    private final com.petlogue.duopetbackend.consultation.model.service.VetProfileService vetProfileService;
 
     @Override
     public void logout(HttpServletRequest request, HttpServletResponse response, Authentication authentication) {
@@ -43,8 +45,23 @@ public class CustomLogoutHandler implements LogoutHandler {
 
                 // 3️ userId 기준 모든 RefreshToken 삭제 (단일 토큰 아니라면 안전하게 전체 삭제)
                 refreshService.deleteByUserId(userId);
+                
+                // 4️ 수의사인 경우 자동으로 오프라인 상태로 변경
+                if ("vet".equals(user.getRole()) || "VET".equals(user.getRole())) {
+                    try {
+                        var vetOptional = vetRepository.findByUser_UserId(userId);
+                        if (vetOptional.isPresent()) {
+                            Long vetId = vetOptional.get().getVetId();
+                            vetProfileService.updateOnlineStatus(vetId, false);
+                            log.info("수의사 자동 오프라인 설정 완료 - vetId: {}", vetId);
+                        }
+                    } catch (Exception e) {
+                        log.error("수의사 오프라인 상태 업데이트 실패", e);
+                        // 로그아웃은 계속 진행
+                    }
+                }
 
-                // 4️ 응답 처리
+                // 5️ 응답 처리
                 response.setStatus(HttpServletResponse.SC_OK);
                 response.getWriter().write("로그아웃 성공");
                 log.info("로그아웃 성공 → RefreshToken 모두 삭제됨");

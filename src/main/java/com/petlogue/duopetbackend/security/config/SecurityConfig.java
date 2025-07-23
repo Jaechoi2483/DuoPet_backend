@@ -41,13 +41,17 @@ public class SecurityConfig implements WebMvcConfigurer {
     private final NaverService naverService;
     private final GoogleService googleService;
     private final CustomOAuth2SuccessHandler customOAuth2SuccessHandler;
+    private final com.petlogue.duopetbackend.user.jpa.repository.VetRepository vetRepository;
+    private final com.petlogue.duopetbackend.consultation.model.service.VetProfileService vetProfileService;
 
 
     public SecurityConfig(JWTUtil jwtUtil, CustomUserDetailsService userDetailsService,
                           UserRepository userRepository, RefreshService refreshService,
                           KakaoService kakaoService, NaverService naverService,
                           GoogleService googleService,
-                          CustomOAuth2SuccessHandler customOAuth2SuccessHandler) {
+                          CustomOAuth2SuccessHandler customOAuth2SuccessHandler,
+                          com.petlogue.duopetbackend.user.jpa.repository.VetRepository vetRepository,
+                          com.petlogue.duopetbackend.consultation.model.service.VetProfileService vetProfileService) {
         this.jwtUtil = jwtUtil;
         this.userDetailsService = userDetailsService;
         this.userRepository = userRepository;
@@ -56,11 +60,13 @@ public class SecurityConfig implements WebMvcConfigurer {
         this.naverService = naverService;
         this.googleService = googleService;
         this.customOAuth2SuccessHandler = customOAuth2SuccessHandler;
+        this.vetRepository = vetRepository;
+        this.vetProfileService = vetProfileService;
     }
 
     @Bean
     public CustomLogoutHandler customLogoutHandler() {
-        return new CustomLogoutHandler(jwtUtil, refreshService, userRepository);
+        return new CustomLogoutHandler(jwtUtil, refreshService, userRepository, vetRepository, vetProfileService);
     }
 
     @Bean
@@ -87,7 +93,7 @@ public class SecurityConfig implements WebMvcConfigurer {
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
                 .allowedOrigins("http://localhost:3000", "http://localhost:3001") // 배포시 실제 도메인으로 추가
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
                 .allowedHeaders("*")
                 .exposedHeaders("token-expired", "Authorization", "RefreshToken")
                 .allowCredentials(true);
@@ -106,6 +112,19 @@ public class SecurityConfig implements WebMvcConfigurer {
 
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        
+                        // 전문가 상담 공개 API - 인증 불필요 (가장 먼저 설정)
+                        .requestMatchers(HttpMethod.GET, 
+                                "/api/consultation/vet-profiles/available",
+                                "/api/consultation/vet-profiles/online",
+                                "/api/consultation/vet-profiles/search",
+                                "/api/consultation/vet-profiles/top-rated",
+                                "/api/consultation/vet-profiles/test/all",
+                                "/api/consultation/vet-profiles/vet/*",
+                                "/api/consultation/consultation-reviews/vet/*",
+                                "/api/consultation/vet-schedules/vet/*/available"
+                        ).permitAll()
+                        
                         .requestMatchers(HttpMethod.POST,"/board/write").authenticated()
                         .requestMatchers(HttpMethod.GET, "/users/check-face").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/board/free/**").authenticated()
@@ -120,6 +139,9 @@ public class SecurityConfig implements WebMvcConfigurer {
                         
                         // 건강 기록 관련 - 인증 필요
                         .requestMatchers("/api/health/**").authenticated()
+                        
+                        // 전문가 상담 관련 - 나머지는 인증 필요
+                        .requestMatchers("/api/consultation/**").authenticated()
 
 
 
@@ -179,7 +201,10 @@ public class SecurityConfig implements WebMvcConfigurer {
                                 "/api/adoption/**",
                                 "/api/hospitals/**",
                                 "/uploads/**", "/images/**",
-                                "/upload/**"
+                                "/upload/**",
+                                
+                                // WebSocket endpoints
+                                "/ws-consultation/**"
 
 
                         ).permitAll()
@@ -206,7 +231,8 @@ public class SecurityConfig implements WebMvcConfigurer {
 
                 // 로그인 필터 등록
                 .addFilterAt(
-                        new LoginFilter(authenticationManager, jwtUtil, userRepository, refreshService),
+                        new LoginFilter(authenticationManager, jwtUtil, userRepository, refreshService, 
+                                vetRepository, vetProfileService),
                         UsernamePasswordAuthenticationFilter.class
                 )
 

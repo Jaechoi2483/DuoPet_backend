@@ -30,15 +30,21 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     private final JWTUtil jwtUtil;
     private final UserRepository userRepository;
     private final RefreshService refreshService;
+    private final com.petlogue.duopetbackend.user.jpa.repository.VetRepository vetRepository;
+    private final com.petlogue.duopetbackend.consultation.model.service.VetProfileService vetProfileService;
 
     public LoginFilter(AuthenticationManager authenticationManager,
                        JWTUtil jwtUtil,
                        UserRepository userRepository,
-                       RefreshService refreshService) {
+                       RefreshService refreshService,
+                       com.petlogue.duopetbackend.user.jpa.repository.VetRepository vetRepository,
+                       com.petlogue.duopetbackend.consultation.model.service.VetProfileService vetProfileService) {
         this.setAuthenticationManager(authenticationManager);
         this.jwtUtil = jwtUtil;
         this.userRepository = userRepository;
         this.refreshService = refreshService;
+        this.vetRepository = vetRepository;
+        this.vetProfileService = vetProfileService;
         this.setFilterProcessesUrl("/login");
     }
 
@@ -98,8 +104,23 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         }
 
         // 사용자 정보 로그 추가
-        log.info("로그인 성공 - userId: {}, loginId: {}, nickname: {}", 
-                user.getUserId(), user.getLoginId(), user.getNickname());
+        log.info("로그인 성공 - userId: {}, loginId: {}, nickname: {}, role: {}", 
+                user.getUserId(), user.getLoginId(), user.getNickname(), user.getRole());
+        
+        // 수의사인 경우 자동으로 온라인 상태로 변경
+        if ("vet".equals(user.getRole()) || "VET".equals(user.getRole())) {
+            try {
+                var vetOptional = vetRepository.findByUser_UserId(user.getUserId());
+                if (vetOptional.isPresent()) {
+                    Long vetId = vetOptional.get().getVetId();
+                    vetProfileService.updateOnlineStatus(vetId, true);
+                    log.info("수의사 자동 온라인 설정 완료 - vetId: {}", vetId);
+                }
+            } catch (Exception e) {
+                log.error("수의사 온라인 상태 업데이트 실패", e);
+                // 로그인은 계속 진행
+            }
+        }
         
         // 1. 토큰 생성
         String accessToken = jwtUtil.generateToken(user.toDto(), "access");

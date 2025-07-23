@@ -1,23 +1,29 @@
 package com.petlogue.duopetbackend.user.model.service;
 
 import com.petlogue.duopetbackend.common.FileNameChange;
+import com.petlogue.duopetbackend.consultation.jpa.entity.VetProfile;
+import com.petlogue.duopetbackend.consultation.jpa.repository.VetProfileRepository;
 import com.petlogue.duopetbackend.user.jpa.entity.UserEntity;
 import com.petlogue.duopetbackend.user.jpa.entity.VetEntity;
 import com.petlogue.duopetbackend.user.jpa.repository.VetRepository;
 import com.petlogue.duopetbackend.user.model.dto.VetDto;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
+import java.math.BigDecimal;
 
+@Slf4j
 @Service
 @Transactional
 @RequiredArgsConstructor
 public class VetService {
 
     private final VetRepository vetRepository;
+    private final VetProfileRepository vetProfileRepository;
 
     /**
      * [회원가입 3단계]
@@ -89,6 +95,38 @@ public class VetService {
 
         // 3. Entity 저장
         VetEntity vet = vetDto.toEntity(userEntity);
-        vetRepository.save(vet);
+        VetEntity savedVet = vetRepository.save(vet);
+        
+        // 4. VetProfile 자동 생성
+        createDefaultVetProfile(savedVet);
+        
+        log.info("전문가 등록 완료 - userId: {}, vetId: {}", userEntity.getUserId(), savedVet.getVetId());
+    }
+    
+    /**
+     * 기본 VetProfile 생성
+     * - 회원가입 시 자동으로 생성되는 기본 프로필
+     */
+    private void createDefaultVetProfile(VetEntity vet) {
+        // 이미 프로필이 있는지 확인
+        if (vetProfileRepository.existsByVet(vet)) {
+            log.warn("VetProfile이 이미 존재합니다. vetId: {}", vet.getVetId());
+            return;
+        }
+        
+        VetProfile profile = VetProfile.builder()
+                .vet(vet)
+                .introduction("안녕하세요. " + vet.getName() + " 수의사입니다. 반려동물의 건강한 삶을 위해 최선을 다하겠습니다.")
+                .consultationFee(new BigDecimal("30000")) // 기본 상담료 30,000원
+                .isAvailable("Y") // 기본값: 상담 가능
+                .isOnline("N") // 기본값: 오프라인
+                .ratingAvg(BigDecimal.ZERO)
+                .ratingCount(0)
+                .consultationCount(0)
+                .responseTimeAvg(0)
+                .build();
+                
+        vetProfileRepository.save(profile);
+        log.info("VetProfile 자동 생성 완료 - vetId: {}", vet.getVetId());
     }
 }
