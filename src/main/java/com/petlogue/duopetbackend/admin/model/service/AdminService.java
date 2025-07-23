@@ -33,7 +33,6 @@ import org.springframework.web.client.RestTemplate;
 import java.net.MalformedURLException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -219,53 +218,81 @@ public class AdminService {
             return new ArrayList<>();
         }
 
+        // 모든 대상 ID와 타입을 한 번에 수집
         Map<String, List<Long>> targetIdsByType = reportEntities.stream()
                 .collect(Collectors.groupingBy(
-                        report -> report.getTargetType().toLowerCase(),
+                        report -> report.getTargetType().toLowerCase(), // "content" 또는 "comment"
                         Collectors.mapping(ReportEntity::getTargetId, Collectors.toList())
                 ));
 
-        Map<Long, Long> contentIdToUserIdMap = new HashMap<>();
+
+        Map<Long, String> boardStatusMap = new HashMap<>();
         if (targetIdsByType.containsKey("content")) {
             List<Long> contentIds = targetIdsByType.get("content");
-            // boardRepository는 Iterable<Number>를 요구하므로 변환 유지
-            List<Number> numberContentIds = new ArrayList<>(contentIds);
-            List<BoardEntity> boards = boardRepository.findAllById(numberContentIds);
-            boards.forEach(board -> contentIdToUserIdMap.put(board.getContentId(), board.getUserId()));
-        }
-
-        Map<Long, Long> commentIdToUserIdMap = new HashMap<>();
-        if (targetIdsByType.containsKey("comment")) {
-            List<Long> commentIds = targetIdsByType.get("comment");
-            List<CommentsEntity> comments = commentsRepository.findAllById(commentIds);
-
-            // ✅ 수정된 코드
-            comments.forEach(comment ->
-                    commentIdToUserIdMap.put(
-                            comment.getCommentId(),
-                            comment.getUser().getUserId() // UserEntity에서 Long 타입의 ID를 추출
-                    )
+            // ⭐ 이 부분이 핵심 수정입니다. ⭐
+            // List<Long>을 Iterable<Long>으로 직접 전달합니다.
+            // JpaRepository의 findAllById는 Iterable<ID>를 받으므로, 여기서 ID가 Long으로 추론됩니다.
+            List<BoardEntity> boards = boardRepository.findAllById(contentIds); // 명시적 캐스팅 제거, 그대로 전달
+            boards.forEach(board ->
+                    boardStatusMap.put(board.getContentId(), board.getStatus())
             );
         }
 
+        Map<Long, String> commentStatusMap = new HashMap<>();
+        if (targetIdsByType.containsKey("comment")) {
+            List<Long> commentIds = targetIdsByType.get("comment");
+            // ⭐ 이 부분이 핵심 수정입니다. ⭐
+            List<CommentsEntity> comments = commentsRepository.findAllById(commentIds); // 명시적 캐스팅 제거, 그대로 전달
+            comments.forEach(comment ->
+                    commentStatusMap.put(comment.getCommentId(), comment.getStatus())
+            );
+        }
+
+
+        // 모든 관련 사용자 ID를 수집하여 한 번에 조회
         Set<Long> allUserIds = new HashSet<>();
-        reportEntities.forEach(report -> allUserIds.add(report.getUser().getUserId()));
-        allUserIds.addAll(contentIdToUserIdMap.values());
-        allUserIds.addAll(commentIdToUserIdMap.values());
+        reportEntities.forEach(report -> allUserIds.add(report.getUser().getUserId())); // 신고자 ID
+
+        // findReportedUser 로직에서 필요한 ReportedUser ID 수집
+        for (ReportEntity report : reportEntities) {
+            String targetType = report.getTargetType();
+            Long targetId = report.getTargetId();
+
+            if ("content".equalsIgnoreCase(targetType)) {
+                boardRepository.findById(targetId)
+                        .map(BoardEntity::getUserId)
+                        .ifPresent(allUserIds::add);
+            } else if ("comment".equalsIgnoreCase(targetType)) {
+                commentsRepository.findById(targetId)
+                        .map(CommentsEntity::getUser)
+                        .map(UserEntity::getUserId)
+                        .ifPresent(allUserIds::add);
+            }
+        }
 
         Map<Long, UserEntity> userMap = userRepository.findAllById(allUserIds).stream()
                 .collect(Collectors.toMap(UserEntity::getUserId, user -> user));
+
 
         return reportEntities.stream()
                 .map(entity -> {
                     UserEntity reporter = userMap.get(entity.getUser().getUserId());
                     UserEntity reportedUser = null;
+                    String targetContentStatus = null; // ⭐ 이 변수에 값을 할당해야 합니다. ⭐
                     Long reportedUserId = null;
 
+
                     if ("content".equalsIgnoreCase(entity.getTargetType())) {
-                        reportedUserId = contentIdToUserIdMap.get(entity.getTargetId());
+                        reportedUserId = boardRepository.findById(entity.getTargetId()).map(BoardEntity::getUserId).orElse(null);
+                        // ⭐ BoardEntity에서 상태를 가져와 targetContentStatus에 할당 ⭐
+                        targetContentStatus = boardStatusMap.get(entity.getTargetId());
                     } else if ("comment".equalsIgnoreCase(entity.getTargetType())) {
-                        reportedUserId = commentIdToUserIdMap.get(entity.getTargetId());
+                        CommentsEntity comment = commentsRepository.findById(entity.getTargetId()).orElse(null);
+                        if (comment != null) {
+                            reportedUserId = comment.getUser().getUserId();
+                            // ⭐ CommentsEntity에서 상태를 가져와 targetContentStatus에 할당 ⭐
+                            targetContentStatus = commentStatusMap.get(entity.getTargetId());
+                        }
                     }
 
                     if (reportedUserId != null) {
@@ -279,83 +306,98 @@ public class AdminService {
                             .targetId(entity.getTargetId())
                             .targetType(entity.getTargetType())
                             .targetLoginId(reportedUser != null ? reportedUser.getLoginId() : "알 수 없음")
+
                             .suspendedUntil(reportedUser != null ? reportedUser.getSuspendedUntil() : null)
                             .reason(entity.getReason())
                             .status(entity.getStatus())
-                            .createdAt(entity.getCreatedAt())
+                            .createdAt(entity.getCreatedAt()) // ReportEntity의 createdAt (Date 타입)
                             .details(entity.getDetails())
+
+                            .targetContentStatus(targetContentStatus != null ? targetContentStatus : "UNKNOWN")
                             .build();
                 })
                 .collect(Collectors.toList());
     }
     @Transactional
     public Report updateReportStatus(Long reportId, String action) {
+        log.info(">>>>> Report Status Update. reportId: {}, action: {}", reportId, action);
         ReportEntity reportEntity = reportRepository.findById(reportId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 ID의 신고를 찾을 수 없습니다: " + reportId));
 
-        // [핵심] '삭제' 액션일 경우, 컨텐츠만 삭제하고 신고 레코드의 상태는 변경하지 않습니다.
-        if ("DELETED".equals(action)) {
-            String targetType = reportEntity.getTargetType();
-            Long targetId = reportEntity.getTargetId();
-
-            if ("content".equalsIgnoreCase(targetType)) {
-                commentsRepository.deleteAllByContentId(targetId);
-                boardRepository.deleteById(targetId);
-            } else if ("comment".equalsIgnoreCase(targetType)) {
-                commentsRepository.deleteById(targetId);
-            }
-            // 상태 변경 없이, 현재 상태 그대로의 DTO를 반환합니다.
-            return reportEntity.toReportDto();
-        }
-
-        // --- 이하 사용자 정지 또는 보류 처리 로직 ---
-        String targetType = reportEntity.getTargetType();
-        Long targetId = reportEntity.getTargetId();
-        Long targetUserId = null;
-
-        if ("content".equalsIgnoreCase(targetType)) {
-            targetUserId = boardRepository.findById(targetId).map(BoardEntity::getUserId).orElse(null);
-        } else if ("comment".equalsIgnoreCase(targetType)) {
-            // ✅ 수정된 코드
-            targetUserId = commentsRepository.findById(targetId)
-                    .map(CommentsEntity::getUser)       // 1. UserEntity 객체를 추출
-                    .map(UserEntity::getUserId)         // 2. UserEntity에서 Long 타입 ID를 추출
-                    .orElse(null);
-
-        }
-
-        // [핵심] 정지 또는 보류 액션에 대해서만 상태를 변경합니다.
         switch (action) {
+            case "REVIEWED":
+                reportEntity.setStatus("REVIEWED"); // 리포트 상태를 '보류'로 변경
+                log.info(">>>>> Report ID {}의 상태를 'REVIEWED'(으)로 변경했습니다.", reportId);
+                break;
+
+            case "PROCESSED": // ⭐ 프론트에서 넘어오는 'PROCESSED'를 블라인드 액션으로 처리 ⭐
+                log.info(">>>>> Report ID {}에 대한 블라인드 처리 (콘텐츠 상태 INACTIVE)", reportId);
+
+                if ("content".equalsIgnoreCase(reportEntity.getTargetType())) {
+                    BoardEntity board = boardRepository.findById(reportEntity.getTargetId())
+                            .orElseThrow(() -> new IllegalArgumentException("대상 게시글을 찾을 수 없습니다."));
+                    board.setStatus("INACTIVE"); // 게시글 상태를 INACTIVE로 변경
+                    boardRepository.save(board); // 변경된 게시글 상태 저장
+                    log.info("게시글 ID {} 블라인드 처리 완료 (상태 INACTIVE)", reportEntity.getTargetId());
+                } else if ("comment".equalsIgnoreCase(reportEntity.getTargetType())) {
+                    CommentsEntity comment = commentsRepository.findById(reportEntity.getTargetId())
+                            .orElseThrow(() -> new IllegalArgumentException("대상 댓글을 찾을 수 없습니다."));
+                    comment.setStatus("INACTIVE"); // 댓글 상태를 INACTIVE로 변경
+                    commentsRepository.save(comment); // 변경된 댓글 상태 저장
+                    log.info("댓글 ID {} 블라인드 처리 완료 (상태 INACTIVE)", reportEntity.getTargetId());
+                } else {
+                    log.warn("알 수 없는 타겟 타입 '{}'에 대한 블라인드 처리. 콘텐츠 상태 변경 없음.", reportEntity.getTargetType());
+                }
+                // ⭐ 중요: reportEntity.setStatus("PROCESSED"); 이 라인을 제거합니다. ⭐
+                // ReportEntity의 status는 'BLOCKED' 등 다른 액션에서만 변경됩니다.
+                break; // ⭐ break 추가 ⭐
+
             case "BLOCK_3DAYS":
             case "BLOCK_7DAYS":
             case "BLOCK_1MONTH":
             case "BLOCK_PERMANENT":
+                Long targetUserId = findTargetUserId(reportEntity);
                 UserEntity targetUser = (targetUserId != null) ? userRepository.findById(targetUserId).orElse(null) : null;
+
                 if (targetUser == null) {
-                    log.warn("신고 대상 사용자(ID: {})를 찾을 수 없어 정지 처리를 할 수 없습니다. Report ID: {}", targetUserId, reportId);
-                    return reportEntity.toReportDto(); // 사용자를 못 찾으면 아무것도 안 함
+                    log.warn("신고 대상 사용자(ID: {})를 찾을 수 없어 정지 처리를 할 수 없습니다.", targetUserId);
+                    return reportEntity.toReportDto();
                 }
 
                 if ("BLOCK_3DAYS".equals(action)) targetUser.setSuspendedUntil(LocalDateTime.now().plusDays(3));
-                if ("BLOCK_7DAYS".equals(action)) targetUser.setSuspendedUntil(LocalDateTime.now().plusDays(7));
-                if ("BLOCK_1MONTH".equals(action)) targetUser.setSuspendedUntil(LocalDateTime.now().plusMonths(1));
-                if ("BLOCK_PERMANENT".equals(action)) targetUser.setSuspendedUntil(null);
+                else if ("BLOCK_7DAYS".equals(action)) targetUser.setSuspendedUntil(LocalDateTime.now().plusDays(7));
+                else if ("BLOCK_1MONTH".equals(action)) targetUser.setSuspendedUntil(LocalDateTime.now().plusMonths(1));
+                else if ("BLOCK_PERMANENT".equals(action)) targetUser.setSuspendedUntil(null);
 
-                targetUser.setStatus("suspended");
-                reportEntity.setStatus("BLOCKED"); // 신고 상태는 'BLOCKED'로 변경
-                userRepository.save(targetUser);
-                break;
+                targetUser.setStatus("suspended"); // 사용자 상태를 'suspended'로 변경
+                userRepository.save(targetUser); // 사용자 상태 저장
 
-            case "REVIEWED":
-                reportEntity.setStatus("REVIEWED"); // 신고 상태는 'REVIEWED'로 변경
+                reportEntity.setStatus("BLOCKED"); // ⭐ ReportEntity 상태를 'BLOCKED'로 변경 ⭐
+                log.info(">>>>> Report ID {}의 상태를 'BLOCKED'(으)로 변경했습니다.", reportId);
                 break;
 
             default:
                 throw new IllegalArgumentException("알 수 없는 액션 값입니다: " + action);
         }
 
-        ReportEntity updatedReportEntity = reportRepository.save(reportEntity);
-        return updatedReportEntity.toReportDto();
+        reportRepository.save(reportEntity); // ReportEntity 변경 사항 저장 (status가 변경되지 않았다면 변경 없음)
+        return reportEntity.toReportDto(); // 업데이트된 Report DTO 반환
+    }
+
+    // 사용자 ID를 찾는 중복 로직 (헬퍼 메서드)
+    private Long findTargetUserId(ReportEntity reportEntity) {
+        String targetType = reportEntity.getTargetType();
+        Long targetId = reportEntity.getTargetId();
+
+        if ("content".equalsIgnoreCase(targetType)) {
+            return boardRepository.findById(targetId).map(BoardEntity::getUserId).orElse(null);
+        } else if ("comment".equalsIgnoreCase(targetType)) {
+            return commentsRepository.findById(targetId)
+                    .map(CommentsEntity::getUser)
+                    .map(UserEntity::getUserId)
+                    .orElse(null);
+        }
+        return null;
     }
 
     @Transactional
@@ -425,6 +467,7 @@ public class AdminService {
                 .collect(Collectors.toList());
     }
 
+
     private UserEntity findReportedUser(ReportEntity reportEntity) {
         String targetType = reportEntity.getTargetType();
         Long targetId = reportEntity.getTargetId(); // 신고된 게시물 ID 또는 댓글 ID
@@ -447,11 +490,7 @@ public class AdminService {
 
 
     private String generateUniqueReportKey(ReportEntity reportEntity) {
-        // java.util.Date를 LocalDate로 변환합니다.
-        LocalDate reportDate = reportEntity.getCreatedAt().toInstant()
-                .atZone(java.time.ZoneId.systemDefault())
-                .toLocalDate();
-        return reportEntity.getTargetId() + ":" + reportEntity.getTargetType() + ":" + reportDate.toString();
+        return reportEntity.getTargetId() + ":" + reportEntity.getTargetType();
     }
 
 }

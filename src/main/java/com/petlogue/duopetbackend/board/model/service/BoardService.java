@@ -1,8 +1,11 @@
 package com.petlogue.duopetbackend.board.model.service;
 
 import com.petlogue.duopetbackend.board.jpa.entity.BoardEntity;
+import com.petlogue.duopetbackend.board.jpa.entity.CommentsEntity;
 import com.petlogue.duopetbackend.board.jpa.repository.BoardRepository;
+import com.petlogue.duopetbackend.board.jpa.repository.CommentsRepository;
 import com.petlogue.duopetbackend.board.model.dto.Board;
+import com.petlogue.duopetbackend.board.model.dto.Comments;
 import com.petlogue.duopetbackend.common.FileNameChange;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +32,8 @@ import java.util.Optional;
 public class BoardService {
 
     private final BoardRepository boardRepository;
+    private final CommentsRepository commentsRepository;
+    private final String ACTIVE_STATUS = "ACTIVE";
 
     @Value("${file.upload-dir}")
     private String uploadDir;
@@ -37,22 +42,22 @@ public class BoardService {
     public int countFreeBoardByKeywordOrDate(String keyword, Date date) {
         // 키워드만 있는 경우
         if (keyword != null && !keyword.trim().isEmpty() && date == null) {
-            return boardRepository.countByCategoryAndContentTypeAndTitleContaining("자유", "board", keyword);
+            return boardRepository.countByCategoryAndContentTypeAndTitleContainingAndStatus("자유", "board", keyword, ACTIVE_STATUS);
 
             // 날짜만 있는 경우
         } else if ((keyword == null || keyword.trim().isEmpty()) && date != null) {
-            return boardRepository.countByCategoryAndContentTypeAndCreatedAtBetween(
-                    "자유", "board", getStartOfDay(date), getEndOfDay(date));
+            return boardRepository.countByCategoryAndContentTypeAndCreatedAtBetweenAndStatus(
+                    "자유", "board", getStartOfDay(date), getEndOfDay(date), ACTIVE_STATUS);
 
             // 키워드 + 날짜 둘 다 없음 (전체)
         } else {
-            return boardRepository.countByCategoryAndContentType("자유", "board");
+            return boardRepository.countByCategoryAndContentTypeAndStatus("자유", "board", ACTIVE_STATUS);
         }
     }
 
     // 전체 게시물 목록
     public List<Board> getAllFreeBoards() {
-        List<BoardEntity> entities = boardRepository.findByContentTypeAndCategory("board", "자유");
+        List<BoardEntity> entities = boardRepository.findByContentTypeAndCategoryAndStatus("board", "자유", ACTIVE_STATUS);
 
         List<Board> boardList = new ArrayList<>();
         for (BoardEntity entity : entities) {
@@ -68,13 +73,13 @@ public class BoardService {
 
         if (keyword != null && !keyword.trim().isEmpty() && date == null) {
             // 키워드만 있을 때
-            page = boardRepository.findByCategoryAndContentTypeAndTitleContaining("자유", "board", keyword, pageable);
+            page = boardRepository.findByCategoryAndContentTypeAndTitleContainingAndStatus("자유", "board", keyword, ACTIVE_STATUS, pageable);
         } else if ((keyword == null || keyword.trim().isEmpty()) && date != null) {
             // 날짜만 있을 때
-            page = boardRepository.findByCategoryAndContentTypeAndCreatedAtBetween("자유", "board", getStartOfDay(date), getEndOfDay(date), pageable);
+            page = boardRepository.findByCategoryAndContentTypeAndCreatedAtBetweenAndStatus("자유", "board", getStartOfDay(date), getEndOfDay(date), ACTIVE_STATUS, pageable);
         } else {
             // 전체 목록
-            page = boardRepository.findByCategoryAndContentType("자유", "board", pageable);
+            page = boardRepository.findByCategoryAndContentTypeAndStatus("자유", "board", ACTIVE_STATUS, pageable);
         }
 
         ArrayList<Board> list = new ArrayList<>();
@@ -106,21 +111,29 @@ public class BoardService {
     }
 
     // 게시물 상세보기
+    @Transactional(readOnly = true)
     public Board getBoardDetail(Number id) {
-        Optional<BoardEntity> optionalBoard = boardRepository.findById(id);
-
-        if (optionalBoard.isPresent()) {
-            BoardEntity entity = optionalBoard.get();
-            return entity.toDto();
-        } else {
-            return null;
-        }
+        return boardRepository.findByContentIdAndStatus(id.longValue(), ACTIVE_STATUS)
+                .map(BoardEntity::toDto)
+                .orElse(null);
+    }
+    // 관리자용 상세보기
+    @Transactional(readOnly = true)
+    public Board getBoardDetailForAdmin(Long boardId) {
+        return boardRepository.findById(boardId) // 기존 findById 사용
+                .map(BoardEntity::toDto)
+                .orElse(null);
+    }
+    public Comments getCommentDetailForAdmin(Long commentId) {
+        Optional<CommentsEntity> commentsEntityOptional = commentsRepository.findById(commentId);
+        // CommentsEntity를 Comments DTO로 변환하여 반환
+        return commentsEntityOptional.map(CommentsEntity::toDto).orElse(null);
     }
 
     // 게시글 수정
     public void updateBoard(Long id, Board updatedDto, MultipartFile file) {
-        BoardEntity board = boardRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 존재하지 않습니다."));
+        BoardEntity board = boardRepository.findByContentIdAndStatus (id, ACTIVE_STATUS)
+                .orElseThrow(() -> new IllegalArgumentException("수정할 수 있는 상태의 게시글이 아닙니다."));
 
         board.setTitle(updatedDto.getTitle());
         board.setContentBody(updatedDto.getContentBody());
@@ -197,7 +210,7 @@ public class BoardService {
 
     // 페이징 리스트
     public ArrayList<Board> selectList(Pageable pageable) {
-        Page<BoardEntity> page = boardRepository.findByCategory("자유", pageable);
+        Page<BoardEntity> page = boardRepository.findByCategoryAndStatus("자유", ACTIVE_STATUS, pageable);
         ArrayList<Board> list = new ArrayList<>();
         for (BoardEntity entity : page) {
             list.add(entity.toDto());

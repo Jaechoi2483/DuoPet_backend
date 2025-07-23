@@ -76,7 +76,10 @@ public class JWTFilter extends OncePerRequestFilter {
         String requestURI = request.getRequestURI();
         String requestMethod = request.getMethod();
         log.info("JWTFilter 실행: {}", requestURI);
-        
+
+        if (requestURI.startsWith("/admin/board")) {
+            log.info("★★★ /admin/board 요청 감지: {}", requestURI);
+        }
         // Debug logging
         if (requestURI.startsWith("/api/adoption")) {
             log.info("Adoption API 요청 감지: {}", requestURI);
@@ -100,6 +103,9 @@ public class JWTFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             return;
         }
+        else {
+            log.info("→ 인증 필요 경로로 판단됨: {}", requestURI);
+        }
 
         String accessTokenHeader = request.getHeader("Authorization");
         String refreshTokenHeader = request.getHeader("RefreshToken");
@@ -121,6 +127,8 @@ public class JWTFilter extends OncePerRequestFilter {
             String accessToken = accessTokenHeader.replace("Bearer ", "");
             String refreshToken = refreshTokenHeader.replace("Bearer ", "");
 
+            log.info("추출된 Access Token (Bearer 제외): {}", accessToken.substring(0, Math.min(accessToken.length(), 20)) + "..."); // 앞 20자만 출력
+            log.info("추출된 Refresh Token (Bearer 제외): {}", refreshToken.substring(0, Math.min(refreshToken.length(), 20)) + "..."); // 앞 20자만 출력
             if (!jwtUtil.isTokenExpired(accessToken) && jwtUtil.isTokenExpired(refreshToken)) {
                 log.warn("⚠RefreshToken 만료, AccessToken만 유효");
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);

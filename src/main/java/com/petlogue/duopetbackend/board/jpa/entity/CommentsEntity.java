@@ -48,6 +48,10 @@ public class CommentsEntity {
     @Column(name = "REPORT_COUNT", nullable = false)
     private int reportCount;    // 댓글 신고하기 카운트
 
+    @Column(name = "status", nullable = false)
+    @Builder.Default // 빌더 사용 시 기본값 설정
+    private String status = "ACTIVE";
+
     /**
      * INSERT 시 자동으로 현재 시간으로 createdAt 값 설정
      */
@@ -69,6 +73,7 @@ public class CommentsEntity {
                 .reportCount(reportCount)
                 .userId(user != null ? user.getUserId() : null)
                 .nickname(user != null ? user.getNickname() : "알 수 없음")
+                .status(status)
                 .build();
     }
 }
