@@ -69,36 +69,4 @@ public class CommentsService {
             return 0;
         }
     }
-
-        // 댓글 좋아요 토글
-        public int toggleCommentLike(Long commentId, Long userId) {
-            boolean alreadyLiked = likeRepository.existsByUserIdAndTargetIdAndTargetType(userId, commentId, "comment");
-
-            if (alreadyLiked) {
-                // 좋아요 취소
-                likeRepository.deleteByUserIdAndTargetIdAndTargetType(userId, commentId, "comment");
-                commentsRepository.decrementLikeCount(commentId);
-                log.info("댓글 좋아요 취소: userId={}, commentId={}", userId, commentId);
-            } else {
-                // 좋아요 추가
-                LikeEntity like = new LikeEntity(userId, commentId, "comment");
-                likeRepository.save(like);
-                commentsRepository.incrementLikeCount(commentId);
-                log.info("댓글 좋아요 추가: userId={}, commentId={}", userId, commentId);
-            }
-            return commentsRepository.findLikeCountByCommentId(commentId);
-        }
-
-        // 댓글 신고
-        public void reportComment(Long commentId, Long userId, Report dto) {
-            dto.setTargetId(commentId);
-            dto.setTargetType("comment");
-            dto.setUserId(userId);
-
-            UserEntity user = userRepository.findById(userId)
-                    .orElseThrow(() -> new RuntimeException("User not found"));
-
-            reportRepository.save(dto.toReportEntity(user)); // toEntity 메서드 필요시 추가
-            commentsRepository.incrementReportCount(commentId);
-    }
 }
