@@ -25,4 +25,14 @@ public interface BookmarkRepository extends JpaRepository<BookmarkEntity, Long> 
     @Transactional
     @Query("DELETE FROM BookmarkEntity b WHERE b.contentId = :contentId")
     void deleteAllByContentId(@Param("contentId") Long contentId);
+
+    /**
+     * Bookmark 테이블과 연결되는 JPA Repository - 마이페이지
+     */
+    List<BookmarkEntity> findAllByUserId(Long userId);
+
+    /**
+     * 특정 사용자와 대상 ID, 타입으로 북마크가 존재하는지 확인
+     */
+    boolean existsByUserIdAndContentIdAndTargetType(Long userId, Long contentId, String targetType);
 }

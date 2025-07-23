@@ -1,6 +1,9 @@
 package com.petlogue.duopetbackend.board.jpa.repository;
 
 import com.petlogue.duopetbackend.board.jpa.entity.CommentsEntity;
+import com.petlogue.duopetbackend.mypage.model.dto.MyCommentDto;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -41,5 +44,16 @@ public interface CommentsRepository extends JpaRepository<CommentsEntity, Long> 
     // 신고 관리용
     List<CommentsEntity> findAllByContentId(Long contentId);
 
+    /**
+     * 사용자가 작성한 댓글 목록을 게시글 제목과 함께 조회 - 마이페이지
+     */
+    @Query("SELECT new com.petlogue.duopetbackend.mypage.model.dto.MyCommentDto(" +
+            "c.commentId, c.content, " +
+            "TO_CHAR(c.createdAt, 'YYYY.MM.DD HH24:MI'), " +
+            "c.likeCount, b.category, b.title) " +
+            "FROM CommentsEntity c JOIN BoardEntity b ON c.contentId = b.contentId " +
+            "WHERE c.user.userId = :userId AND c.status = 'ACTIVE' " +
+            "ORDER BY c.createdAt DESC")
+    List<MyCommentDto> findMyCommentsByUserId(@Param("userId") Long userId);
 
 }

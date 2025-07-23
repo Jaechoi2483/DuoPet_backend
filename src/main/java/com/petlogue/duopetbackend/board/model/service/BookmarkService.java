@@ -55,4 +55,11 @@ public class BookmarkService {
             return new Bookmark(boardId, true);  // 북마크가 등록되었음을 반환
         }
     }
+
+    /**
+     * 특정 게시글에 대해 사용자가 북마크했는지 여부 반환
+     */
+    public boolean isBookmarked(Long userId, Long contentId) {
+        return bookmarkRepository.existsByUserIdAndContentIdAndTargetType(userId, contentId, "board");
+    }
 }

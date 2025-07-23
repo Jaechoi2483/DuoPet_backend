@@ -76,4 +76,11 @@ public class LikeService {
 
         return commentsRepository.findLikeCountByCommentId(targetId);
     }
+
+    /**
+     * 특정 게시글에 대해 사용자가 좋아요했는지 여부 반환
+     */
+    public boolean isLiked(Long userId, Long contentId) {
+        return likeRepository.existsByUserIdAndTargetIdAndTargetType(userId, contentId, "board");
+    }
 }

@@ -46,4 +46,9 @@ public interface BoardRepository extends JpaRepository<BoardEntity, Long> {
     Page<BoardEntity> findByCategoryAndContentTypeAndCreatedAtBetweenAndStatus(String category, String contentType, Date start, Date end, String status, Pageable pageable);
 
     Optional<BoardEntity> findByContentIdAndStatus(Long contentId, String status);
+
+    /**
+     * 특정 사용자가 작성한 게시글을 최신순으로 조회 - 마이페이지
+     */
+    List<BoardEntity> findByUserIdOrderByCreatedAtDesc(Long userId);
 }
