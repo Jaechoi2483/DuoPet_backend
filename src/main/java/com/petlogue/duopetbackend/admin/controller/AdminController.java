@@ -1,6 +1,5 @@
 package com.petlogue.duopetbackend.admin.controller;
 
-
 import com.petlogue.duopetbackend.admin.model.dto.DashboardDataDto;
 import com.petlogue.duopetbackend.admin.model.dto.UserReportCountDto;
 import com.petlogue.duopetbackend.admin.model.service.AdminService;
@@ -120,9 +119,22 @@ public class AdminController {
     }
 
     @GetMapping("/admin/reports")
-    public ResponseEntity<List<Report>> getAllReports() {
-        List<Report> reports = adminService.getAllReports();
-        return ResponseEntity.ok(reports);
+    public ResponseEntity<List<Report>> getAllReports(
+            Pageable pageable, // 1. page와 size 파라미터를 자동으로 받음
+            @RequestParam(required = false) String status // 2. status 파라미터를 받음 (필수 아님)
+    ) {
+        // 3. 서비스 계층에 pageable과 status를 전달하여 페이징 및 필터링된 데이터를 요청
+        Page<Report> reportPage = adminService.getAllReports(pageable, status);
+
+        // 4. 프론트엔드에 총 페이지 수를 전달하기 위한 헤더 설정
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("X-Total-Pages", String.valueOf(reportPage.getTotalPages()));
+        headers.add("Access-Control-Expose-Headers", "X-Total-Pages"); // CORS 정책 때문에 추가 필요
+
+        // 5. 실제 데이터(List)와 헤더를 함께 반환
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(reportPage.getContent());
     }
     @GetMapping("/admin/board/{boardId}")
     public ResponseEntity<Board> getBoardForAdmin(@PathVariable Long boardId) {
