@@ -32,6 +32,7 @@ public class Report {
     private String targetLoginId;   // 신고대상자 로그인 ID
 
     private LocalDateTime suspendedUntil; // 정지 만료 시간
+    private String targetContentStatus;
 
     public ReportEntity toReportEntity(UserEntity user) {
         return ReportEntity.builder()

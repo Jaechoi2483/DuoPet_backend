@@ -1,9 +1,7 @@
 package com.petlogue.duopetbackend.board.model.service;
 
-import com.petlogue.duopetbackend.board.jpa.entity.BoardEntity;
 import com.petlogue.duopetbackend.board.jpa.entity.CommentsEntity;
 import com.petlogue.duopetbackend.board.jpa.entity.LikeEntity;
-import com.petlogue.duopetbackend.board.jpa.repository.BoardRepository;
 import com.petlogue.duopetbackend.board.jpa.repository.CommentsRepository;
 import com.petlogue.duopetbackend.board.jpa.repository.LikeRepository;
 import com.petlogue.duopetbackend.board.jpa.repository.ReportRepository;
@@ -17,9 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -35,11 +31,11 @@ public class CommentsService {
     // 게시물 번호를 기준으로 댓글 + 대댓글 전체 조회
     public ArrayList<Comments> selectCommentList(Long contentId) {
         List<CommentsEntity> entityList = commentsRepository
-                .findByContentIdOrderByParentCommentIdAscCreatedAtAsc(contentId);
+                .findByContentIdAndStatusOrderByParentCommentIdAscCreatedAtAsc(contentId, "ACTIVE");
 
         ArrayList<Comments> list = new ArrayList<>();
         for (CommentsEntity entity : entityList) {
-            list.add(entity.toDto()); // 닉네임 포함된 DTO로 변환
+            list.add(entity.toDto());
         }
         return list;
     }

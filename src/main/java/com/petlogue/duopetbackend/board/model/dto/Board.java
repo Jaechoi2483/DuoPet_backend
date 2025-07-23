@@ -29,6 +29,8 @@ public class Board {
     private String originalFilename;  // 원본 파일명
     private Date createdAt;      // 작성일
     private Date updateAt;       // 수정일
+    @Builder.Default
+    private String status = "ACTIVE";
 
     public BoardEntity toEntity() {
         return BoardEntity.builder()
@@ -46,6 +48,7 @@ public class Board {
                 .originalFilename(originalFilename)
                 .createdAt(createdAt)
                 .updateAt(updateAt)
+                .status(this.status)
                 .build();
     }
 }

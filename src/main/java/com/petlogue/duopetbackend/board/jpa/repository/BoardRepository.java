@@ -9,40 +9,41 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
-public interface BoardRepository extends JpaRepository<BoardEntity, Number> {
-    List<BoardEntity> findByContentTypeAndCategory(String contentType, String category);
+public interface BoardRepository extends JpaRepository<BoardEntity, Long> {
+    List<BoardEntity> findByContentTypeAndCategoryAndStatus(String contentType, String category, String status);
 
     @Query("SELECT b.contentId, b.title, b.userId, b.likeCount " +
             "FROM BoardEntity b " +
-            "WHERE b.category = '자유' AND b.contentType = 'board' " +
+            "WHERE b.category = '자유' AND b.contentType = 'board' AND b.status = 'ACTIVE' " +
             "ORDER BY b.likeCount DESC")
     List<Object[]> findTop3Liked(Pageable pageable);
 
     @Query("SELECT b.contentId, b.title, b.userId, b.viewCount " +
             "FROM BoardEntity b " +
-            "WHERE b.category = '자유' AND b.contentType = 'board' " +
+            "WHERE b.category = '자유' AND b.contentType = 'board' AND b.status = 'ACTIVE' " +
             "ORDER BY b.viewCount DESC")
     List<Object[]> findTop3Viewed(Pageable pageable);
 
-    Page<BoardEntity> findByCategory(String category, Pageable pageable);
+    Page<BoardEntity> findByCategoryAndStatus(String category, String status, Pageable pageable);
 
     // 게시글 수
     // 자유게시판 글 수
-    int countByCategoryAndContentType(String category, String contentType);
+    int countByCategoryAndContentTypeAndStatus(String category, String contentType, String status);
     // 자유게시판 + 키워드
-    int countByCategoryAndContentTypeAndTitleContaining(String category, String contentType, String title);
+    int countByCategoryAndContentTypeAndTitleContainingAndStatus(String category, String contentType, String title, String status);
     // 자유게시판 + 날짜
-    int countByCategoryAndContentTypeAndCreatedAtBetween(String category, String contentType, Date start, Date end);
+    int countByCategoryAndContentTypeAndCreatedAtBetweenAndStatus(String category, String contentType, Date start, Date end, String status);
 
     // 게시글 목록
     // 자유게시판 목록
-    Page<BoardEntity> findByCategoryAndContentType(String category, String contentType, Pageable pageable);
+    Page<BoardEntity> findByCategoryAndContentTypeAndStatus(String category, String contentType, String status, Pageable pageable);
     // 키워드만 있을 때
-    Page<BoardEntity> findByCategoryAndContentTypeAndTitleContaining(String category, String contentType, String keyword, Pageable pageable);
+    Page<BoardEntity> findByCategoryAndContentTypeAndTitleContainingAndStatus(String category, String contentType, String keyword, String status, Pageable pageable);
     // 날짜만 있을 때
-    Page<BoardEntity> findByCategoryAndContentTypeAndCreatedAtBetween(String category, String contentType, Date start, Date end, Pageable pageable);
+    Page<BoardEntity> findByCategoryAndContentTypeAndCreatedAtBetweenAndStatus(String category, String contentType, Date start, Date end, String status, Pageable pageable);
+
+    Optional<BoardEntity> findByContentIdAndStatus(Long contentId, String status);
 }
-
-

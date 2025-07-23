@@ -126,6 +126,7 @@ public class SecurityConfig implements WebMvcConfigurer {
                         ).permitAll()
                         
                         .requestMatchers(HttpMethod.POST,"/board/write").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/users/check-face").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/board/free/**").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/board/free/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/like/**").authenticated()
@@ -170,8 +171,8 @@ public class SecurityConfig implements WebMvcConfigurer {
                                 "/shelter/register",
                                 "/shelter/check",
                                 "/pet/register",
-
                                 "/users/face-upload",
+                                "/face-login/success",
 
                                 "/pet/list/**",
                                 "/pet/image/**",
@@ -183,7 +184,7 @@ public class SecurityConfig implements WebMvcConfigurer {
                                 "/users/check-user",
                                 "/users//reset-password",
                                 "/users/check-face",
-                                "/face-login/verify",
+                                "/api/v1/face-login/verify",
                                 "/notice/**",
                                 "/board/detail/**",
                                 "/board/view-count",
