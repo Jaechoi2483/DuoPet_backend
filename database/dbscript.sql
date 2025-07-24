@@ -3,7 +3,7 @@ SET DEFINE OFF;
   0.  기존 객체 정리 - 순서 무관, CASCADE CONSTRAINTS 사용
 ==============================================================*/
 DROP TABLE bookmark                 CASCADE CONSTRAINTS;
-DROP TABLE "LIKE"                   CASCADE CONSTRAINTS;
+DROP TABLE LIKE_TB                   CASCADE CONSTRAINTS;
 DROP TABLE faq                      CASCADE CONSTRAINTS;
 DROP TABLE comments                 CASCADE CONSTRAINTS;
 DROP TABLE content                  CASCADE CONSTRAINTS;
@@ -1803,7 +1803,7 @@ INSERT INTO faq (
  '일반적으로 4-6개월 간격으로 단계적으로 교체하며, 장 트러블 여부를 관찰하세요.');
 
 
-CREATE TABLE "LIKE" (
+CREATE TABLE LIKE_TB (
     like_id     NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     user_id     NUMBER        NOT NULL,
     target_id   NUMBER        NOT NULL,
@@ -1814,29 +1814,29 @@ CREATE TABLE "LIKE" (
     CONSTRAINT fk_like_user  FOREIGN KEY (user_id) REFERENCES users(user_id)
 );
 
-COMMENT ON TABLE "LIKE"                     IS '좋아요 기록';
-COMMENT ON COLUMN "LIKE".like_id          IS 'PK, IDENTITY (좋아요 고유 식별자)';
-COMMENT ON COLUMN "LIKE".user_id          IS 'FK (USERS 테이블의 user_id 참조), 좋아요를 누른 사용자 고유 식별자';
-COMMENT ON COLUMN "LIKE".target_id        IS '좋아요 대상의 ID (게시글 ID, 댓글 ID 등)';
-COMMENT ON COLUMN "LIKE".target_type      IS '좋아요 대상의 유형 (board: 게시글, comment: 댓글, info_board: 정보 게시판)';
-COMMENT ON COLUMN "LIKE".created_at       IS '좋아요 누른 시간';
+COMMENT ON TABLE LIKE_TB                     IS '좋아요 기록';
+COMMENT ON COLUMN LIKE_TB.like_id          IS 'PK, IDENTITY (좋아요 고유 식별자)';
+COMMENT ON COLUMN LIKE_TB.user_id          IS 'FK (USERS 테이블의 user_id 참조), 좋아요를 누른 사용자 고유 식별자';
+COMMENT ON COLUMN LIKE_TB.target_id        IS '좋아요 대상의 ID (게시글 ID, 댓글 ID 등)';
+COMMENT ON COLUMN LIKE_TB.target_type      IS '좋아요 대상의 유형 (board: 게시글, comment: 댓글, info_board: 정보 게시판)';
+COMMENT ON COLUMN LIKE_TB.created_at       IS '좋아요 누른 시간';
 
-INSERT INTO "LIKE" (
+INSERT INTO LIKE_TB (
     user_id, target_id, target_type, created_at
 ) VALUES
 (4, 20, 'board', SYSDATE);
 
-INSERT INTO "LIKE" (
+INSERT INTO LIKE_TB (
     user_id, target_id, target_type, created_at
 ) VALUES
 (2, 14, 'board',   SYSDATE);
 
-INSERT INTO "LIKE" (
+INSERT INTO LIKE_TB (
     user_id, target_id, target_type, created_at
 ) VALUES
 (3, 15, 'board',   SYSDATE);
 
-INSERT INTO "LIKE" (
+INSERT INTO LIKE_TB (
     user_id, target_id, target_type, created_at
 ) VALUES
 (2,  5, 'comment', SYSDATE);
@@ -3100,3 +3100,13 @@ ALTER TABLE COMMENTS
 COMMENT ON COLUMN CONTENT.status IS '상태 (ACTIVE, INACTIVE)';
 
 COMMENT ON COLUMN COMMENTS.status IS '상태 (ACTIVE, INACTIVE)';
+
+/*================
+2025-07-24
+"LIKE" 테이블 명 LIKE_TB로 변경 
+=================*/
+
+ALTER TABLE "LIKE" RENAME TO LIKE_TB;
+
+commit;
+
