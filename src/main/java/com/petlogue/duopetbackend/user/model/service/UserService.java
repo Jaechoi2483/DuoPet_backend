@@ -314,6 +314,17 @@ public class UserService {
         }
 
         try {
+            // 3-1. 기존 파일 삭제 로직 추가 (여기만 새로 추가하면 됨)
+            String existingFilename = entity.getFaceRenameFilename();
+            if (existingFilename != null) {
+                String baseDir = "C:/upload_files/face/";
+                File oldImage = new File(baseDir + existingFilename);
+                File oldEmbedding = new File(baseDir + existingFilename + ".npy");
+
+                if (oldImage.exists()) oldImage.delete();
+                if (oldEmbedding.exists()) oldEmbedding.delete();
+            }
+
             // 3. 파일명 처리
             String originalName = faceImage.getOriginalFilename(); // 예: "face.png"
             String userAwareOriginal = userId + "_" + originalName;

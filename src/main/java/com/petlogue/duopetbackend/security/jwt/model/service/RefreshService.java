@@ -92,4 +92,22 @@ public class RefreshService {
     public Optional<RefreshToken> findByToken(String token) {
         return refreshTokenRepository.findByRefreshToken(token);
     }
+
+    public void deleteRefreshByUserId(Long userId) {
+        Optional<RefreshToken> entity = refreshTokenRepository.findByUserId(userId);
+        entity.ifPresent(refreshTokenRepository::delete);
+    }
+
+    public void saveRefreshToken(Long userId, String newRefreshToken) {
+        Date expiresAt = new Date(System.currentTimeMillis() + jwtUtil.getRefreshExpiration());
+
+        RefreshToken refreshToken = RefreshToken.builder()
+                .userId(userId)
+                .refreshToken(newRefreshToken)
+                .expiresAt(expiresAt)
+                .tokenStatus("ACTIVE")
+                .build();
+
+        refreshTokenRepository.save(refreshToken);
+    }
 }

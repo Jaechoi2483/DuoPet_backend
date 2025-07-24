@@ -10,14 +10,29 @@ import com.petlogue.duopetbackend.mypage.model.dto.MyCommentDto;
 import com.petlogue.duopetbackend.mypage.model.dto.MyLikeDto;
 import com.petlogue.duopetbackend.mypage.model.dto.MyPostDto;
 import com.petlogue.duopetbackend.mypage.model.service.MyPageService;
+import com.petlogue.duopetbackend.user.jpa.entity.UserEntity;
+import com.petlogue.duopetbackend.user.jpa.repository.UserRepository;
+import com.petlogue.duopetbackend.user.model.dto.ShelterDto;
+import com.petlogue.duopetbackend.user.model.dto.VetDto;
+import com.petlogue.duopetbackend.user.model.service.ShelterService;
+import com.petlogue.duopetbackend.user.model.service.UserService;
+import com.petlogue.duopetbackend.user.model.service.VetService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.File;
 import java.util.List;
 
 @Slf4j
@@ -29,6 +44,9 @@ public class MyPageController {
     private final MyPageService myPageService;
     private final LikeService likeService;
     private final BookmarkService bookmarkService;
+    private final VetService vetService;
+    private final ShelterService shelterService;
+    private final UserRepository userRepository;
 
     /**
      * 마이페이지 - 내가 작성한 게시글 목록 조회
@@ -103,5 +121,87 @@ public class MyPageController {
         Long userId = (Long) request.getAttribute("userId");
         boolean bookmarked = bookmarkService.isBookmarked(userId, contentId);
         return ResponseEntity.ok(bookmarked);
+    }
+
+    /**
+     * 전문가 역할 변경 요청 처리
+     */
+    @PostMapping("/role/vet")
+    public ResponseEntity<String> updateVetRole(@ModelAttribute VetDto vetDto) {
+        try {
+            vetService.updateVetInfo(vetDto);
+            return ResponseEntity.ok("전문가 정보가 성공적으로 변경되었습니다.");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("전문가 정보 저장 중 오류 발생: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 보호소 운영자 역할 변경 요청 처리
+     */
+    @PostMapping("/role/shelter")
+    public ResponseEntity<?> updateShelterRole(@ModelAttribute ShelterDto shelterDto) {
+        try {
+            shelterService.updateShelterInfo(shelterDto);
+            return ResponseEntity.ok("보호소 역할 정보가 성공적으로 저장되었습니다.");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("보호소 정보 저장 중 오류 발생: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/face-images/{userId}")
+    public ResponseEntity<Resource> serveFaceImage(@PathVariable Long userId) {
+        try {
+            // 저장된 파일명 꺼내기 (DB 조회 또는 경로 직접 조합)
+            UserEntity user = userRepository.findByUserId(userId);
+            if (user == null || user.getFaceRenameFilename() == null) {
+                return ResponseEntity.notFound().build();
+            }
+
+            // 저장 경로 조합
+            String filePath = "C:/upload_files/face/" + user.getFaceRenameFilename();
+            File file = new File(filePath);
+            if (!file.exists()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            Resource resource = new FileSystemResource(file);
+
+            // Content-Type을 image로 설정
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.IMAGE_PNG);
+
+            return new ResponseEntity<>(resource, headers, HttpStatus.OK);
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @DeleteMapping("/face-delete")
+    public ResponseEntity<?> deleteFaceImage(@RequestParam Long userId) {
+        try {
+            UserEntity user = userRepository.findByUserId(userId);
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("사용자 없음");
+            }
+
+            // 파일 삭제
+            String filePath = "C:/upload_files/face/" + user.getFaceRenameFilename();
+            File file = new File(filePath);
+            if (file.exists()) file.delete();
+
+            // DB 필드 초기화
+            user.setFaceOriginalFilename(null);
+            user.setFaceRenameFilename(null);
+            userRepository.save(user);
+
+            return ResponseEntity.ok("얼굴 이미지 삭제 완료");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("삭제 실패");
+        }
     }
 }

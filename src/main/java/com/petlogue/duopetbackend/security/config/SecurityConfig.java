@@ -173,7 +173,8 @@ public class SecurityConfig implements WebMvcConfigurer {
                                 "/pet/register",
                                 "/users/face-upload",
                                 "/face-login/success",
-
+                                "/mypage/face-images/**",
+                                "/mypage/face-delete",
                                 "/pet/list/**",
                                 "/pet/image/**",
                                 "/pet/*",

@@ -89,6 +89,19 @@ public class JWTUtil {
         return null;
     }
 
+    public Long getUserIdFromToken(String token) {
+        Claims claims = getClaimsFromToken(token);
+        Object userNoObj = claims.get("userNo");
+
+        if (userNoObj == null) throw new IllegalArgumentException("userNo가 없습니다.");
+
+        if (userNoObj instanceof Integer) return ((Integer) userNoObj).longValue();
+        if (userNoObj instanceof Long) return (Long) userNoObj;
+        if (userNoObj instanceof String) return Long.valueOf((String) userNoObj);
+
+        throw new IllegalArgumentException("userNo 타입 오류");
+    }
+
     // 토큰 만료 여부 확인
     public boolean isTokenExpired(String token) {
         return getClaimsFromToken(token).getExpiration().before(new Date());
@@ -107,5 +120,10 @@ public class JWTUtil {
     // category 추출
     public String getCategoryFromToken(String token) {
         return getClaimsFromToken(token).get("category", String.class);
+    }
+
+    // accessToken 만료 시각 추출
+    public Date getExpiration(String token) {
+        return getClaimsFromToken(token).getExpiration();
     }
 }
