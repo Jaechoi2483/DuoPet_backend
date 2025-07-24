@@ -17,5 +17,8 @@ public interface LikeRepository extends JpaRepository<LikeEntity, Long> {
     // 마이페이지용: 특정 사용자의 좋아요 전체 목록 조회
     List<LikeEntity> findAllByUserId(Long userId);
 
+    /**
+     * 특정 사용자와 대상 ID, 타입으로 좋아요가 존재하는지 확인
+     */
     boolean existsByUserIdAndTargetIdAndTargetType(Long userId, Long targetId, String targetType);
 }
