@@ -29,6 +29,7 @@ public class Board {
     private String originalFilename;  // 원본 파일명
     private Date createdAt;      // 작성일
     private Date updateAt;       // 수정일
+    private String imageUrl;     // 프런트에서 이미지 렌더링 경로
     @Builder.Default
     private String status = "ACTIVE";
 

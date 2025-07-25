@@ -94,7 +94,7 @@ public class BoardEntity {
     }
 
     public Board toDto() {
-        return Board.builder()
+        Board dto = Board.builder()
                 .contentId(contentId)
                 .userId(userId)
                 .title(title)
@@ -111,5 +111,11 @@ public class BoardEntity {
                 .updateAt(updateAt)
                 .status(status)
                 .build();
+
+        // renameFilename을 이용해 imageUrl 가공 (DB 저장은 안 함)
+        if (this.renameFilename != null) {
+            dto.setImageUrl("/static/board/" + this.renameFilename);
+        }
+        return dto;
     }
 }

@@ -191,6 +191,7 @@ public class SecurityConfig implements WebMvcConfigurer {
                                 "/board/top-liked",
                                 "/board/top-viewed",
                                 "/board/freeList",
+                                "/static/board/**",
                                 "/comments/view/**",
                                 "/api/v1/video-recommend/**",
                                 "/favicon.ico",

@@ -17,6 +17,10 @@ public class WebConfig implements WebMvcConfigurer {
         // 다른 업로드 파일들도 필요시 추가
         registry.addResourceHandler("/upload/**")
                 .addResourceLocations("file:///C:/upload_files/");
+
+        // 게시글 첨부 이미지 정적 경로 매핑
+        registry.addResourceHandler("/static/board/**")
+                .addResourceLocations("file:///C:/upload_files/board/");
     }
     
     @Override
