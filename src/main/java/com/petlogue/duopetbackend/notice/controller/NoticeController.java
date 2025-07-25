@@ -26,6 +26,7 @@ import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -239,6 +240,11 @@ public class NoticeController {
         } else {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("공지 수정 실패!");
         }
+    }
+    @GetMapping("/notice/latest")
+    public ResponseEntity<List<Notice>> getLatestNotices() { // ✅ 반환 타입을 List<Notice>로 변경
+        List<Notice> latestNotices = noticeService.findLatestNotices();
+        return ResponseEntity.ok(latestNotices);
     }
 
 }

@@ -7,10 +7,12 @@ import com.petlogue.duopetbackend.admin.model.dto.Qna;
 import com.petlogue.duopetbackend.admin.model.dto.QnaAnswer;
 import com.petlogue.duopetbackend.user.jpa.entity.UserEntity;
 import com.petlogue.duopetbackend.user.jpa.repository.UserRepository;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,16 +30,26 @@ public class QnaService {
 
     @Transactional(readOnly = true)
     public Page<Qna> findAllQnaForAdmin(Pageable pageable, String status) {
-        Page<QnaEntity> qnaEntityPage;
+        // 1. 검색 조건을 만드는 Specification 정의
+        Specification<QnaEntity> spec = (root, query, criteriaBuilder) -> {
+            Predicate predicate = criteriaBuilder.equal(root.get("contentType"), "qna");
 
-        if ("ANSWERED".equals(status)) {
-            qnaEntityPage = qnaRepository.findAnsweredQnaForAdmin(pageable);
-        } else if ("PENDING".equals(status)) {
-            qnaEntityPage = qnaRepository.findPendingQnaForAdmin(pageable);
-        } else { // status가 "ALL"이거나 다른 값일 경우 전체 조회
-            qnaEntityPage = qnaRepository.findByContentType("qna", pageable);
-        }
+            if ("ANSWERED".equalsIgnoreCase(status)) {
+                // 답변이 있는 경우
+                predicate = criteriaBuilder.and(predicate, criteriaBuilder.isNotEmpty(root.get("answers")));
+            } else if ("PENDING".equalsIgnoreCase(status)) {
+                // 답변이 없는 경우
+                predicate = criteriaBuilder.and(predicate, criteriaBuilder.isEmpty(root.get("answers")));
+            }
+            return predicate;
+        };
 
+        // 2. Repository의 findAll 메소드에 Specification과 Pageable을 전달
+        Page<QnaEntity> qnaEntityPage = qnaRepository.findAll(spec, pageable);
+        log.info("✅ 서비스 결과: 총 페이지 = {}, 총 개수 = {}, 현재 페이지 = {}",
+                qnaEntityPage.getTotalPages(),
+                qnaEntityPage.getTotalElements(),
+                qnaEntityPage.getNumber());
         return qnaEntityPage.map(QnaEntity::toDto);
     }
 
@@ -46,21 +58,28 @@ public class QnaService {
      */
     @Transactional(readOnly = true)
     public Page<Qna> findAllQnaByUser(String loginId, Pageable pageable, String status) {
-        // loginId로 사용자의 숫자 ID(PK)를 조회합니다.
         UserEntity user = userRepository.findByLoginId(loginId)
                 .orElseThrow(() -> new RuntimeException("User not found: " + loginId));
         Integer userId = user.getUserId().intValue();
 
-        Page<QnaEntity> qnaEntityPage;
+        // 1. 검색 조건을 만드는 Specification 정의
+        Specification<QnaEntity> spec = (root, query, criteriaBuilder) -> {
+            // 기본 조건: contentType이 'qna'이고, userId가 일치하는 경우
+            Predicate predicate = criteriaBuilder.and(
+                    criteriaBuilder.equal(root.get("contentType"), "qna"),
+                    criteriaBuilder.equal(root.get("userId"), userId)
+            );
 
-        if ("ANSWERED".equals(status)) {
-            qnaEntityPage = qnaRepository.findAnsweredQnaByUser(userId, pageable);
-        } else if ("PENDING".equals(status)) {
-            qnaEntityPage = qnaRepository.findPendingQnaByUser(userId, pageable);
-        } else { // status가 "ALL"이거나 다른 값일 경우 해당 유저의 전체 QNA 조회
-            qnaEntityPage = qnaRepository.findByUserIdAndContentType(userId, "qna", pageable);
-        }
+            if ("ANSWERED".equalsIgnoreCase(status)) {
+                predicate = criteriaBuilder.and(predicate, criteriaBuilder.isNotEmpty(root.get("answers")));
+            } else if ("PENDING".equalsIgnoreCase(status)) {
+                predicate = criteriaBuilder.and(predicate, criteriaBuilder.isEmpty(root.get("answers")));
+            }
+            return predicate;
+        };
 
+        // 2. Repository의 findAll 메소드에 Specification과 Pageable을 전달
+        Page<QnaEntity> qnaEntityPage = qnaRepository.findAll(spec, pageable);
         return qnaEntityPage.map(QnaEntity::toDto);
     }
 

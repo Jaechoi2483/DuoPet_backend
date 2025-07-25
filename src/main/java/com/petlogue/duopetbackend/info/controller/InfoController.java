@@ -4,14 +4,14 @@ import com.petlogue.duopetbackend.info.model.dto.HospitalDto;
 import com.petlogue.duopetbackend.info.model.dto.ShelterDto;
 import com.petlogue.duopetbackend.info.model.dto.ShelterInfoDto;
 import com.petlogue.duopetbackend.info.model.service.HospitalService;
-import com.petlogue.duopetbackend.info.model.service.ShelterService;
 import com.petlogue.duopetbackend.info.model.service.ShelterInfoService;
-import lombok.RequiredArgsConstructor;
+import com.petlogue.duopetbackend.info.model.service.ShelterService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -405,14 +405,15 @@ public class InfoController {
      */
     @GetMapping("/shelters/public")
     public ResponseEntity<Page<ShelterInfoDto>> getPublicShelters(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        
-        log.info("공공데이터 보호소 목록 조회 요청 - page: {}, size: {}", page, size);
-        
-        Pageable pageable = PageRequest.of(page, size);
+            // ✅ @PageableDefault를 사용하여 size 기본값을 50으로 설정
+            @PageableDefault(size = 50, sort = "careNm") Pageable pageable) {
+
+        log.info("공공데이터 보호소 목록 조회 요청 - page: {}, size: {}",
+                pageable.getPageNumber(), pageable.getPageSize());
+
+        // PageRequest.of()를 직접 생성할 필요 없이 pageable을 바로 전달
         Page<ShelterInfoDto> shelters = shelterInfoService.getAllShelters(pageable);
-        
+
         log.info("공공 보호소 {}개 조회 완료", shelters.getTotalElements());
         return ResponseEntity.ok(shelters);
     }
@@ -440,16 +441,15 @@ public class InfoController {
             @RequestParam(required = false) String orgNm,
             @RequestParam(required = false) String divisionNm,
             @RequestParam(required = false) String animal,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        
-        log.info("공공데이터 보호소 검색 - keyword: {}, orgNm: {}, divisionNm: {}, animal: {}", 
-                keyword, orgNm, divisionNm, animal);
-        
-        Pageable pageable = PageRequest.of(page, size);
+            // ✅ @PageableDefault를 사용하여 size 기본값을 50으로 설정
+            @PageableDefault(size = 50, sort = "careNm") Pageable pageable) {
+
+        log.info("공공데이터 보호소 검색 - keyword: {}, ...", keyword);
+
+        // pageable 객체를 서비스로 바로 전달
         Page<ShelterInfoDto> shelters = shelterInfoService.searchShelters(
                 keyword, orgNm, divisionNm, animal, pageable);
-        
+
         log.info("검색 결과 {}개 조회 완료", shelters.getTotalElements());
         return ResponseEntity.ok(shelters);
     }

@@ -178,7 +178,7 @@ public class SecurityConfig implements WebMvcConfigurer {
                                 "/pet/list/**",
                                 "/pet/image/**",
                                 "/pet/*",
-
+                                "/api/summary/public",
                                 "/sms/send",
                                 "/sms/verify",
                                 "/users/find-id",
