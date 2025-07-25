@@ -37,6 +37,7 @@ public class ConsultationRoomService {
     private final PetRepository petRepository;
     private final VetProfileRepository vetProfileRepository;
     private final VetScheduleRepository vetScheduleRepository;
+    private final ConsultationNotificationService notificationService;
     
     /**
      * 상담방 생성
@@ -92,6 +93,7 @@ public class ConsultationRoomService {
                 .scheduledDatetime(dto.getScheduledDatetime())
                 .consultationFee(vetProfile.getConsultationFee())
                 .chiefComplaint(dto.getChiefComplaint())
+                .roomStatus(schedule == null ? "WAITING" : "CREATED") // 즉시 상담은 WAITING, 예약 상담은 CREATED
                 .build();
         
         // Update schedule status if scheduled consultation
@@ -100,7 +102,14 @@ public class ConsultationRoomService {
             vetScheduleRepository.save(schedule);
         }
         
-        return consultationRoomRepository.save(room);
+        ConsultationRoom savedRoom = consultationRoomRepository.save(room);
+        
+        // 즉시 상담인 경우 수의사에게 알림 전송
+        if (schedule == null && "CHAT".equals(dto.getConsultationType())) {
+            notificationService.sendNewConsultationNotification(savedRoom);
+        }
+        
+        return savedRoom;
     }
     
     /**
@@ -241,6 +250,63 @@ public class ConsultationRoomService {
         consultationRoomRepository.save(room);
         
         log.info("Payment completed: room={}, method={}", roomId, paymentMethod);
+    }
+    
+    /**
+     * 상담 승인
+     */
+    @Transactional
+    public ConsultationRoom approveConsultation(Long roomId) {
+        ConsultationRoom room = consultationRoomRepository.findById(roomId)
+                .orElseThrow(() -> new IllegalArgumentException("상담방을 찾을 수 없습니다."));
+        
+        // 상태 검증
+        if (!"CREATED".equals(room.getRoomStatus()) && !"WAITING".equals(room.getRoomStatus())) {
+            throw new IllegalStateException("대기 중인 상담만 승인할 수 있습니다. 현재 상태: " + room.getRoomStatus());
+        }
+        
+        // 상태 변경 - APPROVED 상태가 없는 경우 IN_PROGRESS로 변경
+        room.setRoomStatus("IN_PROGRESS");
+        room.setStartedAt(LocalDateTime.now());
+        
+        // 저장
+        ConsultationRoom savedRoom = consultationRoomRepository.save(room);
+        
+        // 승인 알림 전송 (사용자에게)
+        notificationService.sendStatusChangeNotification(savedRoom, "APPROVED");
+        
+        log.info("Consultation room {} approved by vet {}", roomId, room.getVet().getVetId());
+        
+        return savedRoom;
+    }
+
+    /**
+     * 상담 거절
+     */
+    @Transactional
+    public ConsultationRoom rejectConsultation(Long roomId) {
+        ConsultationRoom room = consultationRoomRepository.findById(roomId)
+                .orElseThrow(() -> new IllegalArgumentException("상담방을 찾을 수 없습니다."));
+        
+        // 상태 검증
+        if (!"CREATED".equals(room.getRoomStatus()) && !"WAITING".equals(room.getRoomStatus())) {
+            throw new IllegalStateException("대기 중인 상담만 거절할 수 있습니다. 현재 상태: " + room.getRoomStatus());
+        }
+        
+        // 상태 변경 - REJECTED 상태가 없는 경우 CANCELLED로 변경
+        room.setRoomStatus("CANCELLED");
+        room.setEndedAt(LocalDateTime.now());
+        room.setConsultationNotes("상담이 전문가에 의해 거절되었습니다.");
+        
+        // 저장
+        ConsultationRoom savedRoom = consultationRoomRepository.save(room);
+        
+        // 거절 알림 전송 (사용자에게)
+        notificationService.sendStatusChangeNotification(savedRoom, "REJECTED");
+        
+        log.info("Consultation room {} rejected by vet {}", roomId, room.getVet().getVetId());
+        
+        return savedRoom;
     }
     
     /**

@@ -291,4 +291,54 @@ public class ConsultationRoomController {
                     .body(ApiResponse.error(e.getMessage()));
         }
     }
+    
+    /**
+     * 즉시 상담 승인
+     * PUT /api/consultation/rooms/{roomId}/approve
+     */
+    @PutMapping("/{roomId}/approve")
+    @PreAuthorize("hasAuthority('VET')")
+    public ResponseEntity<ApiResponse<ConsultationRoomDto>> approveConsultation(
+            @PathVariable Long roomId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        
+        try {
+            ConsultationRoom approvedRoom = consultationRoomService.approveConsultation(roomId);
+            ConsultationRoomDto roomDto = consultationRoomService.toDto(approvedRoom);
+            
+            return ResponseEntity.ok(ApiResponse.success("상담이 승인되었습니다.", roomDto));
+            
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error("상담방을 찾을 수 없습니다."));
+        }
+    }
+
+    /**
+     * 즉시 상담 거절
+     * PUT /api/consultation/rooms/{roomId}/reject
+     */
+    @PutMapping("/{roomId}/reject")
+    @PreAuthorize("hasAuthority('VET')")
+    public ResponseEntity<ApiResponse<ConsultationRoomDto>> rejectConsultation(
+            @PathVariable Long roomId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        
+        try {
+            ConsultationRoom rejectedRoom = consultationRoomService.rejectConsultation(roomId);
+            ConsultationRoomDto roomDto = consultationRoomService.toDto(rejectedRoom);
+            
+            return ResponseEntity.ok(ApiResponse.success("상담이 거절되었습니다.", roomDto));
+            
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error("상담방을 찾을 수 없습니다."));
+        }
+    }
 }
