@@ -5,6 +5,7 @@ import com.petlogue.duopetbackend.consultation.jpa.entity.VetProfile;
 import com.petlogue.duopetbackend.consultation.jpa.repository.VetProfileRepository;
 import com.petlogue.duopetbackend.user.jpa.entity.UserEntity;
 import com.petlogue.duopetbackend.user.jpa.entity.VetEntity;
+import com.petlogue.duopetbackend.user.jpa.repository.UserRepository;
 import com.petlogue.duopetbackend.user.jpa.repository.VetRepository;
 import com.petlogue.duopetbackend.user.model.dto.VetDto;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
+import java.io.IOException;
 import java.math.BigDecimal;
 
 @Slf4j
@@ -23,6 +25,7 @@ import java.math.BigDecimal;
 public class VetService {
 
     private final VetRepository vetRepository;
+    private final UserRepository userRepository;
     private final VetProfileRepository vetProfileRepository;
 
     /**
@@ -129,4 +132,58 @@ public class VetService {
         vetProfileRepository.save(profile);
         log.info("VetProfile 자동 생성 완료 - vetId: {}", vet.getVetId());
     }
+
+    /**
+     * 마이페이지에서 전문가 역할 정보 저장 (insert or update)
+     */
+    public void updateVetInfo(VetDto vetDto) throws IOException {
+        // 1. 사용자 조회
+        UserEntity user = userRepository.findById(vetDto.getUserId())
+                .orElseThrow(() -> new IllegalArgumentException("해당 사용자를 찾을 수 없습니다."));
+
+        // 2. 기존 vet 정보 있는지 확인 (★ 핵심)
+        VetEntity vet = vetRepository.findByUser_UserId(vetDto.getUserId())
+                .orElse(null);
+
+        if (vet == null) {
+            // vetId 없음 → insert
+            vet = VetEntity.builder().user(user).build();
+        } else {
+            // vetId 있음 → update
+            log.info("✅ 기존 vetId: {}", vet.getVetId());
+        }
+
+        // 3. 파일 업로드 처리
+        MultipartFile file = vetDto.getLicenseFile();
+        if (file != null && !file.isEmpty()) {
+            String uploadDir = "C:/upload_files/vet";
+            File dir = new File(uploadDir);
+            if (!dir.exists()) dir.mkdirs();
+
+            String originalFilename = file.getOriginalFilename();
+            String renameFilename = FileNameChange.change(originalFilename, "yyyyMMddHHmmss");
+
+            File saveFile = new File(uploadDir, renameFilename);
+            file.transferTo(saveFile);
+
+            vet.setOriginalFilename(originalFilename);
+            vet.setRenameFilename(renameFilename);
+        }
+
+        // 4. 기타 정보 설정
+        vet.setName(user.getUserName());
+        vet.setLicenseNumber(vetDto.getLicenseNumber());
+        vet.setPhone(user.getPhone());
+        vet.setEmail(user.getUserEmail());
+        vet.setAddress(vetDto.getAddress());
+        vet.setWebsite(vetDto.getWebsite());
+        vet.setSpecialization(vetDto.getSpecialization());
+
+        // 5. 저장 (insert or update 판단은 Hibernate가 vetId로 결정함)
+        vetRepository.save(vet);
+    }
+
+
+
+
 }
