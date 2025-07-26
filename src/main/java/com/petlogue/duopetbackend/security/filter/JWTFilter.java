@@ -79,7 +79,9 @@ public class JWTFilter extends OncePerRequestFilter {
                 || url.equals("/api/consultation/vet-profiles/test/all")
                 || url.matches("/api/consultation/vet-profiles/vet/\\d+")
                 || url.matches("/api/consultation/consultation-reviews/vet/\\d+")
-                || url.matches("/api/consultation/vet-schedules/vet/\\d+/available");
+                || url.matches("/api/consultation/vet-schedules/vet/\\d+/available")
+                // WebSocket 경로 추가
+                || url.startsWith("/ws-consultation");
 
     }
 

@@ -19,6 +19,9 @@ import java.time.LocalDateTime;
 public class ConsultationWebSocketController {
     
     private final SimpMessagingTemplate messagingTemplate;
+    private final com.petlogue.duopetbackend.consultation.model.service.ChatMessageService chatMessageService;
+    private final com.petlogue.duopetbackend.user.jpa.repository.UserRepository userRepository;
+    private final com.petlogue.duopetbackend.consultation.jpa.repository.ConsultationRoomRepository consultationRoomRepository;
     
     /**
      * Handle incoming chat messages
@@ -36,14 +39,54 @@ public class ConsultationWebSocketController {
         log.info("Received message in room {}: {} from user {}", 
                 roomUuid, message.getContent(), principal.getName());
         
-        // Set message metadata
-        message.setSenderUsername(principal.getName());
-        message.setSentAt(LocalDateTime.now());
-        message.setSessionId(sessionId);
-        
-        // TODO: Save message to database via service
-        
-        return message;
+        try {
+            // 사용자 정보 조회
+            com.petlogue.duopetbackend.user.jpa.entity.UserEntity sender = 
+                userRepository.findByLoginId(principal.getName())
+                    .orElseThrow(() -> new IllegalArgumentException("User not found: " + principal.getName()));
+            
+            // 상담방 정보 조회
+            com.petlogue.duopetbackend.consultation.jpa.entity.ConsultationRoom room = 
+                consultationRoomRepository.findByRoomUuid(roomUuid)
+                    .orElseThrow(() -> new IllegalArgumentException("Room not found: " + roomUuid));
+            
+            // 메시지 DTO 완성
+            message.setRoomId(room.getRoomId());
+            message.setSenderId(sender.getUserId());
+            message.setSenderUsername(principal.getName());
+            message.setSenderName(sender.getNickname());
+            message.setSenderRole(sender.getRole());
+            message.setSentAt(LocalDateTime.now());
+            message.setSessionId(sessionId);
+            
+            // 메시지 저장
+            com.petlogue.duopetbackend.consultation.jpa.entity.ChatMessage savedMessage = 
+                chatMessageService.saveMessage(message);
+            
+            // 저장된 메시지를 기반으로 완전한 DTO 생성
+            ChatMessageDto responseDto = ChatMessageDto.builder()
+                .messageId(savedMessage.getMessageId())
+                .roomId(room.getRoomId())
+                .roomUuid(roomUuid)
+                .senderId(sender.getUserId())
+                .senderUsername(sender.getLoginId())
+                .senderRole(sender.getRole())
+                .senderName(sender.getNickname())
+                .content(message.getContent())
+                .messageType(message.getMessageType() != null ? message.getMessageType() : "TEXT")
+                .sentAt(savedMessage.getCreatedAt())
+                .isRead(false)
+                .build();
+            
+            log.info("Message saved and broadcasting: messageId={}, senderId={}, senderUsername={}, senderName={}", 
+                responseDto.getMessageId(), responseDto.getSenderId(), responseDto.getSenderUsername(), responseDto.getSenderName());
+            
+            return responseDto;
+            
+        } catch (Exception e) {
+            log.error("Error handling chat message: ", e);
+            throw new RuntimeException("Failed to process message", e);
+        }
     }
     
     /**
