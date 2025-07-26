@@ -1,5 +1,6 @@
 package com.petlogue.duopetbackend.admin.jpa.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.petlogue.duopetbackend.admin.model.dto.QnaAnswer;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -38,6 +39,7 @@ public class QnaAnswerEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "CONTENT_ID", nullable = false)
+    @JsonIgnore
     private QnaEntity qna;
 
     @PrePersist
@@ -54,6 +56,7 @@ public class QnaAnswerEntity {
                 .parentCommentId(parentCommentId)
                 .createdAt(createdAt)
                 .updatedAt(updatedAt)
+
                 .build();
     }
 }

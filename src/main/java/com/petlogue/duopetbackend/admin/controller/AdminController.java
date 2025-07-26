@@ -88,6 +88,8 @@ public class AdminController {
         return ResponseEntity.ok(dashboardData);
     }
 
+    
+
     @GetMapping("/admin/files/vet/{filename}")
     public ResponseEntity<Resource> getVetFile(@PathVariable String filename) throws IOException {
         Resource resource = adminService.loadVetFile(filename);

@@ -31,6 +31,8 @@ public class QnaController {
                                                 @RequestParam(required = false, defaultValue = "ALL") String status,
                                                 Authentication authentication) {
 
+        log.info("✅ 컨트롤러 수신: page={}, size={}, sort={}, status={}",
+                pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort(), status);
         // 현재 로그인한 사용자의 역할 확인
         String role = authentication.getAuthorities().stream()
                 .findFirst()

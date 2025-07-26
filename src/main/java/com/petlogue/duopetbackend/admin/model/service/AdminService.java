@@ -2,6 +2,7 @@ package com.petlogue.duopetbackend.admin.model.service;
 
 
 import com.petlogue.duopetbackend.admin.model.dto.DashboardDataDto;
+import com.petlogue.duopetbackend.admin.model.dto.PublicSummaryDto;
 import com.petlogue.duopetbackend.admin.model.dto.StatItemDto;
 import com.petlogue.duopetbackend.admin.model.dto.UserReportCountDto;
 import com.petlogue.duopetbackend.board.jpa.entity.BoardEntity;
@@ -477,6 +478,18 @@ public class AdminService {
 
     private String generateUniqueReportKey(ReportEntity reportEntity) {
         return reportEntity.getTargetId() + ":" + reportEntity.getTargetType();
+    }
+    public PublicSummaryDto getPublicSummaryData() {
+        // 1. 기존 메소드를 호출하여 전체 데이터를 가져옵니다.
+        DashboardDataDto allDashboardData = this.getDashboardData();
+
+        // 2. 전체 데이터에서 'summary' 리스트만 추출합니다.
+        List<StatItemDto> summaryData = allDashboardData.getSummary();
+
+        // 3. 새로운 공개용 DTO에 담아서 반환합니다.
+        return PublicSummaryDto.builder()
+                .summary(summaryData)
+                .build();
     }
 
 }

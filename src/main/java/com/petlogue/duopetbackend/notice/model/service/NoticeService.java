@@ -13,6 +13,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -88,5 +91,15 @@ public class NoticeService {
         NoticeEntity updatedEntity = noticeRepository.save(existingEntity);
 
         return updatedEntity.toDto();
+    }
+
+    @Transactional(readOnly = true)
+    public List<Notice> findLatestNotices() { // ✅ 반환 타입을 List<Notice>로 변경
+        List<NoticeEntity> entities = noticeRepository.findTop5ByContentTypeOrderByCreatedAtDesc("notice");
+
+        // ✅ toSummaryDto() 대신 기존 toDto()를 사용
+        return entities.stream()
+                .map(NoticeEntity::toDto)
+                .collect(Collectors.toList());
     }
 }

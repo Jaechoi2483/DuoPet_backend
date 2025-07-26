@@ -96,7 +96,7 @@ public class QnaEntity {
                 .originalFilename(originalFilename)
                 .createdAt(createdAt)
                 .updatedAt(updatedAt)
-                .status(status)
+                .status(this.getAnswers() == null || this.getAnswers().isEmpty() ? "PENDING" : "ANSWERED")
                 .build();
     }
 
