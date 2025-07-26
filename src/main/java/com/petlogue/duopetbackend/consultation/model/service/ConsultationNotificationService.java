@@ -32,17 +32,27 @@ public class ConsultationNotificationService {
                     .timestamp(room.getCreatedAt())
                     .build();
             
-            // 수의사의 user destination으로 전송 - loginId 사용
-            String destination = "/queue/consultations";
-            String vetLoginId = room.getVet().getUser().getLoginId();
-            messagingTemplate.convertAndSendToUser(
-                    vetLoginId, // 수의사의 loginId를 username으로 사용
-                    destination,
-                    notification
-            );
-            
-            log.info("Sent consultation notification to vet {} (loginId: {}) for room {}", 
-                    room.getVet().getVetId(), vetLoginId, room.getRoomUuid());
+            // 수의사가 지정된 경우 해당 수의사에게만 전송
+            if (room.getVet() != null) {
+                // 특정 수의사에게만 전송
+                String destination = "/queue/consultations";
+                String vetLoginId = room.getVet().getUser().getLoginId();
+                messagingTemplate.convertAndSendToUser(
+                        vetLoginId, // 수의사의 loginId를 username으로 사용
+                        destination,
+                        notification
+                );
+                
+                log.info("Sent consultation notification to vet {} (loginId: {}) for room {}", 
+                        room.getVet().getVetId(), vetLoginId, room.getRoomUuid());
+            } else {
+                // 수의사가 지정되지 않은 경우 모든 수의사에게 브로드캐스트
+                String destination = "/topic/vets/consultations";
+                messagingTemplate.convertAndSend(destination, notification);
+                
+                log.info("Broadcast new consultation notification to all vets for room {}", 
+                        room.getRoomUuid());
+            }
             
         } catch (Exception e) {
             log.error("Failed to send consultation notification", e);

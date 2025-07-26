@@ -10,14 +10,12 @@ public class WebSocketSecurityConfig extends AbstractSecurityWebSocketMessageBro
     @Override
     protected void configureInbound(MessageSecurityMetadataSourceRegistry messages) {
         messages
-                // Allow anyone to connect to the WebSocket
-                .simpDestMatchers("/ws-consultation/**").permitAll()
-                // Require authentication for subscription destinations
-                .simpSubscribeDestMatchers("/user/**", "/topic/**", "/queue/**").authenticated()
-                // Require authentication for sending messages
-                .simpDestMatchers("/app/**").authenticated()
-                // Deny all other messages
-                .anyMessage().denyAll();
+                // 모든 WebSocket 메시지 허용 (개발 중 임시)
+                .nullDestMatcher().permitAll()
+                .simpDestMatchers("/**").permitAll()
+                .simpSubscribeDestMatchers("/**").permitAll()
+                .simpMessageDestMatchers("/**").permitAll()
+                .anyMessage().permitAll();
     }
     
     @Override

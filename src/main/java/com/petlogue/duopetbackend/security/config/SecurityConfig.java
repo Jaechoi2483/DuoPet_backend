@@ -125,6 +125,13 @@ public class SecurityConfig implements WebMvcConfigurer {
                                 "/api/consultation/vet-schedules/vet/*/available"
                         ).permitAll()
                         
+                        // WebSocket 경로 - 인증 불필요
+                        .requestMatchers(
+                                "/ws-consultation/**",
+                                "/ws-consultation/info",
+                                "/ws-consultation"
+                        ).permitAll()
+                        
                         .requestMatchers(HttpMethod.POST,"/board/write").authenticated()
                         .requestMatchers(HttpMethod.GET, "/users/check-face").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/board/free/**").authenticated()

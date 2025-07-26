@@ -104,10 +104,12 @@ public class ConsultationRoomService {
         
         ConsultationRoom savedRoom = consultationRoomRepository.save(room);
         
-        // 즉시 상담인 경우 수의사에게 알림 전송
-        if (schedule == null && "CHAT".equals(dto.getConsultationType())) {
-            notificationService.sendNewConsultationNotification(savedRoom);
-        }
+        // 상담방이 생성되면 수의사에게 알림 전송
+        // 예약 상담이든 즉시 상담이든 상관없이 알림 전송
+        notificationService.sendNewConsultationNotification(savedRoom);
+        
+        log.info("상담방 생성 완료: roomId={}, vetId={}, userId={}", 
+                savedRoom.getRoomId(), savedRoom.getVet().getVetId(), savedRoom.getUser().getUserId());
         
         return savedRoom;
     }

@@ -67,6 +67,9 @@ public interface ConsultationRoomRepository extends JpaRepository<ConsultationRo
     void updateRoomStatus(@Param("roomId") Long roomId, 
                          @Param("status") String status);
     
+    @Query("SELECT cr FROM ConsultationRoom cr WHERE cr.roomStatus = 'WAITING' AND cr.createdAt < :threshold")
+    List<ConsultationRoom> findWaitingRoomsCreatedBefore(@Param("threshold") LocalDateTime threshold);
+
     // 상담 시작 처리
     @Modifying
     @Query("UPDATE ConsultationRoom cr " +
