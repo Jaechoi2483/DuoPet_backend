@@ -3,6 +3,7 @@ package com.petlogue.duopetbackend.consultation.model.service;
 import com.petlogue.duopetbackend.consultation.model.dto.ConsultationRoomDto;
 import com.petlogue.duopetbackend.consultation.model.dto.CreateConsultationDto;
 import com.petlogue.duopetbackend.consultation.jpa.entity.ConsultationRoom;
+import com.petlogue.duopetbackend.consultation.jpa.entity.ConsultationRoom.RoomStatus;
 import com.petlogue.duopetbackend.consultation.jpa.entity.VetProfile;
 import com.petlogue.duopetbackend.consultation.jpa.entity.VetSchedule;
 import com.petlogue.duopetbackend.consultation.jpa.repository.ConsultationRoomRepository;
@@ -18,23 +19,25 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class ConsultationRoomService {
     
     private final ConsultationRoomRepository consultationRoomRepository;
     private final UserRepository userRepository;
     private final VetRepository vetRepository;
     private final PetRepository petRepository;
+    private final SimpMessagingTemplate messagingTemplate;
     private final VetProfileRepository vetProfileRepository;
     private final VetScheduleRepository vetScheduleRepository;
     private final ConsultationNotificationService notificationService;
@@ -117,6 +120,7 @@ public class ConsultationRoomService {
     /**
      * 상담방 조회 (UUID)
      */
+    @Transactional(readOnly = true)
     public ConsultationRoom getConsultationRoomByUuid(String roomUuid) {
         return consultationRoomRepository.findByRoomUuid(roomUuid)
                 .orElseThrow(() -> new IllegalArgumentException("Consultation room not found"));
@@ -125,6 +129,7 @@ public class ConsultationRoomService {
     /**
      * 사용자의 상담 목록 조회
      */
+    @Transactional(readOnly = true)
     public Page<ConsultationRoom> getUserConsultations(Long userId, Pageable pageable) {
         return consultationRoomRepository.findByUserId(userId, pageable);
     }
@@ -132,6 +137,7 @@ public class ConsultationRoomService {
     /**
      * 수의사의 상담 목록 조회
      */
+    @Transactional(readOnly = true)
     public Page<ConsultationRoom> getVetConsultations(Long vetId, Pageable pageable) {
         return consultationRoomRepository.findByVetId(vetId, pageable);
     }
@@ -139,6 +145,7 @@ public class ConsultationRoomService {
     /**
      * 오늘의 예약 상담 조회 (수의사용)
      */
+    @Transactional(readOnly = true)
     public List<ConsultationRoom> getTodayScheduledConsultations(Long vetId) {
         LocalDateTime todayStart = LocalDateTime.now().toLocalDate().atStartOfDay();
         LocalDateTime todayEnd = todayStart.plusDays(1);
@@ -164,6 +171,14 @@ public class ConsultationRoomService {
     }
     
     /**
+     * ID로 상담 조회
+     */
+    public ConsultationRoom getConsultationById(Long roomId) {
+        return consultationRoomRepository.findById(roomId)
+                .orElseThrow(() -> new IllegalArgumentException("Consultation room not found"));
+    }
+    
+    /**
      * 상담 종료
      */
     @Transactional
@@ -180,6 +195,22 @@ public class ConsultationRoomService {
         
         log.info("Consultation ended: room={}, duration={} minutes", 
                 roomId, room.getDurationMinutes());
+        
+        // WebSocket으로 상담 종료 알림
+        try {
+            messagingTemplate.convertAndSend(
+                "/topic/consultation/" + room.getRoomUuid() + "/status",
+                Map.of(
+                    "type", "CONSULTATION_ENDED",
+                    "roomUuid", room.getRoomUuid(),
+                    "status", "COMPLETED",
+                    "message", "상담이 종료되었습니다."
+                )
+            );
+            log.info("상담 종료 알림 전송 완료 - roomUuid: {}", room.getRoomUuid());
+        } catch (Exception e) {
+            log.error("상담 종료 알림 전송 실패", e);
+        }
     }
     
     /**
@@ -212,6 +243,7 @@ public class ConsultationRoomService {
     /**
      * 진행 중인 상담방 조회
      */
+    @Transactional(readOnly = true)
     public List<ConsultationRoom> getActiveRooms(Long userId) {
         return consultationRoomRepository.findActiveRoomsByUserId(userId);
     }
@@ -262,8 +294,15 @@ public class ConsultationRoomService {
         ConsultationRoom room = consultationRoomRepository.findById(roomId)
                 .orElseThrow(() -> new IllegalArgumentException("상담방을 찾을 수 없습니다."));
         
-        // 상태 검증
+        // 상태 검증 - TIMED_OUT, REJECTED, CANCELLED 상태도 체크
         if (!"CREATED".equals(room.getRoomStatus()) && !"WAITING".equals(room.getRoomStatus())) {
+            if ("TIMED_OUT".equals(room.getRoomStatus())) {
+                throw new IllegalStateException("시간 초과된 상담입니다.");
+            } else if ("REJECTED".equals(room.getRoomStatus())) {
+                throw new IllegalStateException("이미 거절된 상담입니다.");
+            } else if ("CANCELLED".equals(room.getRoomStatus())) {
+                throw new IllegalStateException("취소된 상담입니다.");
+            }
             throw new IllegalStateException("대기 중인 상담만 승인할 수 있습니다. 현재 상태: " + room.getRoomStatus());
         }
         
@@ -274,8 +313,13 @@ public class ConsultationRoomService {
         // 저장
         ConsultationRoom savedRoom = consultationRoomRepository.save(room);
         
-        // 승인 알림 전송 (사용자에게)
-        notificationService.sendStatusChangeNotification(savedRoom, "APPROVED");
+        // 승인 알림 전송
+        try {
+            notificationService.sendStatusChangeNotification(savedRoom, "APPROVED");
+            log.info("승인 알림 전송 완료 - roomUuid: {}", savedRoom.getRoomUuid());
+        } catch (Exception e) {
+            log.error("승인 알림 전송 실패", e);
+        }
         
         log.info("Consultation room {} approved by vet {}", roomId, room.getVet().getVetId());
         
@@ -287,26 +331,50 @@ public class ConsultationRoomService {
      */
     @Transactional
     public ConsultationRoom rejectConsultation(Long roomId) {
+        log.info("상담 거절 처리 시작 - roomId: {}", roomId);
+        
+        // 1. 상담방 조회
         ConsultationRoom room = consultationRoomRepository.findById(roomId)
                 .orElseThrow(() -> new IllegalArgumentException("상담방을 찾을 수 없습니다."));
         
-        // 상태 검증
-        if (!"CREATED".equals(room.getRoomStatus()) && !"WAITING".equals(room.getRoomStatus())) {
-            throw new IllegalStateException("대기 중인 상담만 거절할 수 있습니다. 현재 상태: " + room.getRoomStatus());
+        log.info("상담방 조회 성공 - roomId: {}, currentStatus: {}", roomId, room.getRoomStatus());
+        
+        // 2. 상태 검증
+        String currentStatus = room.getRoomStatus();
+        if (!"CREATED".equals(currentStatus) && !"WAITING".equals(currentStatus)) {
+            String errorMsg = String.format("대기 중인 상담만 거절할 수 있습니다. 현재 상태: %s", currentStatus);
+            log.error(errorMsg);
+            throw new IllegalStateException(errorMsg);
         }
         
-        // 상태 변경 - REJECTED 상태가 없는 경우 CANCELLED로 변경
-        room.setRoomStatus("CANCELLED");
-        room.setEndedAt(LocalDateTime.now());
-        room.setConsultationNotes("상담이 전문가에 의해 거절되었습니다.");
+        // 3. 상태 변경
+        try {
+            room.setRoomStatus(RoomStatus.REJECTED.name());  // Enum 사용
+            room.setEndedAt(LocalDateTime.now());
+            room.setConsultationNotes("상담이 전문가에 의해 거절되었습니다.");
+            log.info("상담방 상태 변경 완료 - roomId: {}, newStatus: REJECTED", roomId);
+        } catch (Exception e) {
+            log.error("상담방 상태 변경 중 오류", e);
+            throw new RuntimeException("상담방 상태 변경 실패", e);
+        }
         
-        // 저장
-        ConsultationRoom savedRoom = consultationRoomRepository.save(room);
+        // 4. DB 저장
+        ConsultationRoom savedRoom;
+        try {
+            savedRoom = consultationRoomRepository.save(room);
+            log.info("상담방 저장 완료 - roomId: {}, savedStatus: {}", roomId, savedRoom.getRoomStatus());
+        } catch (Exception e) {
+            log.error("상담방 저장 중 오류", e);
+            throw new RuntimeException("상담방 저장 실패", e);
+        }
         
-        // 거절 알림 전송 (사용자에게)
-        notificationService.sendStatusChangeNotification(savedRoom, "REJECTED");
-        
-        log.info("Consultation room {} rejected by vet {}", roomId, room.getVet().getVetId());
+        // 5. 알림 전송 (실패해도 거절은 성공으로 처리)
+        try {
+            notificationService.sendStatusChangeNotification(savedRoom, "REJECTED");
+            log.info("거절 알림 전송 완료 - roomUuid: {}", savedRoom.getRoomUuid());
+        } catch (Exception e) {
+            log.error("거절 알림 전송 실패 (무시하고 계속 진행)", e);
+        }
         
         return savedRoom;
     }
@@ -314,6 +382,7 @@ public class ConsultationRoomService {
     /**
      * ConsultationRoom을 DTO로 변환
      */
+    @Transactional(readOnly = true)
     public ConsultationRoomDto toDto(ConsultationRoom room) {
         return ConsultationRoomDto.builder()
                 .roomId(room.getRoomId())

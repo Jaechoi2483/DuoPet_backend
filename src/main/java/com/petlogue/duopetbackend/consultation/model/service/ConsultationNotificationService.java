@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import com.petlogue.duopetbackend.consultation.jpa.entity.ConsultationRoom;
 import com.petlogue.duopetbackend.consultation.model.dto.ConsultationNotificationDto;
+import java.time.LocalDateTime;
 
 @Slf4j
 @Service
@@ -64,25 +65,28 @@ public class ConsultationNotificationService {
      */
     public void sendStatusChangeNotification(ConsultationRoom room, String status) {
         try {
+            log.info("상태 변경 알림 전송 시작 - roomUuid: {}, status: {}", room.getRoomUuid(), status);
+            
             ConsultationNotificationDto notification = ConsultationNotificationDto.builder()
                     .type("STATUS_CHANGE")
                     .roomId(room.getRoomId())
                     .roomUuid(room.getRoomUuid())
                     .status(status)
-                    .timestamp(room.getUpdatedAt())
+                    .timestamp(room.getUpdatedAt() != null ? room.getUpdatedAt() : LocalDateTime.now())
                     .build();
             
-            // 사용자와 수의사 모두에게 전송
-            messagingTemplate.convertAndSend(
-                    "/topic/consultation/" + room.getRoomUuid() + "/status",
-                    notification
-            );
+            String destination = "/topic/consultation/" + room.getRoomUuid() + "/status";
+            log.info("WebSocket 전송 대상: {}", destination);
             
-            log.info("Sent status change notification for room {} to status {}", 
-                    room.getRoomUuid(), status);
+            // 사용자와 수의사 모두에게 전송
+            messagingTemplate.convertAndSend(destination, notification);
+            
+            log.info("상태 변경 알림 전송 완료 - roomUuid: {}, status: {}, destination: {}", 
+                    room.getRoomUuid(), status, destination);
             
         } catch (Exception e) {
-            log.error("Failed to send status change notification", e);
+            log.error("상태 변경 알림 전송 실패 - roomUuid: {}, status: {}", room.getRoomUuid(), status, e);
+            throw e; // 예외를 다시 던져서 호출자가 알 수 있도록 함
         }
     }
 }

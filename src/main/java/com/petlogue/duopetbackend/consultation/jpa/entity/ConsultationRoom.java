@@ -113,7 +113,24 @@ public class ConsultationRoom {
     
     // 상태 상수
     public enum RoomStatus {
-        CREATED, WAITING, IN_PROGRESS, COMPLETED, CANCELLED, NO_SHOW
+        CREATED("생성됨"), 
+        WAITING("대기중"), 
+        IN_PROGRESS("진행중"), 
+        COMPLETED("완료"), 
+        CANCELLED("취소됨"), 
+        NO_SHOW("노쇼"), 
+        TIMED_OUT("시간초과"), 
+        REJECTED("거절됨");
+        
+        private final String description;
+        
+        RoomStatus(String description) {
+            this.description = description;
+        }
+        
+        public String getDescription() {
+            return description;
+        }
     }
     
     public enum ConsultationType {
@@ -140,6 +157,16 @@ public class ConsultationRoom {
     
     public void cancelConsultation() {
         this.roomStatus = RoomStatus.CANCELLED.name();
+    }
+    
+    public void timeoutConsultation() {
+        this.roomStatus = RoomStatus.TIMED_OUT.name();
+        this.endedAt = LocalDateTime.now();
+    }
+    
+    public void rejectConsultation() {
+        this.roomStatus = RoomStatus.REJECTED.name();
+        this.endedAt = LocalDateTime.now();
     }
     
     public void markAsPaid(String paymentMethod) {
