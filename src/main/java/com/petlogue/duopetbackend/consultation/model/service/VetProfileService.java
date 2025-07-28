@@ -3,6 +3,7 @@ package com.petlogue.duopetbackend.consultation.model.service;
 import com.petlogue.duopetbackend.consultation.model.dto.VetProfileDto;
 import com.petlogue.duopetbackend.consultation.jpa.entity.VetProfile;
 import com.petlogue.duopetbackend.consultation.jpa.repository.VetProfileRepository;
+import com.petlogue.duopetbackend.consultation.jpa.repository.ConsultationRoomRepository;
 import com.petlogue.duopetbackend.user.jpa.entity.VetEntity;
 import com.petlogue.duopetbackend.user.jpa.repository.VetRepository;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 
 @Slf4j
 @Service
@@ -23,6 +26,7 @@ public class VetProfileService {
     
     private final VetProfileRepository vetProfileRepository;
     private final VetRepository vetRepository;
+    private final ConsultationRoomRepository consultationRoomRepository;
     
     /**
      * 수의사 프로필 생성
@@ -108,6 +112,39 @@ public class VetProfileService {
      */
     public List<VetProfile> getOnlineVets() {
         return vetProfileRepository.findOnlineAndAvailableVets();
+    }
+    
+    /**
+     * 수의사가 현재 상담 중인지 확인
+     */
+    public boolean isVetInConsultation(Long vetId) {
+        // 먼저 수의사가 온라인인지 확인
+        VetProfile vetProfile = vetProfileRepository.findByVet_VetId(vetId).orElse(null);
+        if (vetProfile == null || !"Y".equals(vetProfile.getIsOnline())) {
+            return false; // 오프라인이면 상담 중이 아님
+        }
+        return consultationRoomRepository.existsByVetIdAndInProgress(vetId);
+    }
+    
+    /**
+     * 수의사 목록과 함께 상담 상태 정보 반환
+     */
+    public Map<String, Object> getAvailableVetsWithStatus(Pageable pageable) {
+        Page<VetProfile> vetsPage = getAvailableVets(pageable);
+        
+        // 각 수의사의 상담 상태 확인
+        Map<Long, Boolean> consultationStatusMap = new HashMap<>();
+        for (VetProfile vetProfile : vetsPage.getContent()) {
+            Long vetId = vetProfile.getVet().getVetId();
+            boolean isInConsultation = isVetInConsultation(vetId);
+            consultationStatusMap.put(vetId, isInConsultation);
+        }
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("vets", vetsPage);
+        result.put("consultationStatus", consultationStatusMap);
+        
+        return result;
     }
     
     /**

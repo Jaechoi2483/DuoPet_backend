@@ -184,17 +184,42 @@ public class ConsultationRoomController {
      * POST /api/consultation/rooms/{roomId}/end
      */
     @PostMapping("/{roomId}/end")
-    @PreAuthorize("hasAuthority('VET')")
+    @PreAuthorize("hasAnyAuthority('VET', 'user')")
     public ResponseEntity<ApiResponse<Void>> endConsultation(
-            @PathVariable Long roomId) {
+            @PathVariable Long roomId,
+            @AuthenticationPrincipal UserDetails userDetails) {
         
         try {
+            // 로그인한 사용자가 해당 상담의 참여자인지 확인
+            if (userDetails != null) {
+                String username = userDetails.getUsername();
+                ConsultationRoom room = consultationRoomService.getConsultationById(roomId);
+                
+                // 상담 참여자 확인 (일반 사용자 또는 수의사)
+                boolean isParticipant = false;
+                if (room.getUser() != null && username.equals(room.getUser().getLoginId())) {
+                    isParticipant = true;
+                } else if (room.getVet() != null && room.getVet().getUser() != null && 
+                          username.equals(room.getVet().getUser().getLoginId())) {
+                    isParticipant = true;
+                }
+                
+                if (!isParticipant) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                            .body(ApiResponse.error("상담 참여자만 종료할 수 있습니다."));
+                }
+            }
+            
             consultationRoomService.endConsultation(roomId);
             return ResponseEntity.ok(ApiResponse.success("상담이 종료되었습니다.", null));
             
         } catch (IllegalStateException e) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
+        } catch (Exception e) {
+            log.error("상담 종료 중 오류 발생", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("상담 종료 중 오류가 발생했습니다."));
         }
     }
     
@@ -297,7 +322,7 @@ public class ConsultationRoomController {
      * PUT /api/consultation/rooms/{roomId}/approve
      */
     @PutMapping("/{roomId}/approve")
-    @PreAuthorize("hasAuthority('VET')")
+    @PreAuthorize("hasAnyAuthority('VET', 'user')")  // user 권한도 허용
     public ResponseEntity<ApiResponse<ConsultationRoomDto>> approveConsultation(
             @PathVariable Long roomId,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -322,23 +347,42 @@ public class ConsultationRoomController {
      * PUT /api/consultation/rooms/{roomId}/reject
      */
     @PutMapping("/{roomId}/reject")
-    @PreAuthorize("hasAuthority('VET')")
+    @PreAuthorize("hasAnyAuthority('VET', 'user')")  // user 권한도 허용
     public ResponseEntity<ApiResponse<ConsultationRoomDto>> rejectConsultation(
             @PathVariable Long roomId,
             @AuthenticationPrincipal UserDetails userDetails) {
+        
+        log.info("상담 거절 요청 - roomId: {}, vet: {}", roomId, 
+                userDetails != null ? userDetails.getUsername() : "Unknown");
         
         try {
             ConsultationRoom rejectedRoom = consultationRoomService.rejectConsultation(roomId);
             ConsultationRoomDto roomDto = consultationRoomService.toDto(rejectedRoom);
             
+            log.info("상담 거절 완료 - roomId: {}, status: {}", roomId, rejectedRoom.getRoomStatus());
+            
             return ResponseEntity.ok(ApiResponse.success("상담이 거절되었습니다.", roomDto));
             
         } catch (IllegalStateException e) {
+            log.error("상담 거절 실패 - 상태 오류: {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         } catch (IllegalArgumentException e) {
+            log.error("상담 거절 실패 - 상담방 없음: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(ApiResponse.error("상담방을 찾을 수 없습니다."));
+        } catch (Exception e) {
+            log.error("상담 거절 실패 - 예외 발생: ", e);
+            // 스택 트레이스 전체 출력
+            e.printStackTrace();
+            
+            String errorMessage = "상담 거절 처리 중 오류가 발생했습니다.";
+            if (e.getMessage() != null) {
+                errorMessage += " (" + e.getMessage() + ")";
+            }
+            
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error(errorMessage));
         }
     }
 }

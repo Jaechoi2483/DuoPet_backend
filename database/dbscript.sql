@@ -3116,3 +3116,17 @@ commit;
 =================*/
 
 ALTER TABLE COMMENTS MODIFY (CONTENT VARCHAR2(4000 CHAR));
+
+/*================
+2025-07-26
+"CONSULTATION_ROOM" 테이블 room_status 컬럼 제약조건 변경경
+=================*/
+
+-- 기존 제약조건 삭제
+ALTER TABLE consultation_room DROP CONSTRAINT CK_CR_STATUS;
+
+-- 새로운 제약조건 추가 (TIMED_OUT, REJECTED 포함)
+ALTER TABLE consultation_room ADD CONSTRAINT CK_CR_STATUS 
+CHECK (room_status IN ('CREATED', 'WAITING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_SHOW', 'TIMED_OUT', 'REJECTED'));
+
+commit;

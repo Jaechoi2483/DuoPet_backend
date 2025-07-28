@@ -132,4 +132,11 @@ public interface ConsultationRoomRepository extends JpaRepository<ConsultationRo
     List<ConsultationRoom> findTodayScheduledConsultations(@Param("vetId") Long vetId,
                                                           @Param("todayStart") LocalDateTime todayStart,
                                                           @Param("todayEnd") LocalDateTime todayEnd);
+    
+    // 수의사가 현재 진행 중인 상담이 있는지 확인
+    @Query("SELECT CASE WHEN COUNT(cr) > 0 THEN true ELSE false END " +
+           "FROM ConsultationRoom cr " +
+           "WHERE cr.vet.vetId = :vetId " +
+           "AND cr.roomStatus = 'IN_PROGRESS'")
+    boolean existsByVetIdAndInProgress(@Param("vetId") Long vetId);
 }

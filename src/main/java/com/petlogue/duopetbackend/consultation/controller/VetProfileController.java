@@ -19,6 +19,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @RestController
@@ -239,5 +240,25 @@ public class VetProfileController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("상태 업데이트 중 오류가 발생했습니다."));
         }
+    }
+    
+    /**
+     * 상담 가능한 수의사 목록과 상담 상태 조회
+     * GET /api/consultation/vet-profiles/available-with-status
+     */
+    @GetMapping("/available-with-status")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getAvailableVetsWithStatus(
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        
+        log.info("getAvailableVetsWithStatus API called - page: {}, size: {}", 
+                pageable.getPageNumber(), pageable.getPageSize());
+        
+        Map<String, Object> result = vetProfileService.getAvailableVetsWithStatus(pageable);
+        
+        return ResponseEntity.ok()
+                .header("Cache-Control", "no-cache, no-store, must-revalidate")
+                .header("Pragma", "no-cache")
+                .header("Expires", "0")
+                .body(ApiResponse.success(result));
     }
 }
