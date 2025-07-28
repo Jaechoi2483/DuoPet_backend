@@ -50,18 +50,39 @@ public class JWTFilter extends OncePerRequestFilter {
                 || url.equals("/mypage/face-delete")
 
                 || url.equals("/reissue")
-
+                || url.equals("/api/shopping/items")
 
                 || url.startsWith("/api/info")
                 || url.startsWith("/info")
                 || url.startsWith("/api/adoption")
                 || url.startsWith("/api/hospitals")
                 || url.equals("/api/summary/public")
+
                 || url.startsWith("/board/view-count")
-                || url.startsWith("/board/freeList")
-                || url.startsWith("/board/detail")
-                || url.equals("/board/top-liked")
-                || url.equals("/board/top-viewed")
+                || url.equals("/board/maintop-liked")
+                || url.equals("/board/maintop-viewed")
+
+                || url.startsWith("/board/free/list")
+                || url.startsWith("/board/free/detail")
+                || url.equals("/board/free/top-liked")
+                || url.equals("/board/free/top-viewed")
+
+                || url.startsWith("/board/review/list")
+                || url.startsWith("/board/review/detail")
+                || url.equals("/board/review/top-liked")
+                || url.equals("/board/review/top-viewed")
+
+                || url.startsWith("/board/tip/list")
+                || url.startsWith("/board/tip/detail")
+                || url.equals("/board/tip/top-liked")
+                || url.equals("/board/tip/top-viewed")
+
+                || url.startsWith("/board/question/list")
+                || url.startsWith("/board/question/detail")
+                || url.equals("/board/question/top-liked")
+                || url.equals("/board/question/top-viewed")
+
+
                 || url.startsWith("/static/board")
                 || url.startsWith("/comments/view")
                 || url.startsWith("/api/v1/video-recommend")

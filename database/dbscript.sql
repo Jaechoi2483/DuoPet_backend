@@ -3118,6 +3118,7 @@ commit;
 ALTER TABLE COMMENTS MODIFY (CONTENT VARCHAR2(4000 CHAR));
 
 /*================
+
 2025-07-26
 "CONSULTATION_ROOM" 테이블 room_status 컬럼 제약조건 변경경
 =================*/
@@ -3130,3 +3131,26 @@ ALTER TABLE consultation_room ADD CONSTRAINT CK_CR_STATUS
 CHECK (room_status IN ('CREATED', 'WAITING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_SHOW', 'TIMED_OUT', 'REJECTED'));
 
 commit;
+=======
+2025-07-27
+CONTENT CATEGORY 컬럼 변경 
+=================*/
+
+ALTER TABLE CONTENT DROP CONSTRAINT CK_CONTENT_CATEGORY;
+
+-- 자유게시판
+UPDATE CONTENT SET CATEGORY = 'free' WHERE CATEGORY = '자유';
+-- 후기게시판
+UPDATE CONTENT SET CATEGORY = 'review' WHERE CATEGORY = '후기';
+-- 질문게시판
+UPDATE CONTENT SET CATEGORY = 'question' WHERE CATEGORY = '질문';
+-- 팁게시판
+UPDATE CONTENT SET CATEGORY = 'tip' WHERE CATEGORY = '팁';
+
+ALTER TABLE CONTENT
+ADD CONSTRAINT CK_CONTENT_CATEGORY
+CHECK (category IN ('free', 'review', 'question', 'tip', 'info', 'disease', 'food'));
+
+commit;
+
+

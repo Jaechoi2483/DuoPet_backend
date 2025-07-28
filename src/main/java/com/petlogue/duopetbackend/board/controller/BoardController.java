@@ -18,6 +18,8 @@ import com.petlogue.duopetbackend.board.model.service.ReportService;
 import com.petlogue.duopetbackend.common.FileNameChange;
 import com.petlogue.duopetbackend.common.Paging;
 import com.petlogue.duopetbackend.security.jwt.JWTUtil;
+import com.petlogue.duopetbackend.user.jpa.entity.UserEntity;
+import com.petlogue.duopetbackend.user.jpa.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -50,6 +52,8 @@ public class BoardController {
 
     private final BoardRepository boardRepository;
 
+    private final UserRepository userRepository;
+
     private final LikeRepository likeRepo;
 
     private final BookmarkRepository bookmarkRepository;
@@ -62,32 +66,35 @@ public class BoardController {
     private String uploadDir;
 
     // 전체 자유 게시판 목록 조회
-    @GetMapping("/free")
-    public List<Board> getFreeBoardList() {
-        log.info("자유게시판 전체 조회 요청");
-        return boardService.getAllFreeBoards();
+    @GetMapping("/{category}")
+    public List<Board> getBoardListByCategory(@PathVariable String category) {
+        log.info("{} 게시판 전체 조회 요청", category);
+        return boardService.getAllBoardsByCategory(category, "board");
     }
 
     // 게시글 상세 조회
-    @GetMapping("/detail/{id}")
-    public Board getBoardDetail(@PathVariable Number id) {
-        log.info("게시글 상세 조회 요청: {}", id);
-        Board board = boardService.getBoardDetail(id);
+    @GetMapping("/{category}/detail/{id}")
+    public Board getBoardDetail(@PathVariable String category, @PathVariable Long id) {
+        log.info("카테고리별 게시글 상세 조회 요청: category={}, id={}", category, id);
+        Board board = boardService.getBoardDetailByCategoryAndId(category, "board", id);
+
         if (board == null) {
-            // 예외 대신 null 반환을 선택한 경우 프론트에서 처리하게끔 함
-            log.warn("해당 게시글을 찾을 수 없습니다. id: {}", id);
-            return null; // 또는 ResponseEntity로 감싸도 됨
+            log.warn("해당 게시글이 존재하지 않거나 카테고리가 다릅니다. id: {}, category: {}", id, category);
         }
 
         return board;
     }
 
-    @PostMapping("/write")
+    @PostMapping("/{category}/write")
     public ResponseEntity<?> insertBoard(
+            @PathVariable String category,
             @ModelAttribute Board board,
             @RequestParam(name = "ofile", required = false) MultipartFile mfile
     ) {
         log.info("게시글 등록 요청: {}", board);
+
+        board.setCategory(category);
+        board.setContentType("board");
 
         // 1. 파일 저장 경로 생성
         String savePath = uploadDir + "/board";
@@ -128,14 +135,15 @@ public class BoardController {
     }
 
     // 게시물 수정
-    @PutMapping("/free/{id}")
+    @PutMapping("/{category}/{id}")
     public ResponseEntity<?> updateBoard(
+            @PathVariable String category,
             @PathVariable Long id,
             @ModelAttribute Board board,
             @RequestParam(name = "ofile", required = false) MultipartFile mfile,
             HttpServletRequest request
     ) {
-        log.info("게시글 수정 요청: id={}, {}", id, board);
+        log.info("게시글 수정 요청: category={}, {}", category, id);
 
         try {
             BoardEntity existing = boardRepository.findById(id)
@@ -149,6 +157,9 @@ public class BoardController {
             if (!existing.getUserId().equals(userId)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body("수정 권한이 없습니다.");
             }
+
+            // category 수동 주입
+            board.setCategory(category.trim());
 
 
             // 제목/내용/카테고리/태그 업데이트
@@ -186,14 +197,16 @@ public class BoardController {
     }
 
     // 게시물 삭제
-    @DeleteMapping("/free/{id}")
-    public ResponseEntity<?> deleteBoard(@PathVariable Long id,
-                                         HttpServletRequest request) {
+    @DeleteMapping("/{category}/{id}")
+    public ResponseEntity<?> deleteBoard(
+            @PathVariable String category,
+            @PathVariable Long id,
+            HttpServletRequest request) {
 
         try {
             // 1. JWT에서 사용자 ID 추출
             Long userId = jwtUtil.getUserIdFromRequest(request);
-            log.info("게시글 삭제 요청: 게시글 ID={}, 사용자 ID={}", id, userId);
+            log.info("게시글 삭제 요청: 게시글 ID={}, 카테고리={}, 사용자 ID={}", id, category, userId);
             log.info("Authorization 헤더: {}", request.getHeader("Authorization"));
             log.info("파싱된 사용자 ID: {}", userId);
 
@@ -205,7 +218,11 @@ public class BoardController {
 
             BoardEntity board = optional.get();
 
-            // 3. 게시물 작성자와 요청자 일치 여부 확인
+            // 3. 카테고리 일치 & 게시물 작성자와 요청자 일치 여부 확인
+            if (!board.getCategory().equalsIgnoreCase(category.trim())) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("카테고리 정보가 일치하지 않습니다.");
+            }
+
             if (!board.getUserId().equals(userId)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body("삭제 권한이 없습니다.");
             }
@@ -231,29 +248,65 @@ public class BoardController {
     }
 
     // 좋아요 TOP3
-    @GetMapping("/top-liked")
-    public List<Board> getTopLikedBoards() {
-        log.info("TOP 좋아요 게시글 요청");
-        return boardService.getTopLikedBoards();
+    @GetMapping("/{category}/top-liked")
+    public List<Board> getTopLikedBoards(@PathVariable String category) {
+        log.info("TOP 좋아요 게시글 요청: {}", category);
+        return boardService.getTopLikedBoards(category, "board");
     }
 
+
     // 조회수 TOP3
-    @GetMapping("/top-viewed")
-    public List<Board> getTopViewedBoards() {
-        log.info("TOP 조회수 게시글 요청");
-        return boardService.getTopViewedBoards();
+    @GetMapping("/{category}/top-viewed")
+    public List<Board> getTopViewedBoards(@PathVariable String category) {
+        return boardService.getTopViewedBoards(category, "board");
+    }
+
+    // 좋아요 순 TOP 3 조회 (메인에서)
+    @GetMapping("/maintop-liked")
+    public ResponseEntity<List<Board>> getTopLiked() {
+        List<Board> result = boardService.findTopLikedBoards()
+                .stream()
+                .map(dto -> {
+                    dto.setNickname(
+                            userRepository.findById(dto.getUserId())
+                                    .map(UserEntity::getNickname)
+                                    .orElse("알 수 없음")
+                    );
+                    return dto;
+                })
+                .toList();
+        return ResponseEntity.ok(result);
+    }
+
+
+    // 조회수 순 TOP 3 조회 (메인에서)
+    @GetMapping("/maintop-viewed")
+    public ResponseEntity<List<Board>> getTopViewed() {
+        List<Board> result = boardService.findTopViewedBoards()
+                .stream()
+                .map(dto -> {
+                    dto.setNickname(
+                            userRepository.findById(dto.getUserId())
+                                    .map(UserEntity::getNickname)
+                                    .orElse("알 수 없음")
+                    );
+                    return dto;
+                })
+                .toList();
+        return ResponseEntity.ok(result);
     }
 
     // 게시판 목록 & 페이징 정보 조회
-    @GetMapping("/freeList")
+    @GetMapping("/{category}/list")
     public Map<String, Object> boardList(
+            @PathVariable String category,
             @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "2") int limit,
+            @RequestParam(defaultValue = "10") int limit,
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "date") String sort,
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") Date date
     ) {
-        log.info("자유게시판 목록 요청 (page={}, keyword={}, sort={}, date={})", page, keyword, sort, date);
+        log.info("자유게시판 목록 요청 (page={}, keyword={}, sort={}, date={})", category, page, keyword, sort, date);
 
         // 페이징 + 정렬
         Sort sorting = sort.equals("title")
@@ -263,12 +316,11 @@ public class BoardController {
         Pageable pageable = PageRequest.of(page - 1, limit, sorting);
 
         // 게시글 수 조회
-        int count = boardService.countFreeBoardByKeywordOrDate(keyword, date);
-        Paging paging = new Paging(count, limit, page, "/freeList");
-        paging.calculate();
+        int count = boardService.countBoardsByKeywordOrDate(category, "board", keyword, date);
+        Paging paging = new Paging(count, limit, page, "/" + category + "/list");
 
         // 게시글 목록 조회
-        List<Board> list = boardService.selectByKeywordOrDate(keyword, date, pageable);
+        List<Board> list = boardService.selectBoardsByKeywordOrDate(category, "board", keyword, date, pageable);
 
         Map<String, Object> result = new HashMap<>();
         result.put("list", list);
@@ -299,7 +351,7 @@ public class BoardController {
     }
 
     // 좋아요 등록
-    @PostMapping("/like/{id}")
+    @PostMapping("/{category}/like/{id}")
     public ResponseEntity<?> toggleBoardLike(@PathVariable Long id, HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
         log.info("Controller 도달 - request.getAttribute(userId): {}", request.getAttribute("userId"));
@@ -318,7 +370,7 @@ public class BoardController {
     }
 
     // 좋아요 상태 확인
-    @GetMapping("/like/{contentId}/status")
+    @GetMapping("/{category}/like/{contentId}/status")
     public ResponseEntity<?> checkLikeStatus(@PathVariable Long contentId, HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
 
@@ -332,7 +384,7 @@ public class BoardController {
 
 
     // 북마크 등록
-    @PostMapping("/bookmark/{id}")
+    @PostMapping("/{category}/bookmark/{id}")
     public ResponseEntity<?> toggleBookmark(@PathVariable Long id, HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
         log.info("Bookmark Controller 도달 - request.getAttribute(userId): {}", userId);
@@ -355,7 +407,7 @@ public class BoardController {
     }
 
     // 북마크 상태 확인
-    @GetMapping("/bookmark/{contentId}/status")
+    @GetMapping("/{category}/bookmark/{contentId}/status")
     public ResponseEntity<?> checkBookmarkStatus(@PathVariable Long contentId, HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
 
@@ -371,8 +423,8 @@ public class BoardController {
         return ResponseEntity.ok(Map.of("bookmarked", bookmarked));
     }
 
-    @PostMapping("/report")
-    public ResponseEntity<String> report(@RequestBody Report dto, HttpServletRequest request) {
+    @PostMapping("/{category}/report")
+    public ResponseEntity<String> report(@PathVariable String category,@RequestBody Report dto, HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
 
         if (userId == null) {
@@ -386,6 +438,9 @@ public class BoardController {
         } catch (IllegalStateException e) {
             // 중복 신고 시
             return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            // 본인 게시글 신고 시, 이 블록에서 메시지 반환
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         } catch (Exception e) {
             log.error("신고 처리 중 오류 발생", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("신고 처리 중 오류 발생");
