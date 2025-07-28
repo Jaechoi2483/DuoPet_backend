@@ -50,7 +50,7 @@ public class JWTFilter extends OncePerRequestFilter {
                 || url.equals("/mypage/face-delete")
 
                 || url.equals("/reissue")
-
+                || url.equals("/api/shopping/items")
 
                 || url.startsWith("/api/info")
                 || url.startsWith("/info")

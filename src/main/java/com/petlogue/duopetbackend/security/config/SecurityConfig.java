@@ -205,7 +205,7 @@ public class SecurityConfig implements WebMvcConfigurer {
                                 "/favicon.ico",
                                 "/faq",
                                 "/qna",
-
+                                "/api/shopping/items",
                                 "/qna/**",
                                 "/api/info/**",
                                 "/api/adoption/**",
