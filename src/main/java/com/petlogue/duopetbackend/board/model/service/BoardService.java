@@ -7,6 +7,8 @@ import com.petlogue.duopetbackend.board.jpa.repository.CommentsRepository;
 import com.petlogue.duopetbackend.board.model.dto.Board;
 import com.petlogue.duopetbackend.board.model.dto.Comments;
 import com.petlogue.duopetbackend.common.FileNameChange;
+import com.petlogue.duopetbackend.user.jpa.entity.UserEntity;
+import com.petlogue.duopetbackend.user.jpa.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,6 +27,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
+import static kotlin.reflect.jvm.internal.impl.builtins.StandardNames.FqNames.list;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -32,32 +36,27 @@ import java.util.Optional;
 public class BoardService {
 
     private final BoardRepository boardRepository;
+    private final UserRepository userRepository;
     private final CommentsRepository commentsRepository;
     private final String ACTIVE_STATUS = "ACTIVE";
 
     @Value("${file.upload-dir}")
     private String uploadDir;
 
-    // 게시글 수 조회
-    public int countFreeBoardByKeywordOrDate(String keyword, Date date) {
-        // 키워드만 있는 경우
+    // 게시글 수 조회 (카테고리/타입 포함)
+    public int countBoardsByKeywordOrDate(String category, String contentType, String keyword, Date date) {
         if (keyword != null && !keyword.trim().isEmpty() && date == null) {
-            return boardRepository.countByCategoryAndContentTypeAndTitleContainingAndStatus("자유", "board", keyword, ACTIVE_STATUS);
-
-            // 날짜만 있는 경우
+            return boardRepository.countByCategoryAndContentTypeAndTitleContainingAndStatus(category, contentType, keyword, ACTIVE_STATUS);
         } else if ((keyword == null || keyword.trim().isEmpty()) && date != null) {
-            return boardRepository.countByCategoryAndContentTypeAndCreatedAtBetweenAndStatus(
-                    "자유", "board", getStartOfDay(date), getEndOfDay(date), ACTIVE_STATUS);
-
-            // 키워드 + 날짜 둘 다 없음 (전체)
+            return boardRepository.countByCategoryAndContentTypeAndCreatedAtBetweenAndStatus(category, contentType, getStartOfDay(date), getEndOfDay(date), ACTIVE_STATUS);
         } else {
-            return boardRepository.countByCategoryAndContentTypeAndStatus("자유", "board", ACTIVE_STATUS);
+            return boardRepository.countByCategoryAndContentTypeAndStatus(category, contentType, ACTIVE_STATUS);
         }
     }
 
     // 전체 게시물 목록
-    public List<Board> getAllFreeBoards() {
-        List<BoardEntity> entities = boardRepository.findByContentTypeAndCategoryAndStatus("board", "자유", ACTIVE_STATUS);
+    public List<Board> getAllBoardsByCategory(String category, String contentType) {
+        List<BoardEntity> entities = boardRepository.findByContentTypeAndCategoryAndStatus(contentType, category, ACTIVE_STATUS);
 
         List<Board> boardList = new ArrayList<>();
         for (BoardEntity entity : entities) {
@@ -67,26 +66,22 @@ public class BoardService {
         return boardList;
     }
 
-    // 게시글 목록 조회
-    public ArrayList<Board> selectByKeywordOrDate(String keyword, Date date, Pageable pageable) {
+    // 게시글 목록 조회 (카테고리/타입 포함)
+    public ArrayList<Board> selectBoardsByKeywordOrDate(String category, String contentType, String keyword, Date date, Pageable pageable) {
         Page<BoardEntity> page;
 
         if (keyword != null && !keyword.trim().isEmpty() && date == null) {
-            // 키워드만 있을 때
-            page = boardRepository.findByCategoryAndContentTypeAndTitleContainingAndStatus("자유", "board", keyword, ACTIVE_STATUS, pageable);
+            page = boardRepository.findByCategoryAndContentTypeAndTitleContainingAndStatus(category, contentType, keyword, ACTIVE_STATUS, pageable);
         } else if ((keyword == null || keyword.trim().isEmpty()) && date != null) {
-            // 날짜만 있을 때
-            page = boardRepository.findByCategoryAndContentTypeAndCreatedAtBetweenAndStatus("자유", "board", getStartOfDay(date), getEndOfDay(date), ACTIVE_STATUS, pageable);
+            page = boardRepository.findByCategoryAndContentTypeAndCreatedAtBetweenAndStatus(category, contentType, getStartOfDay(date), getEndOfDay(date), ACTIVE_STATUS, pageable);
         } else {
-            // 전체 목록
-            page = boardRepository.findByCategoryAndContentTypeAndStatus("자유", "board", ACTIVE_STATUS, pageable);
+            page = boardRepository.findByCategoryAndContentTypeAndStatus(category, contentType, ACTIVE_STATUS, pageable);
         }
 
         ArrayList<Board> list = new ArrayList<>();
         for (BoardEntity entity : page) {
             list.add(entity.toDto());
         }
-
         return list;
     }
 
@@ -108,6 +103,23 @@ public class BoardService {
                 .atTime(23, 59, 59)
                 .atZone(ZoneId.systemDefault())
                 .toInstant());
+    }
+
+    // 게시글 ID와 카테고리, 타입(board)이 모두 일치하는 게시글을 조회
+    @Transactional(readOnly = true)
+    public Board getBoardDetailByCategoryAndId(String category, String contentType, Long id) {
+        Optional<BoardEntity> optional = boardRepository.findById(id);
+
+        if (optional.isPresent()) {
+            BoardEntity entity = optional.get();
+
+            if (entity.getCategory().equals(category) && entity.getContentType().equals(contentType)
+                    && entity.getStatus().equals(ACTIVE_STATUS)) {
+                return entity.toDto();
+            }
+        }
+
+        return null;
     }
 
     // 게시물 상세보기
@@ -176,41 +188,94 @@ public class BoardService {
     }
 
 
-    // 좋아요 TOP3
-    public List<Board> getTopLikedBoards() {
-        List<Object[]> results = boardRepository.findTop3Liked(PageRequest.of(0, 3));
-
+    // 좋아요 TOP3 (카테고리/타입 포함)
+    public List<Board> getTopLikedBoards(String category, String contentType) {
+        List<Object[]> results = boardRepository.findTop3LikedByCategory(category, contentType, PageRequest.of(0, 3));
         List<Board> list = new ArrayList<>();
+
         for (Object[] row : results) {
-            Board board = new Board();
-            board.setContentId(((Number) row[0]).longValue());
-            board.setTitle((String) row[1]);
-            board.setUserId(((Number) row[2]).longValue());
-            board.setLikeCount(((Number) row[3]).intValue());
-            list.add(board);
+            Long contentId = ((Number) row[0]).longValue();
+            Long userId = ((Number) row[2]).longValue();
+            Optional<UserEntity> userOpt = userRepository.findById(userId);
+            Optional<BoardEntity> boardOpt = boardRepository.findById(contentId);
+            if (boardOpt.isPresent()) {
+                Board board = boardOpt.get().toDto();
+                board.setNickname(userOpt.map(UserEntity::getNickname).orElse("알 수 없음"));
+                list.add(board);
+            }
         }
         return list;
     }
 
-    // 조회수 TOP3
-    public List<Board> getTopViewedBoards() {
-        List<Object[]> results = boardRepository.findTop3Viewed(PageRequest.of(0, 3));
-
+    // 조회수 TOP3 (카테고리/타입 포함)
+    public List<Board> getTopViewedBoards(String category, String contentType) {
+        List<Object[]> results = boardRepository.findTop3ViewedByCategory(category, contentType, PageRequest.of(0, 3));
         List<Board> list = new ArrayList<>();
+
         for (Object[] row : results) {
-            Board board = new Board();
-            board.setContentId(((Number) row[0]).longValue());
-            board.setTitle((String) row[1]);
-            board.setUserId(((Number) row[2]).longValue());
-            board.setViewCount(((Number) row[3]).intValue());
-            list.add(board);
+            Long contentId = ((Number) row[0]).longValue();
+            Long userId = ((Number) row[2]).longValue();
+            Optional<UserEntity> userOpt = userRepository.findById(userId);
+            Optional<BoardEntity> boardOpt = boardRepository.findById(contentId);
+            if (boardOpt.isPresent()) {
+                Board board = boardOpt.get().toDto();
+                board.setNickname(userOpt.map(UserEntity::getNickname).orElse("알 수 없음"));
+                list.add(board);
+            }
         }
         return list;
     }
 
-    // 페이징 리스트
-    public ArrayList<Board> selectList(Pageable pageable) {
-        Page<BoardEntity> page = boardRepository.findByCategoryAndStatus("자유", ACTIVE_STATUS, pageable);
+    // 좋아요 TOP 3 게시글 조회 (메인에서)
+    public List<Board> findTopLikedBoards() {
+        List<String> categories = List.of("free", "review", "tip", "question");
+        List<Object[]> results = boardRepository.findTop3LikedForMain(categories, PageRequest.of(0, 3));
+        List<Board> list = new ArrayList<>();
+
+        for (Object[] row : results) {
+            Long contentId = ((Number) row[0]).longValue();  // 게시글 ID
+            Long userId = ((Number) row[2]).longValue();     // 작성자 ID
+
+            Optional<BoardEntity> boardOpt = boardRepository.findById(contentId);
+            Optional<UserEntity> userOpt = userRepository.findById(userId);
+
+            if (boardOpt.isPresent()) {
+                Board board = boardOpt.get().toDto();
+                board.setNickname(userOpt.map(UserEntity::getNickname).orElse("알 수 없음"));
+                list.add(board);
+            }
+        }
+
+        return list;
+    }
+
+    // 조회수 TOP 3 게시글 조회 (메인에서)
+    public List<Board> findTopViewedBoards() {
+        List<String> categories = List.of("free", "review", "tip", "question");
+        List<Object[]> results = boardRepository.findTop3ViewedForMain(categories, PageRequest.of(0, 3));
+        List<Board> list = new ArrayList<>();
+
+
+        for (Object[] row : results) {
+            Long contentId = ((Number) row[0]).longValue();  // 게시글 ID
+            Long userId = ((Number) row[2]).longValue();     // 작성자 ID
+
+            Optional<BoardEntity> boardOpt = boardRepository.findById(contentId);
+            Optional<UserEntity> userOpt = userRepository.findById(userId);
+
+            if (boardOpt.isPresent()) {
+                Board board = boardOpt.get().toDto();
+                board.setNickname(userOpt.map(UserEntity::getNickname).orElse("알 수 없음"));
+                list.add(board);
+            }
+        }
+
+        return list;
+    }
+
+    // 공통 페이징 리스트
+    public ArrayList<Board> selectListByCategory(String category, Pageable pageable) {
+        Page<BoardEntity> page = boardRepository.findByCategoryAndStatus(category, ACTIVE_STATUS, pageable);
         ArrayList<Board> list = new ArrayList<>();
         for (BoardEntity entity : page) {
             list.add(entity.toDto());
