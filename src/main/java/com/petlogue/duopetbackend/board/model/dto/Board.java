@@ -22,6 +22,7 @@ public class Board {
     private String contentType;       // 게시글 유형 (board, notice 등)
     private String category;          // 카테고리 (free, review 등)
     private String tags;              // 태그 (콤마 구분)
+    private String nickname;           // 닉네임
     private Integer  viewCount;        // 조회수
     private Integer  likeCount;        // 좋아요 수
     private Integer  bookmarkCount;    // 북마크 수

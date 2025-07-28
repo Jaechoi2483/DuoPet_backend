@@ -36,7 +36,7 @@ public class BoardEntity {
     private String contentType;  // 예: "board", "notice"
 
     @Column(name = "CATEGORY", length = 200)
-    private String category;     // 예: "free", "review", "tip"
+    private String category;     // 예: "free", "review", "tip", "question"
 
     @Column(name = "TAGS", length = 100)
     private String tags;

@@ -131,16 +131,15 @@ public class SecurityConfig implements WebMvcConfigurer {
                                 "/ws-consultation/info",
                                 "/ws-consultation"
                         ).permitAll()
-                        
-                        .requestMatchers(HttpMethod.POST,"/board/write").authenticated()
+
                         .requestMatchers(HttpMethod.GET, "/users/check-face").permitAll()
-                        .requestMatchers(HttpMethod.PUT, "/board/free/**").authenticated()
-                        .requestMatchers(HttpMethod.DELETE, "/board/free/**").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/like/**").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/bookmark/**").authenticated()
+                        .requestMatchers(HttpMethod.POST,"/board/*/write").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/board/*/edit").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/board/*/delete").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/board/*/like/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/board/*/bookmark/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/comments/insert").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/comments/delete/**").authenticated()
-
                         .requestMatchers(HttpMethod.POST, "/comments/comment-like/**").authenticated()
 
                         
@@ -194,11 +193,13 @@ public class SecurityConfig implements WebMvcConfigurer {
                                 "/users/check-face",
                                 "/api/v1/face-login/verify",
                                 "/notice/**",
-                                "/board/detail/**",
+                                "/board/maintop-liked",
+                                "/board/maintop-viewed",
                                 "/board/view-count",
-                                "/board/top-liked",
-                                "/board/top-viewed",
-                                "/board/freeList",
+                                "/board/*/detail/**",
+                                "/board/*/top-liked",
+                                "/board/*/top-viewed",
+                                "/board/*/list",
                                 "/static/board/**",
                                 "/comments/view/**",
                                 "/api/v1/video-recommend/**",
