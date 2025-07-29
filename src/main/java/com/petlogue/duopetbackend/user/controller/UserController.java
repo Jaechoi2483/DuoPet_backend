@@ -133,6 +133,15 @@ public class UserController {
         return ResponseEntity.ok(exists); // true = 중복 O
     }
 
+    /**
+     * 전화번호 중복 확인
+     */
+    @GetMapping("/check-phone")
+    public ResponseEntity<Boolean> checkPhone(@RequestParam String phone) {
+        boolean exists = userRepository.existsByPhoneAndProviderIsNull(phone.replaceAll("-", ""));
+        return ResponseEntity.ok(exists); // true = 중복 O
+    }
+
     // 소셜 로그인 후, 사용자 정보 업데이트 API
     @PutMapping("/social-update")
     public ResponseEntity<String> updateUserInfo(@RequestBody UserDto userDto,
@@ -380,6 +389,21 @@ public class UserController {
             log.error("수의사 정보 조회 중 오류 발생", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("error", "수의사 정보 조회에 실패했습니다."));
+        }
+    }
+
+    @PutMapping("/deactivate")
+    public ResponseEntity<?> deactivateAccount(HttpServletRequest request) {
+        try {
+            Long userId = jwtUtil.getUserIdFromRequest(request);
+            if (userId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("로그인 정보가 없습니다.");
+            }
+
+            userService.deactivateUser(userId);
+            return ResponseEntity.ok("회원 탈퇴 처리 완료 (비활성화)");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("회원 탈퇴 처리 중 오류 발생");
         }
     }
 }

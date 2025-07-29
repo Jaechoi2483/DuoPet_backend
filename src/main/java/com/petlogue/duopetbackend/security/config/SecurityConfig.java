@@ -189,6 +189,7 @@ public class SecurityConfig implements WebMvcConfigurer {
                                 "/sms/verify",
                                 "/users/find-id",
                                 "/users/check-user",
+                                "/users/check-phone",
                                 "/users//reset-password",
                                 "/users/check-face",
                                 "/api/v1/face-login/verify",

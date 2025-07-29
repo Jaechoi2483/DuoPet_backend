@@ -29,29 +29,41 @@ public class SmsController {
      * 인증번호 전송 (아이디 찾기 or 비밀번호 찾기)
      */
     @PostMapping("/send")
-    public ResponseEntity<?> sendSmsCode(@RequestBody SmsRequestDto dto) throws NurigoEmptyResponseException, NurigoUnknownException {
+    public ResponseEntity<?> sendSmsCode(@RequestBody SmsRequestDto dto)
+            throws NurigoEmptyResponseException, NurigoUnknownException {
+
         String phone = dto.getPhone();
 
         if (dto.getLoginId() != null) {
-            // 비밀번호 찾기용
+            // 비밀번호 찾기
             Optional<UserEntity> userOpt = userRepository.findByLoginIdAndPhoneWithoutHyphen(dto.getLoginId(), phone.replaceAll("-", ""));
             if (userOpt.isEmpty()) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("아이디 또는 전화번호가 일치하지 않습니다.");
             }
             log.info("[비밀번호 찾기] loginId={}, phone={}", dto.getLoginId(), phone);
+            smsService.sendAuthCode(phone);
+            return ResponseEntity.ok("인증번호 전송 완료");
+
         } else if (dto.getUserName() != null) {
-            // 아이디 찾기용
+            // 아이디 찾기
             Optional<UserEntity> userOpt = userRepository.findByUserNameAndPhoneWithoutHyphen(dto.getUserName(), phone.replaceAll("-", ""));
             if (userOpt.isEmpty()) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("이름 또는 전화번호가 일치하지 않습니다.");
             }
             log.info("[아이디 찾기] name={}, phone={}", dto.getUserName(), phone);
-        } else {
-            return ResponseEntity.badRequest().body("요청 정보가 부족합니다. loginId 또는 name 중 하나는 필요합니다.");
-        }
+            smsService.sendAuthCode(phone);
+            return ResponseEntity.ok("인증번호 전송 완료");
 
-        smsService.sendAuthCode(phone);
-        return ResponseEntity.ok("인증번호 전송 완료");
+        } else {
+            // 회원가입 인증
+            log.info("[회원가입 인증] phone={}", phone);
+            boolean exists = userRepository.existsByPhoneAndProviderIsNull(phone.replaceAll("-", ""));
+            if (exists) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body("이미 가입된 전화번호입니다.");
+            }
+            smsService.sendAuthCode(phone);
+            return ResponseEntity.ok("인증번호 전송 완료");
+        }
     }
 
     /**

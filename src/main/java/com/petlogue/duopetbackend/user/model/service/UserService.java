@@ -365,4 +365,11 @@ public class UserService {
                 .map(u -> u.getFaceOriginalFilename() != null && u.getFaceRenameFilename() != null)
                 .orElse(false);
     }
+
+    public void deactivateUser(Long userId) {
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+        user.setStatus("inactive");
+    }
 }

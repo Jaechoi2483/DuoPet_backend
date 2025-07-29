@@ -80,7 +80,7 @@ INSERT INTO users (
     login_id, user_pwd, provider, provider_id, user_name, nickname, phone,
     gender, address, user_email, role, created_at, status, rename_filename, original_filename, face_recognition_id
 ) VALUES
-('admin01', 'hashed_password_1', 'NONE', NULL, '관리자', 'admin', '010-1111-1111',
+('admin01', 'hashed_password_1', 'NONE', NULL, '관리자', 'admin', '01011111111',
  'M', '서울특별시 강남구 테헤란로 212', 'admin@duopet.com', 'admin', TO_DATE('2024-06-01', 'YYYY-MM-DD'),
  'active', NULL, NULL, 'admin_face_001');
 
@@ -89,7 +89,7 @@ INSERT INTO users (
     login_id, user_pwd, provider, provider_id, user_name, nickname, phone,
     gender, address, user_email, role, created_at, status, rename_filename, original_filename, face_recognition_id
 ) VALUES
-('vet001', 'hashed_password_2', 'NONE', NULL, '김수의', '동물병원테스트', '010-2222-2222',
+('vet001', 'hashed_password_2', 'NONE', NULL, '김수의', '동물병원테스트', '01022222222',
  'F', '서울특별시 송파구 올림픽로 300', 'vet@duopet.com', 'vet', TO_DATE('2024-06-02', 'YYYY-MM-DD'),
  'active', NULL, NULL, 'vet_face_001');
 
@@ -98,7 +98,7 @@ INSERT INTO users (
     login_id, user_pwd, provider, provider_id, user_name, nickname, phone,
     gender, address, user_email, role, created_at, status, rename_filename, original_filename, face_recognition_id
 ) VALUES
-('shelter01', 'hashed_password_3', 'NONE', NULL, '보호소관리자', 'shelterman', '010-3333-3333',
+('shelter01', 'hashed_password_3', 'NONE', NULL, '보호소관리자', 'shelterman', '01033333333',
  'M', '서울특별시 마포구 월드컵북로 400', 'shelter@duopet.com', 'shelter', TO_DATE('2024-06-03', 'YYYY-MM-DD'),
  'active', NULL, NULL, 'shelter_face_001');
 
@@ -107,7 +107,7 @@ INSERT INTO users (
     login_id, user_pwd, provider, provider_id, user_name, nickname, phone,
     gender, address, user_email, role, created_at, status, rename_filename, original_filename, face_recognition_id
 ) VALUES
-('user01', 'hashed_password_4', 'KAKAO', 'kakao_12345', '홍길동', 'hong', '010-4444-4444',
+('user01', 'hashed_password_4', 'KAKAO', 'kakao_12345', '홍길동', 'hong', '01044444444',
  'M', '경기도 수원시 영통구 광교중앙로 248', 'user01@duopet.com', 'user', TO_DATE('2024-06-04', 'YYYY-MM-DD'),
  'active', NULL, NULL, 'user01_face');
 
@@ -2950,34 +2950,34 @@ COMMIT;
 -- 수의사 1
 INSERT INTO USERS (LOGIN_ID, USER_PWD, USER_NAME, NICKNAME, USER_EMAIL, PHONE, GENDER, AGE, ADDRESS, ROLE)
 VALUES ('vet004', '$2a$10$dS0.gUl8gYr6LCJvwY9AOe6kVv0tNNLMAWnrsfUvKUoKFsVvDJUEe', 
-        '김수의', '강아지전문의', 'vet004@duopet.com', '010-1111-2222', 'M', 
+        '김수의', '강아지전문의', 'vet004@duopet.com', '01011112222', 'M', 
         38, '서울시 강남구', 'vet');
 
 -- 수의사 2
 INSERT INTO USERS (LOGIN_ID, USER_PWD, USER_NAME, NICKNAME, USER_EMAIL, PHONE, GENDER, AGE, ADDRESS, ROLE)
 VALUES ('vet005', '$2a$10$dS0.gUl8gYr6LCJvwY9AOe6kVv0tNNLMAWnrsfUvKUoKFsVvDJUEe', 
-        '이수의', '고양이전문의', 'vet005@duopet.com', '010-3333-4444', 'F', 
+        '이수의', '고양이전문의', 'vet005@duopet.com', '01033334444', 'F', 
         33, '서울시 서초구', 'vet');
 
 -- 수의사 3
 INSERT INTO USERS (LOGIN_ID, USER_PWD, USER_NAME, NICKNAME, USER_EMAIL, PHONE, GENDER, AGE, ADDRESS, ROLE)
 VALUES ('vet006', '$2a$10$dS0.gUl8gYr6LCJvwY9AOe6kVv0tNNLMAWnrsfUvKUoKFsVvDJUEe', 
-        '박수의', '특수동물전문의', 'vet006@duopet.com', '010-5555-6666', 'M', 
+        '박수의', '특수동물전문의', 'vet006@duopet.com', '01055556666', 'M', 
         35, '서울시 송파구', 'vet');
 
 -- 2. VET 테이블에 수의사 정보 추가
 INSERT INTO VET (USER_ID, NAME, LICENSE_NUMBER, PHONE, EMAIL, ADDRESS, SPECIALIZATION)
-SELECT USER_ID, '김수의', 'VET2024-' || LPAD(USER_ID, 4, '0'), '010-1111-2222', 'vet004@duopet.com', 
+SELECT USER_ID, '김수의', 'VET2024-' || LPAD(USER_ID, 4, '0'), '01011112222', 'vet004@duopet.com', 
        '서울시 강남구', '강아지 내과, 피부과'
 FROM USERS WHERE LOGIN_ID = 'vet004';
 
 INSERT INTO VET (USER_ID, NAME, LICENSE_NUMBER, PHONE, EMAIL, ADDRESS, SPECIALIZATION)
-SELECT USER_ID, '이수의', 'VET2024-' || LPAD(USER_ID, 4, '0'), '010-3333-4444', 'vet005@duopet.com',
+SELECT USER_ID, '이수의', 'VET2024-' || LPAD(USER_ID, 4, '0'), '01033334444', 'vet005@duopet.com',
        '서울시 서초구', '고양이 내과, 행동학'
 FROM USERS WHERE LOGIN_ID = 'vet005';
 
 INSERT INTO VET (USER_ID, NAME, LICENSE_NUMBER, PHONE, EMAIL, ADDRESS, SPECIALIZATION)
-SELECT USER_ID, '박수의', 'VET2024-' || LPAD(USER_ID, 4, '0'), '010-5555-6666', 'vet006@duopet.com',
+SELECT USER_ID, '박수의', 'VET2024-' || LPAD(USER_ID, 4, '0'), '01055556666', 'vet006@duopet.com',
        '서울시 송파구', '특수동물, 외과'
 FROM USERS WHERE LOGIN_ID = 'vet006';
 
@@ -3045,7 +3045,7 @@ SELECT COUNT(*) FROM VET_PROFILE;
 
 -- 5번째 수의사 추가
 INSERT INTO USERS (LOGIN_ID, USER_PWD, USER_NAME, NICKNAME, PHONE, USER_EMAIL, ROLE, CREATED_AT, STATUS)
-VALUES ('vet5', '$2a$10$Jrg0k3f7gXJvN7k9W6T9tOAeGCfKKcnUxzD7RvxrX.MYuP6/pKq36', '박안과', '박안과', '010-5555-5555', 'vet5@duopet.com', 'VET', SYSDATE, 'active');
+VALUES ('vet5', '$2a$10$Jrg0k3f7gXJvN7k9W6T9tOAeGCfKKcnUxzD7RvxrX.MYuP6/pKq36', '박안과', '박안과', '01055555555', 'vet5@duopet.com', 'VET', SYSDATE, 'active');
 
 INSERT INTO VET (USER_ID, NAME, LICENSE_NUMBER, SPECIALIZATION, ADDRESS, EMAIL, ORIGINAL_FILENAME, RENAME_FILENAME)
 VALUES ((SELECT USER_ID FROM USERS WHERE LOGIN_ID = 'vet5'), '박안과', 'VET-2024-005', '안과', '서울시 마포구', 'vet5@duopet.com', 'license5.jpg', 'license5_rename.jpg');
@@ -3055,7 +3055,7 @@ VALUES ((SELECT VET_ID FROM VET WHERE NAME = '박안과'), '안과 질환 전문
 
 -- 6번째 수의사 추가
 INSERT INTO USERS (LOGIN_ID, USER_PWD, USER_NAME, NICKNAME, PHONE, USER_EMAIL, ROLE, CREATED_AT, STATUS)
-VALUES ('vet6', '$2a$10$Jrg0k3f7gXJvN7k9W6T9tOAeGCfKKcnUxzD7RvxrX.MYuP6/pKq36', '최치과', '최치과', '010-6666-6666', 'vet6@duopet.com', 'VET', SYSDATE, 'active');
+VALUES ('vet6', '$2a$10$Jrg0k3f7gXJvN7k9W6T9tOAeGCfKKcnUxzD7RvxrX.MYuP6/pKq36', '최치과', '최치과', '01066666666', 'vet6@duopet.com', 'VET', SYSDATE, 'active');
 
 INSERT INTO VET (USER_ID, NAME, LICENSE_NUMBER, SPECIALIZATION, ADDRESS, EMAIL, ORIGINAL_FILENAME, RENAME_FILENAME)
 VALUES ((SELECT USER_ID FROM USERS WHERE LOGIN_ID = 'vet6'), '최치과', 'VET-2024-006', '치과', '서울시 용산구', 'vet6@duopet.com', 'license6.jpg', 'license6_rename.jpg');
@@ -3065,7 +3065,7 @@ VALUES ((SELECT VET_ID FROM VET WHERE NAME = '최치과'), '치과 및 구강 �
 
 -- 7번째 수의사 추가
 INSERT INTO USERS (LOGIN_ID, USER_PWD, USER_NAME, NICKNAME, PHONE, USER_EMAIL, ROLE, CREATED_AT, STATUS)
-VALUES ('vet7', '$2a$10$Jrg0k3f7gXJvN7k9W6T9tOAeGCfKKcnUxzD7RvxrX.MYuP6/pKq36', '윤정형', '윤정형', '010-7777-7777', 'vet7@duopet.com', 'VET', SYSDATE, 'active');
+VALUES ('vet7', '$2a$10$Jrg0k3f7gXJvN7k9W6T9tOAeGCfKKcnUxzD7RvxrX.MYuP6/pKq36', '윤정형', '윤정형', '01077777777', 'vet7@duopet.com', 'VET', SYSDATE, 'active');
 
 INSERT INTO VET (USER_ID, NAME, LICENSE_NUMBER, SPECIALIZATION, ADDRESS, EMAIL, ORIGINAL_FILENAME, RENAME_FILENAME)
 VALUES ((SELECT USER_ID FROM USERS WHERE LOGIN_ID = 'vet7'), '윤정형', 'VET-2024-007', '정형외과', '서울시 서대문구', 'vet7@duopet.com', 'license7.jpg', 'license7_rename.jpg');
@@ -3075,7 +3075,7 @@ VALUES ((SELECT VET_ID FROM VET WHERE NAME = '윤정형'), '정형외과 및 재
 
 -- 8번째 수의사 추가
 INSERT INTO USERS (LOGIN_ID, USER_PWD, USER_NAME, NICKNAME, PHONE, USER_EMAIL, ROLE, CREATED_AT, STATUS)
-VALUES ('vet8', '$2a$10$Jrg0k3f7gXJvN7k9W6T9tOAeGCfKKcnUxzD7RvxrX.MYuP6/pKq36', '한영상', '한영상', '010-8888-8888', 'vet8@duopet.com', 'VET', SYSDATE, 'active');
+VALUES ('vet8', '$2a$10$Jrg0k3f7gXJvN7k9W6T9tOAeGCfKKcnUxzD7RvxrX.MYuP6/pKq36', '한영상', '한영상', '01088888888', 'vet8@duopet.com', 'VET', SYSDATE, 'active');
 
 INSERT INTO VET (USER_ID, NAME, LICENSE_NUMBER, SPECIALIZATION, ADDRESS, EMAIL, ORIGINAL_FILENAME, RENAME_FILENAME)
 VALUES ((SELECT USER_ID FROM USERS WHERE LOGIN_ID = 'vet8'), '한영상', 'VET-2024-008', '영상의학과', '서울시 은평구', 'vet8@duopet.com', 'license8.jpg', 'license8_rename.jpg');

@@ -163,6 +163,10 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         String errorMessage;
         if (failed.getMessage().contains("Bad credentials")) {
             errorMessage = "아이디와 비밀번호를 다시 확인해 주세요.";
+        } else if (failed.getMessage().contains("비활성화된 계정입니다")) {
+            errorMessage = "탈퇴된 계정입니다. 관리자에게 문의해주세요.";
+        } else if (failed.getMessage().contains("사용자를 찾을 수 없습니다")) {
+            errorMessage = "존재하지 않는 아이디입니다.";
         } else {
             errorMessage = "로그인 실패: 알 수 없는 오류가 발생했습니다.";
         }
