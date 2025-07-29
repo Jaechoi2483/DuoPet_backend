@@ -100,4 +100,10 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
 
     @Query("SELECT u FROM UserEntity u WHERE UPPER(u.status) = 'SUSPENDED' AND u.suspendedUntil IS NOT NULL AND u.suspendedUntil <= :now")
     List<UserEntity> findExpiredSuspensions(@Param("now") LocalDateTime now);
+
+
+    boolean existsByPhone(String phone); // 전화번호 중복 여부 확인용
+
+    boolean existsByPhoneAndProviderIsNull(String phone);
+
 }

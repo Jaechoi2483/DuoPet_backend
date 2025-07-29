@@ -79,10 +79,11 @@ public class CustomOAuth2SuccessHandler implements AuthenticationSuccessHandler 
 
         boolean isNew = "social_temp".equalsIgnoreCase(user.getStatus());
 
-        String redirectUrl = String.format("http://localhost:3000/social-redirect?accessToken=%s&refreshToken=%s&isNew=%s",
+        String redirectUrl = String.format("http://localhost:3000/social-redirect?accessToken=%s&refreshToken=%s&isNew=%s&provider=%s",
                 URLEncoder.encode(accessToken, StandardCharsets.UTF_8),
                 URLEncoder.encode(refreshToken, StandardCharsets.UTF_8),
-                isNew);
+                isNew,
+                registrationId);
 
         if (!response.isCommitted()) {
             response.sendRedirect(redirectUrl);

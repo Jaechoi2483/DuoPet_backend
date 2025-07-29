@@ -50,7 +50,7 @@ public interface CommentsRepository extends JpaRepository<CommentsEntity, Long> 
     @Query("SELECT new com.petlogue.duopetbackend.mypage.model.dto.MyCommentDto(" +
             "c.commentId, c.content, " +
             "TO_CHAR(c.createdAt, 'YYYY.MM.DD HH24:MI'), " +
-            "c.likeCount, b.category, b.title) " +
+            "c.likeCount, b.category, b.title, b.contentId) " +
             "FROM CommentsEntity c JOIN BoardEntity b ON c.contentId = b.contentId " +
             "WHERE c.user.userId = :userId AND c.status = 'ACTIVE' " +
             "ORDER BY c.createdAt DESC")
