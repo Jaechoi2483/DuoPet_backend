@@ -3131,7 +3131,8 @@ ALTER TABLE consultation_room ADD CONSTRAINT CK_CR_STATUS
 CHECK (room_status IN ('CREATED', 'WAITING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_SHOW', 'TIMED_OUT', 'REJECTED'));
 
 commit;
-=======
+
+/*================
 2025-07-27
 CONTENT CATEGORY 컬럼 변경 
 =================*/
@@ -3153,4 +3154,17 @@ CHECK (category IN ('free', 'review', 'question', 'tip', 'info', 'disease', 'foo
 
 commit;
 
+/*================
+2025-07-28
+CONTENT TAGS 컬럼 변경 
+=================*/
+
+UPDATE CONTENT
+SET TAGS = '고양이,강아지,반려동물'
+WHERE TAGS IS NULL;
+
+ALTER TABLE CONTENT
+MODIFY TAGS VARCHAR2(100 BYTE) NOT NULL;
+
+commit;
 
