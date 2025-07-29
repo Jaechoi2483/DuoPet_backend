@@ -21,7 +21,7 @@ public class ConsultationReview {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "review_id")
+    @Column(name = "review_id", insertable = false, updatable = false)
     private Long reviewId;
     
     @OneToOne(fetch = FetchType.LAZY)

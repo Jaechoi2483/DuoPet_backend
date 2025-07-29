@@ -169,6 +169,14 @@ public class ConsultationRoomService {
     }
     
     /**
+     * 수의사의 상담 목록 조회 (타입별)
+     */
+    @Transactional(readOnly = true)
+    public Page<ConsultationRoom> getVetConsultationsByType(Long vetId, String consultationType, Pageable pageable) {
+        return consultationRoomRepository.findByVetIdAndConsultationType(vetId, consultationType, pageable);
+    }
+    
+    /**
      * 오늘의 예약 상담 조회 (수의사용)
      */
     @Transactional(readOnly = true)
@@ -221,6 +229,14 @@ public class ConsultationRoomService {
         
         log.info("Consultation ended: room={}, duration={} minutes", 
                 roomId, room.getDurationMinutes());
+        
+        // 수의사 상담횟수 증가
+        try {
+            vetProfileRepository.incrementConsultationCount(room.getVet().getVetId());
+            log.info("Incremented consultation count for vet {}", room.getVet().getVetId());
+        } catch (Exception e) {
+            log.error("Failed to increment consultation count for vet {}", room.getVet().getVetId(), e);
+        }
         
         // WebSocket으로 상담 종료 알림
         try {
@@ -426,8 +442,8 @@ public class ConsultationRoomService {
                     .userId(room.getUser() != null ? room.getUser().getUserId() : null)
                     .userName(room.getUser() != null ? room.getUser().getNickname() : "Unknown")
                     .vetId(room.getVet() != null ? room.getVet().getVetId() : null)
-                    .vetName(room.getVet() != null && room.getVet().getUser() != null 
-                            ? room.getVet().getUser().getNickname() : "Unknown")
+                    .vetName(room.getVet() != null 
+                            ? room.getVet().getName() : "Unknown")
                     .petId(room.getPet() != null ? room.getPet().getPetId() : null)
                     .petName(room.getPet() != null ? room.getPet().getPetName() : null)
                     .roomStatus(room.getRoomStatus())
@@ -443,6 +459,7 @@ public class ConsultationRoomService {
                     .consultationNotes(room.getConsultationNotes())
                     .prescription(room.getPrescription())
                     .createdAt(room.getCreatedAt())
+                    .hasReview(room.getReview() != null)
                     .build();
         } catch (Exception e) {
             log.error("ConsultationRoom DTO 변환 중 오류 발생 - roomId: {}", room.getRoomId(), e);

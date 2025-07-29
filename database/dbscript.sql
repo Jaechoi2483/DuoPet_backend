@@ -3202,3 +3202,103 @@ ORDER BY consultation_type;
 
 -- 6. 변경사항 커밋
 COMMIT;
+
+
+
+/*================
+2025-07-29
+평점 계산 관련 업데이트
+기존 수의사 평점 계산식 적용
++ 추후 추가되는 수의사 평점 계산식 추가
+=================*/
+
+
+-- 최재명 수의사의 평점 즉시 업데이트
+UPDATE vet_profile 
+SET rating_avg = (
+    SELECT AVG(rating) 
+    FROM consultation_review 
+    WHERE vet_id = 181 AND is_visible = 'Y'
+),
+rating_count = (
+    SELECT COUNT(*) 
+    FROM consultation_review 
+    WHERE vet_id = 181 AND is_visible = 'Y'
+)
+WHERE vet_id = 181;
+
+-- 업데이트 결과 확인
+SELECT 
+    vp.vet_id,
+    v.name,
+    vp.rating_avg,
+    vp.rating_count
+FROM vet_profile vp
+JOIN vet v ON vp.vet_id = v.vet_id
+WHERE vp.vet_id = 181;
+
+-- 모든 수의사의 평점 업데이트 (필요한 경우)
+-- 리뷰가 없는 수의사는 rating_avg를 0으로 설정
+UPDATE vet_profile vp
+SET rating_avg = COALESCE((
+    SELECT AVG(cr.rating)
+    FROM consultation_review cr
+    WHERE cr.vet_id = vp.vet_id AND cr.is_visible = 'Y'
+), 0),
+rating_count = (
+    SELECT COUNT(*)
+    FROM consultation_review cr
+    WHERE cr.vet_id = vp.vet_id AND cr.is_visible = 'Y'
+);
+
+-- 업데이트 후 전체 수의사 평점 확인
+SELECT 
+    vp.vet_id,
+    v.name,
+    vp.rating_avg,
+    vp.rating_count
+FROM vet_profile vp
+JOIN vet v ON vp.vet_id = v.vet_id
+ORDER BY vp.rating_avg DESC;
+
+-- 모든 수의사의 평점과 상담횟수를 한 번에 업데이트
+-- 1. 평점 업데이트 (리뷰가 없는 경우 0)
+UPDATE vet_profile vp
+SET rating_avg = COALESCE((
+    SELECT AVG(cr.rating)
+    FROM consultation_review cr
+    WHERE cr.vet_id = vp.vet_id AND cr.is_visible = 'Y'
+), 0),
+rating_count = (
+    SELECT COUNT(*)
+    FROM consultation_review cr
+    WHERE cr.vet_id = vp.vet_id AND cr.is_visible = 'Y'
+),
+-- 2. 상담횟수 업데이트
+consultation_count = (
+    SELECT COUNT(*)
+    FROM consultation_room cr
+    WHERE cr.vet_id = vp.vet_id 
+    AND cr.room_status = 'COMPLETED'
+);
+
+-- 업데이트 결과 확인
+SELECT 
+    vp.vet_id,
+    v.name,
+    vp.rating_avg,
+    vp.rating_count,
+    vp.consultation_count,
+    vp.consultation_fee
+FROM vet_profile vp
+JOIN vet v ON vp.vet_id = v.vet_id
+ORDER BY vp.rating_avg DESC, vp.consultation_count DESC;
+
+  -- CONSULTATION_REVIEW_SEQ 시퀀스 생성
+  CREATE SEQUENCE CONSULTATION_REVIEW_SEQ
+  START WITH 100
+  INCREMENT BY 1
+  NOCACHE
+  NOCYCLE;
+
+  commit;

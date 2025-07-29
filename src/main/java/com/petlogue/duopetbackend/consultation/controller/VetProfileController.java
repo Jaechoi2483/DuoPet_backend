@@ -255,6 +255,18 @@ public class VetProfileController {
         
         Map<String, Object> result = vetProfileService.getAvailableVetsWithStatus(pageable);
         
+        // 첫 번째 수의사의 평점 로그 출력
+        @SuppressWarnings("unchecked")
+        Page<VetProfile> vetsPage = (Page<VetProfile>) result.get("vets");
+        if (vetsPage != null && !vetsPage.getContent().isEmpty()) {
+            VetProfile firstVet = vetsPage.getContent().get(0);
+            log.info("First vet profile - vetId: {}, name: {}, ratingAvg: {}, ratingCount: {}", 
+                    firstVet.getVet().getVetId(), 
+                    firstVet.getVet().getName(), 
+                    firstVet.getRatingAvg(), 
+                    firstVet.getRatingCount());
+        }
+        
         return ResponseEntity.ok()
                 .header("Cache-Control", "no-cache, no-store, must-revalidate")
                 .header("Pragma", "no-cache")

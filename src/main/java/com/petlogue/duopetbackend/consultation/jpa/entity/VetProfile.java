@@ -1,6 +1,9 @@
 package com.petlogue.duopetbackend.consultation.jpa.entity;
 
 import com.petlogue.duopetbackend.user.jpa.entity.VetEntity;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -36,6 +39,12 @@ public class VetProfile {
     @Builder.Default
     private BigDecimal consultationFee = new BigDecimal("30000");
     
+    // JSON 직렬화를 위한 getter
+    @JsonProperty("consultationFee")
+    public Double getConsultationFeeAsDouble() {
+        return consultationFee != null ? consultationFee.doubleValue() : 30000.0;
+    }
+    
     @Column(name = "is_available", length = 1, nullable = false)
     @Builder.Default
     private String isAvailable = "Y";
@@ -50,6 +59,12 @@ public class VetProfile {
     @Column(name = "rating_avg", precision = 3, scale = 2)
     @Builder.Default
     private BigDecimal ratingAvg = BigDecimal.ZERO;
+    
+    // JSON 직렬화를 위한 getter
+    @JsonProperty("ratingAvg")
+    public Double getRatingAvgAsDouble() {
+        return ratingAvg != null ? ratingAvg.doubleValue() : 0.0;
+    }
     
     @Column(name = "rating_count")
     @Builder.Default

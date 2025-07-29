@@ -59,4 +59,7 @@ public class ConsultationRoomDto {
     private Integer unreadMessageCount;
     private String lastMessageContent;
     private LocalDateTime lastMessageTime;
+    
+    // Review info
+    private boolean hasReview;
 }

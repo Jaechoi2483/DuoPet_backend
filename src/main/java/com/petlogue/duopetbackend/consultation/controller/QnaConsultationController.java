@@ -4,6 +4,8 @@ import com.petlogue.duopetbackend.common.response.ApiResponse;
 import com.petlogue.duopetbackend.common.response.ResponseUtil;
 import com.petlogue.duopetbackend.consultation.model.dto.QnaConsultationDto;
 import com.petlogue.duopetbackend.consultation.model.service.QnaConsultationService;
+import com.petlogue.duopetbackend.user.jpa.entity.VetEntity;
+import com.petlogue.duopetbackend.user.jpa.repository.VetRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -23,6 +25,7 @@ import java.util.List;
 public class QnaConsultationController {
     
     private final QnaConsultationService qnaConsultationService;
+    private final VetRepository vetRepository;
     
     // Q&A 상담 생성
     @PostMapping
@@ -59,20 +62,20 @@ public class QnaConsultationController {
     // Q&A 답변 작성 (수의사용)
     @PostMapping("/{roomId}/answer")
     public ResponseEntity<ApiResponse<?>> createAnswer(
-            @RequestAttribute("userId") Long vetId,
+            @RequestAttribute("userId") Long userId,
             @PathVariable Long roomId,
             @RequestParam("content") String content,
             @RequestParam(value = "files", required = false) List<MultipartFile> files) {
         
         try {
-            log.info("Q&A 답변 작성 요청 - vetId: {}, roomId: {}", vetId, roomId);
+            log.info("Q&A 답변 작성 요청 - userId: {}, roomId: {}", userId, roomId);
             
             QnaConsultationDto.AnswerRequest answerRequest = QnaConsultationDto.AnswerRequest.builder()
                     .content(content)
                     .files(files)
                     .build();
             
-            QnaConsultationDto.Response response = qnaConsultationService.createAnswer(vetId, roomId, answerRequest);
+            QnaConsultationDto.Response response = qnaConsultationService.createAnswer(userId, roomId, answerRequest);
             
             return ResponseEntity.ok(ResponseUtil.success("답변이 성공적으로 등록되었습니다.", response));
         } catch (Exception e) {
@@ -97,7 +100,14 @@ public class QnaConsultationController {
             
             // role 파라미터로 사용자/수의사 구분
             if ("vet".equals(role)) {
-                consultations = qnaConsultationService.getVetQnaConsultations(userId, null, pageable);
+                // userId로 VetEntity 조회
+                VetEntity vet = vetRepository.findByUser_UserId(userId).orElse(null);
+                if (vet == null) {
+                    log.error("수의사 정보를 찾을 수 없습니다. userId: {}", userId);
+                    return ResponseEntity.badRequest()
+                            .body(ResponseUtil.error("수의사 정보를 찾을 수 없습니다."));
+                }
+                consultations = qnaConsultationService.getVetQnaConsultations(vet.getVetId(), null, pageable);
             } else {
                 consultations = qnaConsultationService.getUserQnaConsultations(userId, pageable);
             }
@@ -121,17 +131,25 @@ public class QnaConsultationController {
     // 수의사의 상태별 Q&A 상담 목록 조회
     @GetMapping("/vet/status/{status}")
     public ResponseEntity<ApiResponse<?>> getVetQnaConsultationsByStatus(
-            @RequestAttribute("userId") Long vetId,
+            @RequestAttribute("userId") Long userId,
             @PathVariable String status,
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "10") int size) {
         
         try {
-            log.info("수의사 상태별 Q&A 상담 목록 조회 - vetId: {}, status: {}", vetId, status);
+            log.info("수의사 상태별 Q&A 상담 목록 조회 - userId: {}, status: {}", userId, status);
             Pageable pageable = PageRequest.of(page, size);
             
+            // userId로 VetEntity 조회
+            VetEntity vet = vetRepository.findByUser_UserId(userId).orElse(null);
+            if (vet == null) {
+                log.error("수의사 정보를 찾을 수 없습니다. userId: {}", userId);
+                return ResponseEntity.badRequest()
+                        .body(ResponseUtil.error("수의사 정보를 찾을 수 없습니다."));
+            }
+            
             Page<QnaConsultationDto.Response> consultations = 
-                    qnaConsultationService.getVetQnaConsultations(vetId, status, pageable);
+                    qnaConsultationService.getVetQnaConsultations(vet.getVetId(), status, pageable);
             
             return ResponseEntity.ok(ResponseUtil.success("상태별 Q&A 상담 목록을 조회했습니다.", consultations));
         } catch (Exception e) {

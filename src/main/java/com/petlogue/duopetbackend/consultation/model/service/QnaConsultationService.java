@@ -114,7 +114,7 @@ public class QnaConsultationService {
     
     // Q&A 답변 작성
     public QnaConsultationDto.Response createAnswer(
-            Long vetId, 
+            Long userId, 
             Long roomId, 
             QnaConsultationDto.AnswerRequest request) {
         
@@ -123,7 +123,7 @@ public class QnaConsultationService {
                 .orElseThrow(() -> new RuntimeException("상담을 찾을 수 없습니다."));
         
         // 수의사 확인
-        if (!room.getVet().getUser().getUserId().equals(vetId)) {
+        if (!room.getVet().getUser().getUserId().equals(userId)) {
             throw new RuntimeException("본인에게 요청된 상담만 답변 가능합니다.");
         }
         
@@ -133,10 +133,11 @@ public class QnaConsultationService {
         }
         
         // 답변 메시지 저장
-        VetEntity vet = vetRepository.findById(vetId)
+        // userId로 VetEntity를 찾아야 함
+        VetEntity vet = vetRepository.findByUser_UserId(userId)
                 .orElseThrow(() -> new RuntimeException("수의사를 찾을 수 없습니다."));
         
-        UserEntity vetUser = userRepository.findById(vetId)
+        UserEntity vetUser = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("수의사 사용자를 찾을 수 없습니다."));
         
         ChatMessage answerMessage = ChatMessage.builder()
@@ -305,6 +306,7 @@ public class QnaConsultationService {
                 .messages(convertMessages(messages))
                 .hasAnswer(hasAnswer)
                 .totalMessages(messages.size())
+                .hasReview(room.getReview() != null)
                 .build();
     }
     
