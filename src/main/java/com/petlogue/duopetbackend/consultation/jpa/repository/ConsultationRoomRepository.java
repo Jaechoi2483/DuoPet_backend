@@ -139,4 +139,48 @@ public interface ConsultationRoomRepository extends JpaRepository<ConsultationRo
            "WHERE cr.vet.vetId = :vetId " +
            "AND cr.roomStatus = 'IN_PROGRESS'")
     boolean existsByVetIdAndInProgress(@Param("vetId") Long vetId);
+    
+    // Q&A 상담 관련 메서드 추가
+    // 사용자별 Q&A 상담 목록 조회 (페이징)
+    @Query("SELECT cr FROM ConsultationRoom cr " +
+           "JOIN FETCH cr.vet v " +
+           "JOIN FETCH v.user vu " +
+           "LEFT JOIN FETCH cr.pet p " +
+           "WHERE cr.user.userId = :userId " +
+           "AND cr.consultationType = :consultationType " +
+           "ORDER BY cr.createdAt DESC")
+    Page<ConsultationRoom> findByUserIdAndConsultationType(@Param("userId") Long userId, 
+                                                           @Param("consultationType") String consultationType, 
+                                                           Pageable pageable);
+    
+    // 수의사별 Q&A 상담 목록 조회 (페이징)
+    @Query("SELECT cr FROM ConsultationRoom cr " +
+           "JOIN FETCH cr.user u " +
+           "LEFT JOIN FETCH cr.pet p " +
+           "WHERE cr.vet.vetId = :vetId " +
+           "AND cr.consultationType = :consultationType " +
+           "ORDER BY cr.createdAt DESC")
+    Page<ConsultationRoom> findByVetIdAndConsultationType(@Param("vetId") Long vetId, 
+                                                         @Param("consultationType") String consultationType, 
+                                                         Pageable pageable);
+    
+    // 수의사별 특정 상태의 Q&A 상담 목록 조회 (페이징)
+    @Query("SELECT cr FROM ConsultationRoom cr " +
+           "JOIN FETCH cr.user u " +
+           "LEFT JOIN FETCH cr.pet p " +
+           "WHERE cr.vet.vetId = :vetId " +
+           "AND cr.consultationType = :consultationType " +
+           "AND cr.roomStatus = :roomStatus " +
+           "ORDER BY cr.createdAt DESC")
+    Page<ConsultationRoom> findByVetIdAndConsultationTypeAndRoomStatus(@Param("vetId") Long vetId, 
+                                                                       @Param("consultationType") String consultationType, 
+                                                                       @Param("roomStatus") String roomStatus, 
+                                                                       Pageable pageable);
+    
+    // 미답변 Q&A 상담 수 조회
+    @Query("SELECT COUNT(cr) FROM ConsultationRoom cr " +
+           "WHERE cr.vet.vetId = :vetId " +
+           "AND cr.consultationType = 'QNA' " +
+           "AND cr.roomStatus = 'CREATED'")
+    Long countPendingQnaByVetId(@Param("vetId") Long vetId);
 }

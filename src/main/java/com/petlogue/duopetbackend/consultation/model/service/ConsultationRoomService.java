@@ -41,6 +41,7 @@ public class ConsultationRoomService {
     private final VetProfileRepository vetProfileRepository;
     private final VetScheduleRepository vetScheduleRepository;
     private final ConsultationNotificationService notificationService;
+    private final ConsultationTimeoutService timeoutService;
     
     /**
      * 상담방 생성
@@ -107,6 +108,23 @@ public class ConsultationRoomService {
         
         ConsultationRoom savedRoom = consultationRoomRepository.save(room);
         
+        // 생성 시간 확인 로그 추가 - 시간 차이 계산
+        LocalDateTime jvmNow = LocalDateTime.now();
+        LocalDateTime dbCreatedAt = savedRoom.getCreatedAt();
+        long timeDiffSeconds = java.time.Duration.between(dbCreatedAt, jvmNow).getSeconds();
+        
+        log.error("!!! 상담방 생성 시간 차이 확인 !!!");
+        log.error("JVM 현재 시간: {}", jvmNow);
+        log.error("DB 저장된 생성 시간: {}", dbCreatedAt);
+        log.error("시간 차이: {}초 (JVM - DB)", timeDiffSeconds);
+        log.error("Room ID: {}, Room UUID: {}", savedRoom.getRoomId(), savedRoom.getRoomUuid());
+        
+        // 즉시 상담인 경우 타임아웃 서비스에 등록
+        if ("WAITING".equals(savedRoom.getRoomStatus())) {
+            timeoutService.registerConsultationRoom(savedRoom.getRoomId());
+            log.info("즉시 상담 타임아웃 서비스 등록 - Room ID: {}", savedRoom.getRoomId());
+        }
+        
         // 상담방이 생성되면 수의사에게 알림 전송
         // 예약 상담이든 즉시 상담이든 상관없이 알림 전송
         notificationService.sendNewConsultationNotification(savedRoom);
@@ -132,6 +150,14 @@ public class ConsultationRoomService {
     @Transactional(readOnly = true)
     public Page<ConsultationRoom> getUserConsultations(Long userId, Pageable pageable) {
         return consultationRoomRepository.findByUserId(userId, pageable);
+    }
+    
+    /**
+     * 사용자의 상담 목록 조회 (타입별)
+     */
+    @Transactional(readOnly = true)
+    public Page<ConsultationRoom> getUserConsultationsByType(Long userId, String consultationType, Pageable pageable) {
+        return consultationRoomRepository.findByUserIdAndConsultationType(userId, consultationType, pageable);
     }
     
     /**
@@ -237,6 +263,9 @@ public class ConsultationRoomService {
         
         consultationRoomRepository.save(room);
         
+        // 타임아웃 서비스에서 제거
+        timeoutService.unregisterConsultationRoom(roomId);
+        
         log.info("Consultation cancelled: room={}, reason={}", roomId, reason);
     }
     
@@ -313,6 +342,9 @@ public class ConsultationRoomService {
         // 저장
         ConsultationRoom savedRoom = consultationRoomRepository.save(room);
         
+        // 타임아웃 서비스에서 제거 (승인되었으므로 더 이상 타임아웃 체크 불필요)
+        timeoutService.unregisterConsultationRoom(roomId);
+        
         // 승인 알림 전송
         try {
             notificationService.sendStatusChangeNotification(savedRoom, "APPROVED");
@@ -368,6 +400,9 @@ public class ConsultationRoomService {
             throw new RuntimeException("상담방 저장 실패", e);
         }
         
+        // 타임아웃 서비스에서 제거 (거절되었으므로 더 이상 타임아웃 체크 불필요)
+        timeoutService.unregisterConsultationRoom(roomId);
+        
         // 5. 알림 전송 (실패해도 거절은 성공으로 처리)
         try {
             notificationService.sendStatusChangeNotification(savedRoom, "REJECTED");
@@ -384,28 +419,34 @@ public class ConsultationRoomService {
      */
     @Transactional(readOnly = true)
     public ConsultationRoomDto toDto(ConsultationRoom room) {
-        return ConsultationRoomDto.builder()
-                .roomId(room.getRoomId())
-                .roomUuid(room.getRoomUuid())
-                .userId(room.getUser().getUserId())
-                .userName(room.getUser().getNickname())
-                .vetId(room.getVet().getVetId())
-                .vetName(room.getVet().getUser().getNickname())
-                .petId(room.getPet() != null ? room.getPet().getPetId() : null)
-                .petName(room.getPet() != null ? room.getPet().getPetName() : null)
-                .roomStatus(room.getRoomStatus())
-                .consultationType(room.getConsultationType())
-                .scheduledDatetime(room.getScheduledDatetime())
-                .startedAt(room.getStartedAt())
-                .endedAt(room.getEndedAt())
-                .durationMinutes(room.getDurationMinutes())
-                .consultationFee(room.getConsultationFee())
-                .paymentStatus(room.getPaymentStatus())
-                .paymentMethod(room.getPaymentMethod())
-                .chiefComplaint(room.getChiefComplaint())
-                .consultationNotes(room.getConsultationNotes())
-                .prescription(room.getPrescription())
-                .createdAt(room.getCreatedAt())
-                .build();
+        try {
+            return ConsultationRoomDto.builder()
+                    .roomId(room.getRoomId())
+                    .roomUuid(room.getRoomUuid())
+                    .userId(room.getUser() != null ? room.getUser().getUserId() : null)
+                    .userName(room.getUser() != null ? room.getUser().getNickname() : "Unknown")
+                    .vetId(room.getVet() != null ? room.getVet().getVetId() : null)
+                    .vetName(room.getVet() != null && room.getVet().getUser() != null 
+                            ? room.getVet().getUser().getNickname() : "Unknown")
+                    .petId(room.getPet() != null ? room.getPet().getPetId() : null)
+                    .petName(room.getPet() != null ? room.getPet().getPetName() : null)
+                    .roomStatus(room.getRoomStatus())
+                    .consultationType(room.getConsultationType())
+                    .scheduledDatetime(room.getScheduledDatetime())
+                    .startedAt(room.getStartedAt())
+                    .endedAt(room.getEndedAt())
+                    .durationMinutes(room.getDurationMinutes())
+                    .consultationFee(room.getConsultationFee())
+                    .paymentStatus(room.getPaymentStatus())
+                    .paymentMethod(room.getPaymentMethod())
+                    .chiefComplaint(room.getChiefComplaint())
+                    .consultationNotes(room.getConsultationNotes())
+                    .prescription(room.getPrescription())
+                    .createdAt(room.getCreatedAt())
+                    .build();
+        } catch (Exception e) {
+            log.error("ConsultationRoom DTO 변환 중 오류 발생 - roomId: {}", room.getRoomId(), e);
+            throw new RuntimeException("DTO 변환 실패", e);
+        }
     }
 }

@@ -14,10 +14,12 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 
 @Entity
 @Table(name = "consultation_room")
 @Getter
+@Slf4j
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
@@ -95,13 +97,21 @@ public class ConsultationRoom {
     @Lob
     private String prescription;
     
-    @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
     
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+    
+    // JPA 이벤트 - 생성 시 명시적으로 시간 설정
+    @PrePersist
+    protected void onCreate() {
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+            log.info("ConsultationRoom 생성 시간 설정: {}", this.createdAt);
+        }
+    }
     
     // 연관관계
     @OneToMany(mappedBy = "consultationRoom", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
@@ -113,28 +123,20 @@ public class ConsultationRoom {
     
     // 상태 상수
     public enum RoomStatus {
-        CREATED("생성됨"), 
-        WAITING("대기중"), 
-        IN_PROGRESS("진행중"), 
-        COMPLETED("완료"), 
-        CANCELLED("취소됨"), 
-        NO_SHOW("노쇼"), 
-        TIMED_OUT("시간초과"), 
-        REJECTED("거절됨");
-        
-        private final String description;
-        
-        RoomStatus(String description) {
-            this.description = description;
-        }
-        
-        public String getDescription() {
-            return description;
-        }
+        CREATED,       // 생성됨
+        WAITING,       // 대기중
+        IN_PROGRESS,   // 진행중
+        COMPLETED,     // 완료
+        CANCELLED,     // 취소
+        NO_SHOW,       // 노쇼
+        REJECTED,      // 거절됨
+        TIMED_OUT,     // 시간 초과
+        PENDING,       // 대기중 (Q&A용)
+        ANSWERED       // 답변완료 (Q&A용)
     }
     
     public enum ConsultationType {
-        CHAT, VIDEO, PHONE
+        CHAT, VIDEO, PHONE, QNA  // QNA 추가
     }
     
     public enum PaymentStatus {
@@ -159,16 +161,6 @@ public class ConsultationRoom {
         this.roomStatus = RoomStatus.CANCELLED.name();
     }
     
-    public void timeoutConsultation() {
-        this.roomStatus = RoomStatus.TIMED_OUT.name();
-        this.endedAt = LocalDateTime.now();
-    }
-    
-    public void rejectConsultation() {
-        this.roomStatus = RoomStatus.REJECTED.name();
-        this.endedAt = LocalDateTime.now();
-    }
-    
     public void markAsPaid(String paymentMethod) {
         this.paymentStatus = PaymentStatus.PAID.name();
         this.paymentMethod = paymentMethod;
@@ -186,5 +178,12 @@ public class ConsultationRoom {
     public void addMessage(ChatMessage message) {
         this.messages.add(message);
         message.setConsultationRoom(this);
+    }
+    
+    // Q&A 답변 완료 처리
+    public void completeAnswer() {
+        if ("QNA".equals(this.consultationType)) {
+            this.roomStatus = RoomStatus.ANSWERED.name();
+        }
     }
 }
