@@ -1,6 +1,7 @@
 package com.petlogue.duopetbackend.consultation.jpa.repository;
 
 import com.petlogue.duopetbackend.consultation.jpa.entity.ChatMessage;
+import com.petlogue.duopetbackend.consultation.jpa.entity.ConsultationRoom;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -100,4 +101,16 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
     List<ChatMessage> findLastMessage(@Param("roomId") Long roomId, Pageable pageable);
     
     // 시스템 메시지 생성을 위한 벌크 insert는 Service에서 처리
+    
+    // Q&A 상담 관련 메서드 추가
+    // 상담방의 모든 메시지 조회 (시간순)
+    List<ChatMessage> findByConsultationRoomOrderByCreatedAt(ConsultationRoom consultationRoom);
+    
+    // 상담방의 주요 메시지(질문/답변)만 조회
+    @Query("SELECT cm FROM ChatMessage cm " +
+           "JOIN FETCH cm.sender s " +
+           "WHERE cm.consultationRoom.roomId = :roomId " +
+           "AND cm.isImportant = 'Y' " +
+           "ORDER BY cm.createdAt")
+    List<ChatMessage> findMainMessagesInRoom(@Param("roomId") Long roomId);
 }

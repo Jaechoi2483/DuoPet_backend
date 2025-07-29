@@ -5,6 +5,8 @@ import com.petlogue.duopetbackend.consultation.model.dto.ConsultationRoomDto;
 import com.petlogue.duopetbackend.consultation.model.dto.CreateConsultationDto;
 import com.petlogue.duopetbackend.consultation.jpa.entity.ConsultationRoom;
 import com.petlogue.duopetbackend.consultation.model.service.ConsultationRoomService;
+import com.petlogue.duopetbackend.user.jpa.repository.UserRepository;
+import com.petlogue.duopetbackend.user.jpa.entity.UserEntity;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +21,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Optional;
+
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -30,6 +34,7 @@ import java.util.stream.Collectors;
 public class ConsultationRoomController {
     
     private final ConsultationRoomService consultationRoomService;
+    private final UserRepository userRepository;
     
     /**
      * 상담방 생성
@@ -93,15 +98,67 @@ public class ConsultationRoomController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Page<ConsultationRoomDto>>> getMyConsultations(
             @AuthenticationPrincipal UserDetails userDetails,
+            @RequestParam(required = false) String consultationType,
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         
-        // TODO: Get userId from authenticated user
-        Long userId = 1L; // Placeholder
+        // 임시 하드코딩 테스트
+        Long userId = 181L; // 테스트용 하드코딩
+        log.warn("!!! 임시 하드코딩 userId = 181 사용중 !!!");
         
-        Page<ConsultationRoom> rooms = consultationRoomService.getUserConsultations(userId, pageable);
-        Page<ConsultationRoomDto> roomDtos = rooms.map(consultationRoomService::toDto);
+        // 원래 코드는 주석처리
+        /*
+        // UserDetails에서 username(loginId)를 가져와서 실제 사용자 조회
+        Long userId = null;
+        String loginId = null;
         
-        return ResponseEntity.ok(ApiResponse.success(roomDtos));
+        if (userDetails != null) {
+            loginId = userDetails.getUsername();
+            log.info("UserDetails에서 가져온 loginId: {}", loginId);
+            
+            Optional<UserEntity> userOptional = userRepository.findByLoginId(loginId);
+            if (userOptional.isPresent()) {
+                UserEntity user = userOptional.get();
+                userId = user.getUserId();
+                log.info("사용자 조회 성공 - userId: {}, loginId: {}", userId, loginId);
+            } else {
+                log.error("loginId로 사용자를 찾을 수 없음: {}", loginId);
+            }
+        } else {
+            log.error("UserDetails가 null입니다.");
+        }
+        
+        // userId가 없으면 에러 반환
+        if (userId == null) {
+            log.error("사용자 정보를 찾을 수 없습니다. loginId: {}", loginId);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("사용자 정보를 찾을 수 없습니다."));
+        }
+        */
+        
+        log.info("상담 내역 조회 시작 - userId: {}, consultationType: {}", 
+                userId, consultationType);
+        
+        try {
+            Page<ConsultationRoom> rooms;
+            
+            // consultationType이 지정된 경우 해당 타입만 조회
+            if (consultationType != null && !consultationType.isEmpty()) {
+                rooms = consultationRoomService.getUserConsultationsByType(userId, consultationType, pageable);
+            } else {
+                // consultationType이 없으면 전체 조회
+                rooms = consultationRoomService.getUserConsultations(userId, pageable);
+            }
+            
+            Page<ConsultationRoomDto> roomDtos = rooms.map(consultationRoomService::toDto);
+            
+            log.info("조회된 상담 내역 수: {} (타입: {})", rooms.getTotalElements(), consultationType);
+            
+            return ResponseEntity.ok(ApiResponse.success(roomDtos));
+        } catch (Exception e) {
+            log.error("상담 내역 조회 중 오류 발생", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("상담 내역을 불러오는데 실패했습니다."));
+        }
     }
     
     /**
@@ -149,8 +206,23 @@ public class ConsultationRoomController {
     public ResponseEntity<ApiResponse<List<ConsultationRoomDto>>> getActiveRooms(
             @AuthenticationPrincipal UserDetails userDetails) {
         
-        // TODO: Get userId from authenticated user
-        Long userId = 1L; // Placeholder
+        // UserDetails에서 username(loginId)를 가져와서 실제 사용자 조회
+        Long userId = null;
+        String loginId = null;
+        
+        if (userDetails != null) {
+            loginId = userDetails.getUsername();
+            Optional<UserEntity> userOptional = userRepository.findByLoginId(loginId);
+            if (userOptional.isPresent()) {
+                userId = userOptional.get().getUserId();
+            }
+        }
+        
+        if (userId == null) {
+            log.error("사용자 정보를 찾을 수 없습니다. loginId: {}", loginId);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("사용자 정보를 찾을 수 없습니다."));
+        }
         
         List<ConsultationRoom> rooms = consultationRoomService.getActiveRooms(userId);
         List<ConsultationRoomDto> roomDtos = rooms.stream()
