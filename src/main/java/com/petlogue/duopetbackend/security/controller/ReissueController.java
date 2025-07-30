@@ -69,7 +69,8 @@ public class ReissueController {
 
                     String newAccessToken = jwtUtil.generateToken(user.toDto(), "access");
                     response.setHeader("Authorization", "Bearer " + newAccessToken);
-                    response.setHeader("Access-Control-Expose-Headers", "Authorization");
+                    response.setHeader("Refresh-Token", "Bearer " + refreshToken);
+                    response.setHeader("Access-Control-Expose-Headers", "Authorization, Refresh-Token");
 
                     log.info("(강제연장) 새 accessToken 발급됨: {}", newAccessToken);
                     log.info("(강제연장) 새 accessToken 만료 시각: {}", jwtUtil.getExpiration(newAccessToken));
@@ -95,7 +96,8 @@ public class ReissueController {
 
                 String newAccessToken = jwtUtil.generateToken(user.toDto(), "access");
                 response.setHeader("Authorization", "Bearer " + newAccessToken);
-                response.setHeader("Access-Control-Expose-Headers", "Authorization");
+                response.setHeader("Refresh-Token", "Bearer " + refreshToken);
+                response.setHeader("Access-Control-Expose-Headers", "Authorization, Refresh-Token");
 
                 log.info("새 accessToken 발급됨: {}", newAccessToken);
                 log.info("새 accessToken 만료 시각: {}", jwtUtil.getExpiration(newAccessToken));

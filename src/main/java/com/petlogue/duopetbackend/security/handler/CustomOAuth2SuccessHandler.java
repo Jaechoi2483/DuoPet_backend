@@ -69,6 +69,16 @@ public class CustomOAuth2SuccessHandler implements AuthenticationSuccessHandler 
         UserEntity user = userRepository.findByLoginId(finalLoginId)
                 .orElseThrow(() -> new RuntimeException("소셜 로그인 사용자 없음: " + finalLoginId));
 
+        // 정지 계정은 로그인 불가
+        if ("inactive".equalsIgnoreCase(user.getStatus())) {
+            log.warn("정지된 계정으로 로그인 시도: {}", finalLoginId);
+
+            // 로그인 페이지로 리다이렉트 (에러 파라미터 포함)
+            String errorRedirect = "http://localhost:3000/login?error=inactive";
+            response.sendRedirect(errorRedirect);
+            return;
+        }
+
         // JWT 토큰 생성
         String accessToken = jwtUtil.generateToken(user.toDto(), "access");
         String refreshToken = jwtUtil.generateToken(user.toDto(), "refresh");
