@@ -29,4 +29,6 @@ public class CreateConsultationDto {
     private LocalDateTime scheduledDatetime; // For immediate consultation, can be null
     
     private String chiefComplaint; // 주요 증상/상담 사유
+    
+    private PaymentInfoDto paymentInfo; // 결제 정보 (Optional)
 }

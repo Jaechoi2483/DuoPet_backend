@@ -121,6 +121,13 @@ public class ConsultationRoom {
     @OneToOne(mappedBy = "consultationRoom", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private ConsultationReview review;
     
+    @OneToOne(mappedBy = "consultationRoom", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private Payment payment;
+    
+    @Column(name = "is_paid")
+    @Builder.Default
+    private Boolean isPaid = false;
+    
     // 상태 상수
     public enum RoomStatus {
         CREATED,       // 생성됨
@@ -173,6 +180,10 @@ public class ConsultationRoom {
     
     public boolean isPaid() {
         return PaymentStatus.PAID.name().equals(this.paymentStatus);
+    }
+    
+    public Boolean getIsPaid() {
+        return this.isPaid;
     }
     
     public void addMessage(ChatMessage message) {

@@ -3,6 +3,7 @@ package com.petlogue.duopetbackend.consultation.model.service;
 import com.petlogue.duopetbackend.consultation.model.dto.ConsultationRoomDto;
 import com.petlogue.duopetbackend.consultation.model.dto.CreateConsultationDto;
 import com.petlogue.duopetbackend.consultation.jpa.entity.ConsultationRoom;
+import com.petlogue.duopetbackend.consultation.jpa.entity.Payment;
 import com.petlogue.duopetbackend.consultation.jpa.entity.ConsultationRoom.RoomStatus;
 import com.petlogue.duopetbackend.consultation.jpa.entity.VetProfile;
 import com.petlogue.duopetbackend.consultation.jpa.entity.VetSchedule;
@@ -42,6 +43,7 @@ public class ConsultationRoomService {
     private final VetScheduleRepository vetScheduleRepository;
     private final ConsultationNotificationService notificationService;
     private final ConsultationTimeoutService timeoutService;
+    private final PaymentService paymentService;
     
     /**
      * 상담방 생성
@@ -85,6 +87,23 @@ public class ConsultationRoomService {
             }
         }
         
+        // 결제 정보가 있는 경우 결제 검증
+        Payment payment = null;
+        if (dto.getPaymentInfo() != null) {
+            try {
+                // 토스페이먼츠 결제 검증
+                payment = paymentService.verifyPayment(
+                    dto.getPaymentInfo().getPaymentKey(),
+                    dto.getPaymentInfo().getOrderId(),
+                    dto.getPaymentInfo().getAmount()
+                );
+                log.info("결제 검증 성공 - orderId: {}", dto.getPaymentInfo().getOrderId());
+            } catch (Exception e) {
+                log.error("결제 검증 실패", e);
+                throw new RuntimeException("결제 검증에 실패했습니다: " + e.getMessage());
+            }
+        }
+        
         // Create consultation room
         ConsultationRoom room = ConsultationRoom.builder()
                 .roomUuid(UUID.randomUUID().toString())
@@ -98,6 +117,7 @@ public class ConsultationRoomService {
                 .consultationFee(vetProfile.getConsultationFee())
                 .chiefComplaint(dto.getChiefComplaint())
                 .roomStatus(schedule == null ? "WAITING" : "CREATED") // 즉시 상담은 WAITING, 예약 상담은 CREATED
+                .isPaid(payment != null) // 결제 여부 설정
                 .build();
         
         // Update schedule status if scheduled consultation
@@ -107,6 +127,18 @@ public class ConsultationRoomService {
         }
         
         ConsultationRoom savedRoom = consultationRoomRepository.save(room);
+        
+        // 결제 정보와 상담방 연결
+        if (payment != null) {
+            payment.setConsultationRoom(savedRoom);
+            paymentService.verifyPayment(
+                payment.getPaymentKey(), 
+                payment.getOrderId(), 
+                payment.getAmount()
+            );
+            log.info("결제 정보와 상담방 연결 완료 - roomId: {}, paymentId: {}", 
+                savedRoom.getRoomId(), payment.getPaymentId());
+        }
         
         // 생성 시간 확인 로그 추가 - 시간 차이 계산
         LocalDateTime jvmNow = LocalDateTime.now();

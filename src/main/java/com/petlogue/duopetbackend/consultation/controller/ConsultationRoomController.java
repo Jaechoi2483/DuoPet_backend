@@ -48,14 +48,44 @@ public class ConsultationRoomController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ConsultationRoomDto>> createRoom(
             @AuthenticationPrincipal UserDetails userDetails,
-            @Valid @RequestBody CreateConsultationDto createDto) {
+            @Valid @RequestBody CreateConsultationDto createDto,
+            jakarta.servlet.http.HttpServletRequest request) {
         
         try {
-            // TODO: Get userId from authenticated user
-            // createDto.setUserId(getUserIdFromAuth(userDetails));
+            // JWT Filter에서 설정한 loginId 가져오기
+            String loginId = (String) request.getAttribute("loginId");
+            
+            if (loginId == null) {
+                // SecurityContext에서 가져오기 시도
+                var authentication = SecurityContextHolder.getContext().getAuthentication();
+                if (authentication != null) {
+                    loginId = authentication.getName();
+                }
+            }
+            
+            // loginId로 userId 찾기
+            Long userId = null;
+            if (loginId != null) {
+                Optional<UserEntity> userOptional = userRepository.findByLoginId(loginId);
+                if (userOptional.isPresent()) {
+                    userId = userOptional.get().getUserId();
+                }
+            }
+            
+            if (userId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(ApiResponse.error("사용자 정보를 찾을 수 없습니다."));
+            }
+            
+            createDto.setUserId(userId);
             
             ConsultationRoom room = consultationRoomService.createConsultationRoom(createDto);
             ConsultationRoomDto roomDto = consultationRoomService.toDto(room);
+            
+            // 결제가 필요한 상담의 경우 결제 완료 확인
+            if (room.getIsPaid()) {
+                log.info("Paid consultation created: {}", room.getRoomUuid());
+            }
             
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(ApiResponse.success("상담방이 생성되었습니다.", roomDto));
@@ -63,6 +93,14 @@ public class ConsultationRoomController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
+        } catch (RuntimeException e) {
+            log.error("Runtime error creating consultation room", e);
+            if (e.getMessage().contains("결제 검증")) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.error(e.getMessage()));
+            }
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("상담방 생성 중 오류가 발생했습니다."));
         } catch (Exception e) {
             log.error("Error creating consultation room", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
