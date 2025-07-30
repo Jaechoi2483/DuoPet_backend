@@ -34,8 +34,6 @@ public class CommentsController {
 
     private final LikeService likeService;
 
-    private final LikeRepository likeRepository;
-
     private final JWTUtil jwtUtil;
 
     // 댓글 + 대댓글 조회
@@ -60,31 +58,6 @@ public class CommentsController {
         } else {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
-    }
-
-    // 댓글 삭제
-    @DeleteMapping("/delete/{commentId}")
-    public ResponseEntity<?> deleteComment(
-            @PathVariable Long commentId,
-            @RequestAttribute("userId") Long userId) {
-
-        CommentsEntity comment = commentsRepository.findById(commentId)
-                .orElse(null);
-
-        if (comment == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("존재하지 않는 댓글입니다.");
-        }
-
-        // 댓글 작성자와 현재 로그인한 사용자 비교
-        if (!comment.getUser().equals(userId)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body("작성자만 댓글을 삭제할 수 있습니다.");
-        }
-
-        // 삭제 진행
-        commentsRepository.deleteById(commentId);
-        return ResponseEntity.ok().body("댓글 삭제 완료");
     }
 
     // 댓글 좋아요

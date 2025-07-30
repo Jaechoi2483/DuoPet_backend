@@ -423,8 +423,8 @@ public class BoardController {
         return ResponseEntity.ok(Map.of("bookmarked", bookmarked));
     }
 
-    @PostMapping("/{category}/report")
-    public ResponseEntity<String> report(@PathVariable String category,@RequestBody Report dto, HttpServletRequest request) {
+    @PostMapping("/report")
+    public ResponseEntity<String> report(@RequestBody Report dto, HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
 
         if (userId == null) {
@@ -455,23 +455,4 @@ public class BoardController {
         }
         return null;  // 세션에 userId가 없으면 null 반환
     }
-
-    // 좋아요 목록 조회
-//    @GetMapping("/mypage/likes")
-//    public ResponseEntity<List<Like>> getLikes(
-//            @RequestParam Long userId
-//    ) {
-//        List<Like> result = LikeService.getLikesByUser(userId);
-//        return ResponseEntity.ok(result);
-//    }
-//
-//    // 북마크 목록 조회
-//    @GetMapping("/mypage/bookmarks")
-//    public ResponseEntity<List<Bookmark>> getBookmarks(
-//            @RequestParam Long userId
-//    ) {
-//        List<Bookmark> result = bookmarkService.getBookmarksByUser(userId);
-//        return ResponseEntity.ok(result);
-//    }
-
 }

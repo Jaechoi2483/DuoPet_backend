@@ -2,8 +2,6 @@ package com.petlogue.duopetbackend.board.jpa.repository;
 
 import com.petlogue.duopetbackend.board.jpa.entity.CommentsEntity;
 import com.petlogue.duopetbackend.mypage.model.dto.MyCommentDto;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -17,10 +15,6 @@ public interface CommentsRepository extends JpaRepository<CommentsEntity, Long> 
     // 댓글 + 대댓글 정렬 순 조회
 
     List<CommentsEntity> findByContentIdAndStatusOrderByParentCommentIdAscCreatedAtAsc(Long contentId, String status);
-
-
-    List<CommentsEntity> findByContentIdOrderByParentCommentIdAscCreatedAtAsc(Long contentId);
-
 
     // 좋아요 수 증가
     @Modifying(clearAutomatically = true)

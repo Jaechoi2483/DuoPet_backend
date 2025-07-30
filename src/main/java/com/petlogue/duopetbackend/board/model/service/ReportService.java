@@ -1,8 +1,10 @@
 package com.petlogue.duopetbackend.board.model.service;
 
 import com.petlogue.duopetbackend.board.jpa.entity.BoardEntity;
+import com.petlogue.duopetbackend.board.jpa.entity.CommentsEntity;
 import com.petlogue.duopetbackend.board.jpa.entity.ReportEntity;
 import com.petlogue.duopetbackend.board.jpa.repository.BoardRepository;
+import com.petlogue.duopetbackend.board.jpa.repository.CommentsRepository;
 import com.petlogue.duopetbackend.board.jpa.repository.ReportRepository;
 import com.petlogue.duopetbackend.board.model.dto.Report;
 import com.petlogue.duopetbackend.user.jpa.entity.UserEntity;
@@ -23,8 +25,8 @@ public class ReportService {
     private final ReportRepository reportRepository;
     private final UserRepository userRepository;
     private final BoardRepository boardRepository;
+    private final CommentsRepository commentsRepository;
 
-    @Transactional
     public void saveReport(Long userId, Report dto) {
 
         // 1. 중복 신고 체크
@@ -32,52 +34,38 @@ public class ReportService {
                 userId, dto.getTargetId(), dto.getTargetType());
 
         if (exists) {
-            throw new IllegalStateException("이미 해당 게시글을 신고하셨습니다.");
+            throw new IllegalStateException("이미 신고한 항목입니다.");
         }
 
-        // 2. 본인 게시글 신고 막기 (게시글일 경우만)
-        if ("content".equalsIgnoreCase(dto.getTargetType())) {
-            BoardEntity targetBoard = boardRepository.findById(dto.getTargetId())
-                    .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 존재하지 않습니다."));
-
-            log.info("📌 게시글 작성자 ID: {}", targetBoard.getUserId());
-            log.info("📌 신고자 ID: {}", userId);
-
-            if (targetBoard.getUserId().equals(userId)) {
-                throw new IllegalArgumentException("자신의 게시글은 신고할 수 없습니다.");
-            }
-        }
-
-        // 3. 사용자 조회
+        // 2. 사용자 조회
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("유효한 사용자 ID가 아닙니다."));
 
-        // 4. 저장
-        ReportEntity report = dto.toReportEntity(user);
-        reportRepository.save(report);
-    }
+        // 3. 본인 신고 차단
+        switch (dto.getTargetType().toLowerCase()) {
+            case "content" -> {
+                BoardEntity board = boardRepository.findById(dto.getTargetId())
+                        .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 존재하지 않습니다."));
 
-    // 댓글 신고하기
-    public String toggleCommentReport(Long userId, Long commentId, Report dto) {
-        String targetType = "comment";
+                if (board.getUserId().equals(userId)) {
+                    throw new IllegalArgumentException("자신의 게시글은 신고할 수 없습니다.");
+                }
+            }
+            case "comment" -> {
+                CommentsEntity comment = commentsRepository.findById(dto.getTargetId())
+                        .orElseThrow(() -> new IllegalArgumentException("해당 댓글이 존재하지 않습니다."));
 
-        boolean alreadyReported = reportRepository.existsByUser_UserIdAndTargetIdAndTargetType(userId, commentId, targetType);
-
-        if (alreadyReported) {
-            return "이미 신고한 댓글입니다.";
+                if (comment.getUser().getUserId().equals(userId)) {
+                    throw new IllegalArgumentException("자신의 댓글은 신고할 수 없습니다.");
+                }
+            }
+            // 필요한 경우 "review", "faq" 등 다른 신고 대상도 이 구조에 추가 가능
         }
 
-        ReportEntity report = ReportEntity.builder()
-                .user(userRepository.findById(userId).orElseThrow())
-                .targetId(commentId)
-                .targetType(targetType)
-                .reason(dto.getReason())
-                .details(dto.getDetails())
-                .status("PENDING")
-                .createdAt(new Date())
-                .build();
-
+        // 4. 신고 엔티티 저장
+        ReportEntity report = dto.toReportEntity(user);
         reportRepository.save(report);
-        return "신고가 접수되었습니다.";
+
+        log.info("✅ 신고 저장 완료: {}", report);
     }
 }

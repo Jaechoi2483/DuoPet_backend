@@ -24,8 +24,6 @@ import java.util.List;
 public class CommentsService {
 
     private final CommentsRepository commentsRepository;
-    private final LikeRepository likeRepository;
-    private final ReportRepository reportRepository;
     private final UserRepository userRepository;
 
     // 게시물 번호를 기준으로 댓글 + 대댓글 전체 조회
@@ -56,17 +54,6 @@ public class CommentsService {
         } catch (Exception e) {
             log.error("댓글 등록 실패", e);
             return null;
-        }
-    }
-
-    // 댓글 삭제
-    public int deleteComment(Long commentId) {
-        try {
-            commentsRepository.deleteById(commentId);
-            return 1;
-        } catch (Exception e) {
-            log.error("댓글 삭제 실패", e);
-            return 0;
         }
     }
 }
