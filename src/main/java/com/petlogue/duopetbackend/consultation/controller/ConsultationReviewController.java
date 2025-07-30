@@ -35,26 +35,53 @@ public class ConsultationReviewController {
      * POST /api/consultation/reviews/room/{roomId}
      */
     @PostMapping("/room/{roomId}")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse<ConsultationReview>> createReview(
+    public ResponseEntity<ApiResponse<ConsultationReviewDto>> createReview(
             @PathVariable Long roomId,
             @Valid @RequestBody ConsultationReviewDto reviewDto,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @RequestAttribute("userId") Long userId) {
         
         try {
-            // TODO: Get userId from authenticated user
-            reviewDto.setUserId(1L); // Placeholder
+            log.info("리뷰 작성 요청 - roomId: {}, userId: {}", roomId, userId);
+            
+            // userId를 reviewDto에 설정
+            reviewDto.setUserId(userId);
             
             ConsultationReview review = reviewService.createReview(roomId, reviewDto);
+            
+            log.info("리뷰 생성 완료 - reviewId: {}", review.getReviewId());
+            
+            // 엔티티를 DTO로 변환하여 반환
+            ConsultationReviewDto responseDto = ConsultationReviewDto.builder()
+                    .reviewId(review.getReviewId())
+                    .consultationRoomId(review.getConsultationRoom().getRoomId())
+                    .userId(review.getUser().getUserId())
+                    .userName(review.getUser().getNickname())
+                    .vetId(review.getVet().getVetId())
+                    .vetName(review.getVet().getName())  // VetEntity의 name 필드 직접 사용
+                    .rating(review.getRating())
+                    .kindnessScore(review.getKindnessScore())
+                    .professionalScore(review.getProfessionalScore())
+                    .responseScore(review.getResponseScore())
+                    .reviewContent(review.getReviewContent())
+                    .isVisible("Y".equals(review.getIsVisible()))
+                    .createdAt(review.getCreatedAt())
+                    .build();
+            
             return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(ApiResponse.success("리뷰가 작성되었습니다.", review));
+                    .body(ApiResponse.success("리뷰가 작성되었습니다.", responseDto));
             
         } catch (IllegalArgumentException e) {
+            log.error("리뷰 작성 실패 - IllegalArgumentException: {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         } catch (IllegalStateException e) {
+            log.error("리뷰 작성 실패 - IllegalStateException: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(ApiResponse.error(e.getMessage()));
+        } catch (Exception e) {
+            log.error("리뷰 작성 실패 - 예상치 못한 오류", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("리뷰 작성 중 오류가 발생했습니다."));
         }
     }
     
@@ -63,11 +90,10 @@ public class ConsultationReviewController {
      * POST /api/consultation/reviews/{reviewId}/reply
      */
     @PostMapping("/{reviewId}/reply")
-    @PreAuthorize("hasAuthority('VET')")
     public ResponseEntity<ApiResponse<Void>> addVetReply(
             @PathVariable Long reviewId,
             @RequestBody Map<String, String> request,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @RequestAttribute("userId") Long userId) {
         
         try {
             String reply = request.get("reply");
@@ -76,8 +102,9 @@ public class ConsultationReviewController {
                         .body(ApiResponse.error("답변 내용을 입력해주세요."));
             }
             
-            // TODO: Get vetId from authenticated user
-            Long vetId = 1L; // Placeholder
+            // userId로 vetId 조회 (수의사의 userId로 vetId를 찾음)
+            // 이 부분은 VetRepository를 주입받아 처리해야 함
+            Long vetId = 1L; // TODO: vetRepository.findByUser_UserId(userId).getVetId()
             
             reviewService.addVetReply(reviewId, vetId, reply);
             return ResponseEntity.ok(ApiResponse.success("답변이 등록되었습니다.", null));

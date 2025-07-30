@@ -101,4 +101,10 @@ public interface ConsultationReviewRepository extends JpaRepository<Consultation
            "ORDER BY cr.rating DESC, cr.createdAt DESC")
     List<ConsultationReview> findByMinimumRating(@Param("vetId") Long vetId,
                                                  @Param("minRating") Integer minRating);
+    
+    // 수의사의 가시적인 리뷰 조회
+    @Query("SELECT cr FROM ConsultationReview cr " +
+           "WHERE cr.vet.vetId = :vetId " +
+           "AND cr.isVisible = :isVisible")
+    List<ConsultationReview> findByVetIdAndIsVisible(@Param("vetId") Long vetId, @Param("isVisible") String isVisible);
 }

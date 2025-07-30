@@ -4,8 +4,10 @@ import com.petlogue.duopetbackend.consultation.model.dto.ConsultationReviewDto;
 import com.petlogue.duopetbackend.consultation.model.dto.ReviewStatisticsDto;
 import com.petlogue.duopetbackend.consultation.jpa.entity.ConsultationReview;
 import com.petlogue.duopetbackend.consultation.jpa.entity.ConsultationRoom;
+import com.petlogue.duopetbackend.consultation.jpa.entity.VetProfile;
 import com.petlogue.duopetbackend.consultation.jpa.repository.ConsultationReviewRepository;
 import com.petlogue.duopetbackend.consultation.jpa.repository.ConsultationRoomRepository;
+import com.petlogue.duopetbackend.consultation.jpa.repository.VetProfileRepository;
 import com.petlogue.duopetbackend.user.jpa.entity.UserEntity;
 import com.petlogue.duopetbackend.user.jpa.entity.VetEntity;
 import com.petlogue.duopetbackend.user.jpa.repository.UserRepository;
@@ -17,6 +19,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -31,6 +35,7 @@ public class ConsultationReviewService {
     private final ConsultationRoomRepository roomRepository;
     private final UserRepository userRepository;
     private final VetRepository vetRepository;
+    private final VetProfileRepository vetProfileRepository;
     
     /**
      * 리뷰 작성
@@ -71,10 +76,63 @@ public class ConsultationReviewService {
                 .isVisible("Y")
                 .build();
         
-        room.setReview(review);
+        // room.setReview(review); // 양방향 관계 설정 제거 - 순환 참조 방지
         
         ConsultationReview savedReview = reviewRepository.save(review);
-        log.info("Review created for consultation room {}", roomId);
+        reviewRepository.flush(); // IDENTITY 전략 사용 시 ID 즉시 생성을 위해 flush
+        
+        log.info("Review created for consultation room {} with rating {}", roomId, dto.getRating());
+        
+        // 리뷰 저장 확인
+        log.info("Saved review ID: {}, vet ID: {}, user ID: {}", savedReview.getReviewId(), vet.getVetId(), user.getUserId());
+        
+        // VetProfile 평점 통계 업데이트 전 상태 확인
+        VetProfile vetProfileBefore = vetProfileRepository.findByVet_VetId(vet.getVetId())
+                .orElse(null);
+        if (vetProfileBefore != null) {
+            log.info("Before update - vet {} rating: {}, count: {}", 
+                    vet.getVetId(), vetProfileBefore.getRatingAvg(), vetProfileBefore.getRatingCount());
+        }
+        
+        // VetProfile 평점 통계 업데이트 (전체 리뷰 기반으로 재계산)
+        try {
+            vetProfileRepository.updateRatingStatistics(vet.getVetId());
+            log.info("Called updateRatingStatistics for vet {}", vet.getVetId());
+            
+            // 강제로 flush하여 즉시 DB에 반영
+            vetProfileRepository.flush();
+        } catch (Exception e) {
+            log.error("Error updating rating statistics for vet {}: {}", vet.getVetId(), e.getMessage(), e);
+        }
+        
+        // 업데이트된 평점 로그 출력
+        VetProfile vetProfileAfter = vetProfileRepository.findByVet_VetId(vet.getVetId())
+                .orElse(null);
+        if (vetProfileAfter != null) {
+            log.info("After update - vet {} rating: {}, count: {}", 
+                    vet.getVetId(), vetProfileAfter.getRatingAvg(), vetProfileAfter.getRatingCount());
+            
+            // 항상 수동으로 계산 (updateRatingStatistics가 작동하지 않는 문제 해결)
+            if (true) {  // 항상 실행
+                log.info("Calculating rating manually for vet {}", vet.getVetId());
+                
+                // 해당 수의사의 모든 리뷰 가져오기
+                List<ConsultationReview> vetReviews = reviewRepository.findByVetIdAndIsVisible(vet.getVetId(), "Y");
+                if (!vetReviews.isEmpty()) {
+                    double avgRating = vetReviews.stream()
+                            .mapToInt(ConsultationReview::getRating)
+                            .average()
+                            .orElse(0.0);
+                    
+                    vetProfileAfter.setRatingAvg(BigDecimal.valueOf(avgRating).setScale(2, RoundingMode.HALF_UP));
+                    vetProfileAfter.setRatingCount(vetReviews.size());
+                    
+                    vetProfileRepository.save(vetProfileAfter);
+                    log.info("Manually updated vet {} rating to: {}, count: {}", 
+                            vet.getVetId(), vetProfileAfter.getRatingAvg(), vetProfileAfter.getRatingCount());
+                }
+            }
+        }
         
         return savedReview;
     }
@@ -184,7 +242,7 @@ public class ConsultationReviewService {
                 .userId(review.getUser().getUserId())
                 .userName(review.getUser().getNickname())
                 .vetId(review.getVet().getVetId())
-                .vetName(review.getVet().getUser().getNickname())
+                .vetName(review.getVet().getName())  // VetEntity의 name 필드 직접 사용
                 .rating(review.getRating())
                 .kindnessScore(review.getKindnessScore())
                 .professionalScore(review.getProfessionalScore())

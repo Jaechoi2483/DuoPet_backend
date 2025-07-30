@@ -6,7 +6,9 @@ import com.petlogue.duopetbackend.consultation.model.dto.CreateConsultationDto;
 import com.petlogue.duopetbackend.consultation.jpa.entity.ConsultationRoom;
 import com.petlogue.duopetbackend.consultation.model.service.ConsultationRoomService;
 import com.petlogue.duopetbackend.user.jpa.repository.UserRepository;
+import com.petlogue.duopetbackend.user.jpa.repository.VetRepository;
 import com.petlogue.duopetbackend.user.jpa.entity.UserEntity;
+import com.petlogue.duopetbackend.user.jpa.entity.VetEntity;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +21,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Optional;
@@ -35,6 +38,7 @@ public class ConsultationRoomController {
     
     private final ConsultationRoomService consultationRoomService;
     private final UserRepository userRepository;
+    private final VetRepository vetRepository;
     
     /**
      * 상담방 생성
@@ -44,14 +48,44 @@ public class ConsultationRoomController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ConsultationRoomDto>> createRoom(
             @AuthenticationPrincipal UserDetails userDetails,
-            @Valid @RequestBody CreateConsultationDto createDto) {
+            @Valid @RequestBody CreateConsultationDto createDto,
+            jakarta.servlet.http.HttpServletRequest request) {
         
         try {
-            // TODO: Get userId from authenticated user
-            // createDto.setUserId(getUserIdFromAuth(userDetails));
+            // JWT Filter에서 설정한 loginId 가져오기
+            String loginId = (String) request.getAttribute("loginId");
+            
+            if (loginId == null) {
+                // SecurityContext에서 가져오기 시도
+                var authentication = SecurityContextHolder.getContext().getAuthentication();
+                if (authentication != null) {
+                    loginId = authentication.getName();
+                }
+            }
+            
+            // loginId로 userId 찾기
+            Long userId = null;
+            if (loginId != null) {
+                Optional<UserEntity> userOptional = userRepository.findByLoginId(loginId);
+                if (userOptional.isPresent()) {
+                    userId = userOptional.get().getUserId();
+                }
+            }
+            
+            if (userId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(ApiResponse.error("사용자 정보를 찾을 수 없습니다."));
+            }
+            
+            createDto.setUserId(userId);
             
             ConsultationRoom room = consultationRoomService.createConsultationRoom(createDto);
             ConsultationRoomDto roomDto = consultationRoomService.toDto(room);
+            
+            // 결제가 필요한 상담의 경우 결제 완료 확인
+            if (room.getIsPaid()) {
+                log.info("Paid consultation created: {}", room.getRoomUuid());
+            }
             
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(ApiResponse.success("상담방이 생성되었습니다.", roomDto));
@@ -59,6 +93,14 @@ public class ConsultationRoomController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
+        } catch (RuntimeException e) {
+            log.error("Runtime error creating consultation room", e);
+            if (e.getMessage().contains("결제 검증")) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.error(e.getMessage()));
+            }
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("상담방 생성 중 오류가 발생했습니다."));
         } catch (Exception e) {
             log.error("Error creating consultation room", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -97,24 +139,25 @@ public class ConsultationRoomController {
     @GetMapping("/my-consultations")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Page<ConsultationRoomDto>>> getMyConsultations(
-            @AuthenticationPrincipal UserDetails userDetails,
             @RequestParam(required = false) String consultationType,
-            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
+            jakarta.servlet.http.HttpServletRequest request) {
         
-        // 임시 하드코딩 테스트
-        Long userId = 181L; // 테스트용 하드코딩
-        log.warn("!!! 임시 하드코딩 userId = 181 사용중 !!!");
+        // JWT Filter에서 설정한 loginId 가져오기
+        String loginId = (String) request.getAttribute("loginId");
         
-        // 원래 코드는 주석처리
-        /*
-        // UserDetails에서 username(loginId)를 가져와서 실제 사용자 조회
+        if (loginId == null) {
+            // SecurityContext에서 가져오기 시도
+            var authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication != null) {
+                loginId = authentication.getName();
+            }
+        }
+        
+        log.info("가져온 loginId: {}", loginId);
+        
         Long userId = null;
-        String loginId = null;
-        
-        if (userDetails != null) {
-            loginId = userDetails.getUsername();
-            log.info("UserDetails에서 가져온 loginId: {}", loginId);
-            
+        if (loginId != null) {
             Optional<UserEntity> userOptional = userRepository.findByLoginId(loginId);
             if (userOptional.isPresent()) {
                 UserEntity user = userOptional.get();
@@ -124,7 +167,7 @@ public class ConsultationRoomController {
                 log.error("loginId로 사용자를 찾을 수 없음: {}", loginId);
             }
         } else {
-            log.error("UserDetails가 null입니다.");
+            log.error("loginId를 가져올 수 없습니다.");
         }
         
         // userId가 없으면 에러 반환
@@ -133,7 +176,6 @@ public class ConsultationRoomController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(ApiResponse.error("사용자 정보를 찾을 수 없습니다."));
         }
-        */
         
         log.info("상담 내역 조회 시작 - userId: {}, consultationType: {}", 
                 userId, consultationType);
@@ -141,12 +183,36 @@ public class ConsultationRoomController {
         try {
             Page<ConsultationRoom> rooms;
             
-            // consultationType이 지정된 경우 해당 타입만 조회
-            if (consultationType != null && !consultationType.isEmpty()) {
-                rooms = consultationRoomService.getUserConsultationsByType(userId, consultationType, pageable);
+            // 사용자의 role 확인
+            UserEntity user = userRepository.findById(userId).orElseThrow();
+            boolean isVet = "vet".equals(user.getRole());
+            
+            if (isVet) {
+                // 수의사인 경우 vetId로 조회
+                // VetEntity를 UserEntity의 userId로 조회
+                VetEntity vet = vetRepository.findByUser_UserId(userId).orElse(null);
+                if (vet == null) {
+                    log.error("수의사 정보를 찾을 수 없습니다. userId: {}", userId);
+                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                            .body(ApiResponse.error("수의사 정보를 찾을 수 없습니다."));
+                }
+                Long vetId = vet.getVetId();
+                
+                log.info("수의사 상담 내역 조회 - vetId: {}", vetId);
+                
+                // consultationType이 지정된 경우 해당 타입만 조회
+                if (consultationType != null && !consultationType.isEmpty()) {
+                    rooms = consultationRoomService.getVetConsultationsByType(vetId, consultationType, pageable);
+                } else {
+                    rooms = consultationRoomService.getVetConsultations(vetId, pageable);
+                }
             } else {
-                // consultationType이 없으면 전체 조회
-                rooms = consultationRoomService.getUserConsultations(userId, pageable);
+                // 일반 사용자인 경우 userId로 조회
+                if (consultationType != null && !consultationType.isEmpty()) {
+                    rooms = consultationRoomService.getUserConsultationsByType(userId, consultationType, pageable);
+                } else {
+                    rooms = consultationRoomService.getUserConsultations(userId, pageable);
+                }
             }
             
             Page<ConsultationRoomDto> roomDtos = rooms.map(consultationRoomService::toDto);

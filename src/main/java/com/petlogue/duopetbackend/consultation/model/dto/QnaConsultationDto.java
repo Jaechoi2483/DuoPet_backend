@@ -70,6 +70,7 @@ public class QnaConsultationDto {
         private List<MessageDto> messages;
         private boolean hasAnswer;
         private int totalMessages;
+        private boolean hasReview;
     }
     
     // 메시지 DTO

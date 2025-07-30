@@ -3,6 +3,7 @@ package com.petlogue.duopetbackend.consultation.model.service;
 import com.petlogue.duopetbackend.consultation.model.dto.ConsultationRoomDto;
 import com.petlogue.duopetbackend.consultation.model.dto.CreateConsultationDto;
 import com.petlogue.duopetbackend.consultation.jpa.entity.ConsultationRoom;
+import com.petlogue.duopetbackend.consultation.jpa.entity.Payment;
 import com.petlogue.duopetbackend.consultation.jpa.entity.ConsultationRoom.RoomStatus;
 import com.petlogue.duopetbackend.consultation.jpa.entity.VetProfile;
 import com.petlogue.duopetbackend.consultation.jpa.entity.VetSchedule;
@@ -42,6 +43,7 @@ public class ConsultationRoomService {
     private final VetScheduleRepository vetScheduleRepository;
     private final ConsultationNotificationService notificationService;
     private final ConsultationTimeoutService timeoutService;
+    private final PaymentService paymentService;
     
     /**
      * 상담방 생성
@@ -85,6 +87,23 @@ public class ConsultationRoomService {
             }
         }
         
+        // 결제 정보가 있는 경우 결제 검증
+        Payment payment = null;
+        if (dto.getPaymentInfo() != null) {
+            try {
+                // 토스페이먼츠 결제 검증
+                payment = paymentService.verifyPayment(
+                    dto.getPaymentInfo().getPaymentKey(),
+                    dto.getPaymentInfo().getOrderId(),
+                    dto.getPaymentInfo().getAmount()
+                );
+                log.info("결제 검증 성공 - orderId: {}", dto.getPaymentInfo().getOrderId());
+            } catch (Exception e) {
+                log.error("결제 검증 실패", e);
+                throw new RuntimeException("결제 검증에 실패했습니다: " + e.getMessage());
+            }
+        }
+        
         // Create consultation room
         ConsultationRoom room = ConsultationRoom.builder()
                 .roomUuid(UUID.randomUUID().toString())
@@ -98,6 +117,7 @@ public class ConsultationRoomService {
                 .consultationFee(vetProfile.getConsultationFee())
                 .chiefComplaint(dto.getChiefComplaint())
                 .roomStatus(schedule == null ? "WAITING" : "CREATED") // 즉시 상담은 WAITING, 예약 상담은 CREATED
+                .isPaid(payment != null) // 결제 여부 설정
                 .build();
         
         // Update schedule status if scheduled consultation
@@ -107,6 +127,18 @@ public class ConsultationRoomService {
         }
         
         ConsultationRoom savedRoom = consultationRoomRepository.save(room);
+        
+        // 결제 정보와 상담방 연결
+        if (payment != null) {
+            payment.setConsultationRoom(savedRoom);
+            paymentService.verifyPayment(
+                payment.getPaymentKey(), 
+                payment.getOrderId(), 
+                payment.getAmount()
+            );
+            log.info("결제 정보와 상담방 연결 완료 - roomId: {}, paymentId: {}", 
+                savedRoom.getRoomId(), payment.getPaymentId());
+        }
         
         // 생성 시간 확인 로그 추가 - 시간 차이 계산
         LocalDateTime jvmNow = LocalDateTime.now();
@@ -169,6 +201,14 @@ public class ConsultationRoomService {
     }
     
     /**
+     * 수의사의 상담 목록 조회 (타입별)
+     */
+    @Transactional(readOnly = true)
+    public Page<ConsultationRoom> getVetConsultationsByType(Long vetId, String consultationType, Pageable pageable) {
+        return consultationRoomRepository.findByVetIdAndConsultationType(vetId, consultationType, pageable);
+    }
+    
+    /**
      * 오늘의 예약 상담 조회 (수의사용)
      */
     @Transactional(readOnly = true)
@@ -221,6 +261,14 @@ public class ConsultationRoomService {
         
         log.info("Consultation ended: room={}, duration={} minutes", 
                 roomId, room.getDurationMinutes());
+        
+        // 수의사 상담횟수 증가
+        try {
+            vetProfileRepository.incrementConsultationCount(room.getVet().getVetId());
+            log.info("Incremented consultation count for vet {}", room.getVet().getVetId());
+        } catch (Exception e) {
+            log.error("Failed to increment consultation count for vet {}", room.getVet().getVetId(), e);
+        }
         
         // WebSocket으로 상담 종료 알림
         try {
@@ -426,8 +474,8 @@ public class ConsultationRoomService {
                     .userId(room.getUser() != null ? room.getUser().getUserId() : null)
                     .userName(room.getUser() != null ? room.getUser().getNickname() : "Unknown")
                     .vetId(room.getVet() != null ? room.getVet().getVetId() : null)
-                    .vetName(room.getVet() != null && room.getVet().getUser() != null 
-                            ? room.getVet().getUser().getNickname() : "Unknown")
+                    .vetName(room.getVet() != null 
+                            ? room.getVet().getName() : "Unknown")
                     .petId(room.getPet() != null ? room.getPet().getPetId() : null)
                     .petName(room.getPet() != null ? room.getPet().getPetName() : null)
                     .roomStatus(room.getRoomStatus())
@@ -443,6 +491,7 @@ public class ConsultationRoomService {
                     .consultationNotes(room.getConsultationNotes())
                     .prescription(room.getPrescription())
                     .createdAt(room.getCreatedAt())
+                    .hasReview(room.getReview() != null)
                     .build();
         } catch (Exception e) {
             log.error("ConsultationRoom DTO 변환 중 오류 발생 - roomId: {}", room.getRoomId(), e);
