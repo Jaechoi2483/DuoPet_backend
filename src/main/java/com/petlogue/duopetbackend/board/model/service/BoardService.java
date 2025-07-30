@@ -60,7 +60,10 @@ public class BoardService {
 
         List<Board> boardList = new ArrayList<>();
         for (BoardEntity entity : entities) {
-            boardList.add(entity.toDto());
+            Board board = entity.toDto();
+            userRepository.findById(board.getUserId())
+                    .ifPresent(user -> board.setNickname(user.getNickname()));
+            boardList.add(board);
         }
 
         return boardList;
@@ -80,8 +83,12 @@ public class BoardService {
 
         ArrayList<Board> list = new ArrayList<>();
         for (BoardEntity entity : page) {
-            list.add(entity.toDto());
+            Board board = entity.toDto();
+            userRepository.findById(board.getUserId())
+                    .ifPresent(user -> board.setNickname(user.getNickname()));
+            list.add(board);
         }
+
         return list;
     }
 
@@ -115,7 +122,13 @@ public class BoardService {
 
             if (entity.getCategory().equals(category) && entity.getContentType().equals(contentType)
                     && entity.getStatus().equals(ACTIVE_STATUS)) {
-                return entity.toDto();
+
+                Board board = entity.toDto();
+
+                userRepository.findById(board.getUserId())
+                        .ifPresent(user -> board.setNickname(user.getNickname()));
+
+                return board;
             }
         }
 
