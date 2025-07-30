@@ -162,6 +162,7 @@ public class SecurityConfig implements WebMvcConfigurer {
                         .requestMatchers(
                                 "/login",
                                 "/reissue",
+                                "/session/check",
                                 "/users/check-id",
                                 "/users/signup/**",
                                 "/users/check-nickname",
