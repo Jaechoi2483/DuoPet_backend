@@ -38,8 +38,8 @@ public class FaqController {
 
     @PutMapping("/{id}")
     public ResponseEntity<Faq> updateFaq(
-            @PathVariable("id") int faqId, // 경로에서 수정할 FAQ의 ID를 받음
-            @RequestBody Faq updateRequest) { // 요청 본문에서 수정할 내용을 받음
+            @PathVariable("id") int faqId,
+            @RequestBody Faq updateRequest) {
 
         Faq updatedFaq = faqService.updateFaq(faqId, updateRequest);
         return ResponseEntity.ok(updatedFaq);
@@ -50,22 +50,19 @@ public class FaqController {
             @RequestBody Faq requestDto,
             Authentication authentication) {
 
-        // 1. 관리자 권한 확인 (SecurityConfig에서도 하지만, 컨트롤러에서 한번 더 명시적으로 확인)
         boolean isAdmin = authentication.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("admin") || a.getAuthority().equals("admin")); // 실제 역할명에 맞게 조정
+                .anyMatch(a -> a.getAuthority().equals("admin") || a.getAuthority().equals("admin"));
 
         if (!isAdmin) {
             log.warn("FAQ 등록 시도 - 권한 없음: 사용자 ID = {}", authentication.getName());
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("FAQ 등록 권한이 없습니다.");
         }
 
-        // 2. 현재 로그인한 관리자의 userId 조회
         String adminLoginId = authentication.getName();
         UserEntity adminUser = userRepository.findByLoginId(adminLoginId)
                 .orElseThrow(() -> new IllegalStateException("관리자 사용자 정보를 찾을 수 없습니다."));
         Integer adminUserId = adminUser.getUserId().intValue();
 
-        // 3. 요청 DTO 유효성 검사 (간단하게)
         if (requestDto.getQuestion() == null || requestDto.getQuestion().trim().isEmpty() ||
                 requestDto.getAnswer() == null || requestDto.getAnswer().trim().isEmpty()) {
             return ResponseEntity.badRequest().body("질문과 답변 내용을 모두 입력해주세요.");
@@ -84,12 +81,9 @@ public class FaqController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> faqDeleteMethod(@PathVariable("id") int faqId) {
 
-        // 서비스 호출에 성공하면 true, 실패하면 false가 반환된다고 가정
         if (faqService.deleteFaq(faqId)) {
-            // 삭제 성공 시 200 OK 와 함께 빈 본문 반환
             return ResponseEntity.ok().build();
         } else {
-            // 해당 ID의 FAQ가 없거나 삭제에 실패한 경우
             return ResponseEntity.notFound().build();
         }
     }

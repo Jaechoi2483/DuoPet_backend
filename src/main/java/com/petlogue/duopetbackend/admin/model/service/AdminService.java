@@ -93,7 +93,6 @@ public class AdminService {
         } else {
             userPage = userRepository.findAll(pageable);
         }
-
         return userPage.map(UserEntity::toDto);
     }
 
@@ -215,7 +214,6 @@ public class AdminService {
     }
     @Transactional(readOnly = true)
     public Page<Report> getAllReports(Pageable pageable, String status) {
-        // 1. status 값에 따라 분기하여 페이징된 엔티티 조회
         Page<ReportEntity> reportPage;
         if (StringUtils.hasText(status) && !"ALL".equalsIgnoreCase(status)) {
             reportPage = reportRepository.findAllByStatusOrderByCreatedAtDesc(status, pageable);
@@ -223,14 +221,12 @@ public class AdminService {
             reportPage = reportRepository.findAllByOrderByCreatedAtDesc(pageable);
         }
 
-        // 2. 현재 페이지의 데이터만 가져와서 후처리
         List<ReportEntity> reportEntities = reportPage.getContent();
         if (reportEntities.isEmpty()) {
-            return Page.empty(pageable); // 빈 Page 객체 반환
+            return Page.empty(pageable);
         }
 
-        // --- 3. N+1 문제 해결을 위한 후처리 로직 (기존과 동일) ---
-        // (ID 수집, 관련 엔티티 일괄 조회 등)
+
         Map<String, List<Long>> targetIdsByType = reportEntities.stream()
                 .collect(Collectors.groupingBy(
                         report -> report.getTargetType().toLowerCase(),
@@ -267,7 +263,6 @@ public class AdminService {
         Map<Long, UserEntity> userMap = userRepository.findAllById(allUserIds).stream()
                 .collect(Collectors.toMap(UserEntity::getUserId, user -> user));
 
-        // --- 4. [핵심 수정] Page 객체의 map 기능을 사용하여 DTO로 변환 후 반환 ---
         return reportPage.map(entity -> {
             UserEntity reporter = userMap.get(entity.getUser().getUserId());
             UserEntity reportedUser = null;
@@ -305,6 +300,9 @@ public class AdminService {
                     .build();
         });
     }
+
+
+
     @Transactional
     public Report updateReportStatus(Long reportId, String action) {
         log.info(">>>>> Report Status Update. reportId: {}, action: {}", reportId, action);
