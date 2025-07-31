@@ -12,9 +12,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import java.io.BufferedReader;
@@ -161,12 +163,12 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         response.setContentType("application/json; charset=utf-8");
 
         String errorMessage;
-        if (failed.getMessage().contains("Bad credentials")) {
-            errorMessage = "아이디와 비밀번호를 다시 확인해 주세요.";
-        } else if (failed.getMessage().contains("비활성화된 계정입니다")) {
-            errorMessage = "탈퇴된 계정입니다. 관리자에게 문의해주세요.";
-        } else if (failed.getMessage().contains("사용자를 찾을 수 없습니다")) {
+        if (failed instanceof UsernameNotFoundException) {
             errorMessage = "존재하지 않는 아이디입니다.";
+        } else if (failed instanceof DisabledException) {
+            errorMessage = "탈퇴된 계정입니다. 관리자에게 문의하세요.";
+        } else if (failed.getMessage().contains("Bad credentials")) {
+            errorMessage = "비밀번호가 일치하지 않습니다.";
         } else {
             errorMessage = "로그인 실패: 알 수 없는 오류가 발생했습니다.";
         }
