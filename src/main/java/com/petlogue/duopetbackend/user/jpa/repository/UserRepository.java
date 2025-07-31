@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface UserRepository extends JpaRepository<UserEntity, Long> {
+public interface  UserRepository extends JpaRepository<UserEntity, Long> {
 
     // [로그인, 인증용] loginId로 회원 조회
     Optional<UserEntity> findByLoginId(String loginId);
