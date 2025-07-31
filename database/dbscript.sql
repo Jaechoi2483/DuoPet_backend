@@ -18,7 +18,6 @@ DROP TABLE shelter_animals          CASCADE CONSTRAINTS;
 DROP TABLE shelter                  CASCADE CONSTRAINTS;
 DROP TABLE vet                      CASCADE CONSTRAINTS;
 DROP TABLE refresh_token            CASCADE CONSTRAINTS;
-DROP TABLE trusted_device           CASCADE CONSTRAINTS;
 DROP TABLE users                    CASCADE CONSTRAINTS;
 DROP TABLE report                   CASCADE CONSTRAINTS;
 
@@ -111,28 +110,6 @@ INSERT INTO users (
  'M', '경기도 수원시 영통구 광교중앙로 248', 'user01@duopet.com', 'user', TO_DATE('2024-06-04', 'YYYY-MM-DD'),
  'active', NULL, NULL, 'user01_face');
 
-
-/*==============================================================
-  2.  2-차 인증 기기 (TRUSTED_DEVICE)
-==============================================================*/
-CREATE TABLE trusted_device (
-    device_id       NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    user_id         NUMBER          NOT NULL,
-    device_info     VARCHAR2(255)   NOT NULL,
-    ip_address      VARCHAR2(50)    NOT NULL,
-    registered_at   DATE DEFAULT SYSDATE NOT NULL,
-    last_used_at    DATE,
-    CONSTRAINT fk_td_user FOREIGN KEY (user_id)
-        REFERENCES users (user_id)
-);
-
-COMMENT ON TABLE   trusted_device               IS '신뢰 브라우저/기기 (2차 인증용)';
-COMMENT ON COLUMN trusted_device.device_id      IS 'PK, IDENTITY (기기 고유 식별자)';
-COMMENT ON COLUMN trusted_device.user_id        IS 'FK (USERS 테이블의 user_id 참조), 사용자 고유 식별자';
-COMMENT ON COLUMN trusted_device.device_info    IS 'User-Agent 정보';
-COMMENT ON COLUMN trusted_device.ip_address     IS '기기 등록 시 IP 주소';
-COMMENT ON COLUMN trusted_device.registered_at  IS '기기 등록일';
-COMMENT ON COLUMN trusted_device.last_used_at   IS '기기 최종 사용일';
 
 ---
 
