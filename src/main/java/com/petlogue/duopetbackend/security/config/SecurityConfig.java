@@ -85,6 +85,7 @@ public class SecurityConfig implements WebMvcConfigurer {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
         provider.setUserDetailsService(userDetailsService);
         provider.setPasswordEncoder(passwordEncoder());
+        provider.setHideUserNotFoundExceptions(false);
         return provider;
     }
 
