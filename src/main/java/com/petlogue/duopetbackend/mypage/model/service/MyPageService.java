@@ -12,13 +12,17 @@ import com.petlogue.duopetbackend.mypage.model.dto.MyBookmarkDto;
 import com.petlogue.duopetbackend.mypage.model.dto.MyCommentDto;
 import com.petlogue.duopetbackend.mypage.model.dto.MyLikeDto;
 import com.petlogue.duopetbackend.mypage.model.dto.MyPostDto;
+import com.petlogue.duopetbackend.user.jpa.entity.UserEntity;
+import com.petlogue.duopetbackend.user.jpa.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Objects;
@@ -26,6 +30,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
+@Transactional
 @RequiredArgsConstructor
 public class MyPageService {
 
@@ -33,6 +38,8 @@ public class MyPageService {
     private final CommentsRepository commentsRepository;
     private final LikeRepository likeRepository;
     private final BookmarkRepository bookmarkRepository;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     /**
      * 특정 사용자가 작성한 게시글 목록을 최신순으로 조회
@@ -76,4 +83,19 @@ public class MyPageService {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
     }
+
+    public void verifyAndResetPassword(String loginId, String currentPassword, String newPassword) {
+        UserEntity user = userRepository.findByLoginId(loginId)
+                .orElseThrow(() -> new RuntimeException("사용자 없음"));
+
+        if (!passwordEncoder.matches(currentPassword, user.getUserPwd())) {
+            throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
+        }
+
+        // 비밀번호 암호화 후 저장
+        String encodedPwd = passwordEncoder.encode(newPassword);
+        user.setUserPwd(encodedPwd);
+        userRepository.save(user);
+    }
+
 }

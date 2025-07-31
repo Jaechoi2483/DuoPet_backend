@@ -5,11 +5,9 @@ import com.petlogue.duopetbackend.board.model.dto.Bookmark;
 import com.petlogue.duopetbackend.board.model.dto.Like;
 import com.petlogue.duopetbackend.board.model.service.BookmarkService;
 import com.petlogue.duopetbackend.board.model.service.LikeService;
-import com.petlogue.duopetbackend.mypage.model.dto.MyBookmarkDto;
-import com.petlogue.duopetbackend.mypage.model.dto.MyCommentDto;
-import com.petlogue.duopetbackend.mypage.model.dto.MyLikeDto;
-import com.petlogue.duopetbackend.mypage.model.dto.MyPostDto;
+import com.petlogue.duopetbackend.mypage.model.dto.*;
 import com.petlogue.duopetbackend.mypage.model.service.MyPageService;
+import com.petlogue.duopetbackend.security.jwt.JWTUtil;
 import com.petlogue.duopetbackend.user.jpa.entity.UserEntity;
 import com.petlogue.duopetbackend.user.jpa.repository.UserRepository;
 import com.petlogue.duopetbackend.user.model.dto.ShelterDto;
@@ -25,6 +23,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -47,6 +46,8 @@ public class MyPageController {
     private final VetService vetService;
     private final ShelterService shelterService;
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final UserService userService;
 
     /**
      * 마이페이지 - 내가 작성한 게시글 목록 조회
@@ -204,4 +205,18 @@ public class MyPageController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("삭제 실패");
         }
     }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<?> changePassword(@RequestBody PasswordChangeRequestDto dto, HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("사용자 없음"));
+
+        // loginId로 비밀번호 검증 및 변경 처리
+        myPageService.verifyAndResetPassword(user.getLoginId(), dto.getCurrentPassword(), dto.getNewPassword());
+
+        return ResponseEntity.ok("비밀번호 변경 완료");
+    }
+
 }
