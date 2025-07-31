@@ -6,6 +6,7 @@ import com.petlogue.duopetbackend.info.model.dto.ShelterInfoDto;
 import com.petlogue.duopetbackend.info.model.service.HospitalService;
 import com.petlogue.duopetbackend.info.model.service.ShelterInfoService;
 import com.petlogue.duopetbackend.info.model.service.ShelterService;
+import com.petlogue.duopetbackend.info.model.service.AnimalHospitalService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
@@ -14,9 +15,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.stream.Collectors;
 
 @RestController
@@ -28,13 +32,16 @@ public class InfoController {
     private final HospitalService hospitalService;
     private final ShelterService shelterService;
     private final ShelterInfoService shelterInfoService;
+    private final AnimalHospitalService animalHospitalService;
 
     public InfoController(HospitalService hospitalService, 
                          @Qualifier("infoShelterService") ShelterService shelterService,
-                         ShelterInfoService shelterInfoService) {
+                         ShelterInfoService shelterInfoService,
+                         AnimalHospitalService animalHospitalService) {
         this.hospitalService = hospitalService;
         this.shelterService = shelterService;
         this.shelterInfoService = shelterInfoService;
+        this.animalHospitalService = animalHospitalService;
     }
 
     /**
@@ -187,6 +194,88 @@ public class InfoController {
         
         log.info("반경 {}km 내 병원 {}개 조회 완료", radius, nearbyHospitals.size());
         return ResponseEntity.ok(nearbyHospitals);
+    }
+
+    /**
+     * CSV 파일 임포트 (관리자 전용)
+     * POST /api/info/hospitals/import/csv
+     * AnimalHospitalController에서 이전한 기능
+     * 관리자 페이지의 데이터 동기화에서 사용 가능
+     */
+    @PostMapping("/hospitals/import/csv")
+    public ResponseEntity<?> importHospitalsCsv(@RequestParam("file") MultipartFile file) {
+        try {
+            if (file.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "파일이 비어있습니다"
+                ));
+            }
+            
+            // 파일 확장자 검사
+            String filename = file.getOriginalFilename();
+            if (filename == null || !filename.toLowerCase().endsWith(".csv")) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "CSV 파일만 업로드 가능합니다"
+                ));
+            }
+            
+            log.info("병원 CSV 임포트 시작 - 파일명: {}", filename);
+            
+            // AnimalHospitalService의 importFromCsv 메소드 사용
+            Map<String, Object> result = animalHospitalService.importFromCsv(file);
+            
+            log.info("병원 CSV 임포트 완료 - 결과: {}", result);
+            return ResponseEntity.ok(result);
+            
+        } catch (Exception e) {
+            log.error("병원 CSV 임포트 오류", e);
+            return ResponseEntity.status(500).body(Map.of(
+                "success", false,
+                "message", "파일 처리 중 오류가 발생했습니다: " + e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * 근처 병원 찾기 (AnimalHospitalController에서 이전)
+     * GET /api/info/hospitals/nearby/detail?lat=37.5665&lng=126.9780&radius=5
+     * 더 상세한 정보와 거리 계산을 포함한 버전
+     */
+    @GetMapping("/hospitals/nearby/detail")
+    public ResponseEntity<?> getNearbyHospitalsDetail(
+            @RequestParam("lat") Double latitude,
+            @RequestParam("lng") Double longitude,
+            @RequestParam(value = "radius", defaultValue = "5") Double radius) {
+        
+        if (latitude == null || longitude == null) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false,
+                "message", "위도와 경도는 필수입니다"
+            ));
+        }
+        
+        if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false,
+                "message", "올바른 좌표값이 아닙니다"
+            ));
+        }
+        
+        log.info("상세 근처 병원 검색 - lat: {}, lng: {}, radius: {}km", latitude, longitude, radius);
+        
+        // AnimalHospitalService의 getNearbyHospitals 메소드 사용
+        var nearbyHospitals = animalHospitalService.getNearbyHospitals(latitude, longitude, radius);
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("count", nearbyHospitals.size());
+        response.put("radius", radius);
+        response.put("hospitals", nearbyHospitals);
+        
+        log.info("상세 근처 병원 검색 완료 - {}개 발견", nearbyHospitals.size());
+        return ResponseEntity.ok(response);
     }
 
     /**

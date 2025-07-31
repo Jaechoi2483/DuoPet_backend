@@ -42,8 +42,8 @@ public class ConsultationTimeoutService {
         log.info("상담방 {} 메모리에서 제거", roomId);
     }
 
-    // 5초마다 실행하여 타임아웃된 요청이 있는지 확인 (더 빠른 응답을 위해)
-    @Scheduled(fixedRate = 5000)
+    // 1분마다 실행하여 타임아웃된 요청이 있는지 확인 (서버 부하 감소)
+    @Scheduled(fixedRate = 60000)
     @Transactional
     public void checkForTimeouts() {
         LocalDateTime now = LocalDateTime.now();
