@@ -28,8 +28,6 @@ public class CommentsController {
 
     private final CommentsService commentsService;
 
-    private final CommentsRepository commentsRepository;
-
     private final ReportService reportService;
 
     private final LikeService likeService;
