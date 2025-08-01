@@ -5,6 +5,7 @@ import com.petlogue.duopetbackend.user.jpa.entity.UserEntity;
 import com.petlogue.duopetbackend.user.jpa.repository.UserRepository;
 import com.petlogue.duopetbackend.user.model.dto.UserDto;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +17,7 @@ import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.Optional;
 
+@Slf4j
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -106,10 +108,8 @@ public class UserService {
     public UserEntity saveFinalUser(UserDto userDto, MultipartFile file) {
 
         // 1. 비밀번호 암호화
-        if (!userDto.getUserPwd().startsWith("{bcrypt}")) {
             String encodedPwd = passwordEncoder.encode(userDto.getUserPwd());
             userDto.setUserPwd(encodedPwd);
-        }
 
         // 2. 성별 코드 변환
         String gender = userDto.getGender();
@@ -282,13 +282,10 @@ public class UserService {
         UserEntity user = userRepository.findByLoginId(loginId)
                 .orElseThrow(() -> new RuntimeException("해당 ID의 사용자를 찾을 수 없습니다."));
 
-        // 회원가입과 동일한 방식의 조건부 암호화 적용
-        if (!newPassword.startsWith("{bcrypt}")) {
-            String encodedPwd = passwordEncoder.encode(newPassword);
-            newPassword = encodedPwd;
-        }
+        // 반드시 암호화해야 로그인 가능
+        String encodedPwd = passwordEncoder.encode(newPassword);
+        user.setUserPwd(encodedPwd);
 
-        user.setUserPwd(newPassword);
         userRepository.save(user);
     }
 
