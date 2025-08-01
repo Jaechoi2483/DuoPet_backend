@@ -3,10 +3,8 @@ package com.petlogue.duopetbackend.board.controller;
 
 
 import com.petlogue.duopetbackend.board.jpa.entity.BoardEntity;
-import com.petlogue.duopetbackend.board.jpa.repository.BoardRepository;
+import com.petlogue.duopetbackend.board.jpa.repository.*;
 
-import com.petlogue.duopetbackend.board.jpa.repository.BookmarkRepository;
-import com.petlogue.duopetbackend.board.jpa.repository.LikeRepository;
 import com.petlogue.duopetbackend.board.model.dto.Board;
 import com.petlogue.duopetbackend.board.model.dto.Bookmark;
 import com.petlogue.duopetbackend.board.model.dto.Like;
@@ -56,7 +54,11 @@ public class BoardController {
 
     private final LikeRepository likeRepo;
 
+    private final CommentsRepository commentsRepository;
+
     private final BookmarkRepository bookmarkRepository;
+
+    private final ReportRepository reportRepository;
 
     private final ReportService reportService;
 
@@ -229,6 +231,15 @@ public class BoardController {
 
             // 북마크 먼저 삭제
             bookmarkRepository.deleteAllByContentId(id);
+
+            // 댓글 삭제
+            commentsRepository.deleteAllByContentId(id);
+
+            // 좋아요 삭제
+            likeRepo.deleteAllByTargetIdAndTargetType(id, "board");
+
+            // 신고 삭제
+            reportRepository.deleteAllByTargetIdAndTargetType(id, "board");
 
             // 4. 첨부파일 삭제 (선택)
             if (board.getRenameFilename() != null) {

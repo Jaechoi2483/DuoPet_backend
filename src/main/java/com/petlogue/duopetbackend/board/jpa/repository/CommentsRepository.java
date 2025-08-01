@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -15,6 +16,11 @@ public interface CommentsRepository extends JpaRepository<CommentsEntity, Long> 
     // 댓글 + 대댓글 정렬 순 조회
 
     List<CommentsEntity> findByContentIdAndStatusOrderByParentCommentIdAscCreatedAtAsc(Long contentId, String status);
+
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM CommentsEntity c WHERE c.contentId = :contentId")
+    void deleteAllByContentId(Long contentId);
 
     // 좋아요 수 증가
     @Modifying(clearAutomatically = true)
