@@ -87,6 +87,7 @@ public class BoardController {
         return board;
     }
 
+    // 게시글 등록
     @PostMapping("/{category}/write")
     public ResponseEntity<?> insertBoard(
             @PathVariable String category,
@@ -162,7 +163,6 @@ public class BoardController {
 
             // category 수동 주입
             board.setCategory(category.trim());
-
 
             // 제목/내용/카테고리/태그 업데이트
             existing.setTitle(board.getTitle());
@@ -434,6 +434,7 @@ public class BoardController {
         return ResponseEntity.ok(Map.of("bookmarked", bookmarked));
     }
 
+    // 신고 등록
     @PostMapping("/report")
     public ResponseEntity<String> report(@RequestBody Report dto, HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");

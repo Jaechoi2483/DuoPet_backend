@@ -66,6 +66,6 @@ public class ReportService {
         ReportEntity report = dto.toReportEntity(user);
         reportRepository.save(report);
 
-        log.info("✅ 신고 저장 완료: {}", report);
+        log.info("신고 저장 완료: {}", report);
     }
 }

@@ -25,18 +25,18 @@ public class VideoRecommendService {
     private final BoardRepository boardRepository;
 
     private final WebClient webClient = WebClient.builder()
-            .baseUrl("http://localhost:8000/api/v1/video-recommend") // ✅ FastAPI 서버 주소
+            .baseUrl("http://localhost:8000/api/v1/video-recommend") // FastAPI 서버 주소
             .build();
 
     public List<VideoInfo> recommendVideos(VideoRecommendRequest request) {
         try {
-            // ✅ 1. 게시글 ID로 태그 조회
+            // 1. 게시글 ID로 태그 조회
             BoardEntity board = boardRepository.findById(request.getContentId())
-                    .orElseThrow(() -> new IllegalArgumentException("❌ 게시글을 찾을 수 없습니다. ID: " + request.getContentId()));
+                    .orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다. ID: " + request.getContentId()));
 
             String tagString = board.getTags();
             if (tagString == null || tagString.trim().isEmpty()) {
-                log.warn("⚠️ 태그가 비어있습니다. 추천 요청 중단");
+                log.warn("⚠태그가 비어있습니다. 추천 요청 중단");
                 return List.of();
             }
 
@@ -45,9 +45,9 @@ public class VideoRecommendService {
                     .filter(tag -> !tag.isEmpty())
                     .toList();
 
-            log.info("🎯 추천 키워드 추출: {}", keywords);
+            log.info("추천 키워드 추출: {}", keywords);
 
-            // ✅ 2. FastAPI로 요청
+            // 2. FastAPI로 요청
             JsonNode response = webClient.post()
                     .uri("/recommend")
                     .bodyValue(Map.of(
@@ -59,7 +59,7 @@ public class VideoRecommendService {
                     .bodyToMono(JsonNode.class)
                     .block();
 
-            // ✅ 3. 응답 파싱
+            // 3. 응답 파싱
             List<VideoInfo> videos = new ArrayList<>();
             JsonNode dataNode = response.get("data");
             if (dataNode != null && dataNode.has("videos")) {
@@ -75,11 +75,11 @@ public class VideoRecommendService {
                 }
             }
 
-            log.info("✅ 추천 영상 {}개 수신 완료", videos.size());
+            log.info("추천 영상 {}개 수신 완료", videos.size());
             return videos;
 
         } catch (Exception e) {
-            log.error("🔥 영상 추천 실패: {}", e.getMessage(), e);
+            log.error("영상 추천 실패: {}", e.getMessage(), e);
             return List.of(); // 실패 시 빈 리스트 반환
         }
     }
