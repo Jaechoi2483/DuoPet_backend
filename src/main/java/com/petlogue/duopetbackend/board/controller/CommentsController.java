@@ -1,9 +1,5 @@
 package com.petlogue.duopetbackend.board.controller;
 
-import com.petlogue.duopetbackend.board.jpa.entity.CommentsEntity;
-import com.petlogue.duopetbackend.board.jpa.entity.LikeEntity;
-import com.petlogue.duopetbackend.board.jpa.repository.CommentsRepository;
-import com.petlogue.duopetbackend.board.jpa.repository.LikeRepository;
 import com.petlogue.duopetbackend.board.model.dto.Comments;
 import com.petlogue.duopetbackend.board.model.dto.Report;
 import com.petlogue.duopetbackend.board.model.service.CommentsService;
@@ -46,11 +42,13 @@ public class CommentsController {
     public ResponseEntity<?> insertComment(@RequestBody Comments dto, HttpServletRequest request) {
         log.info("insertComment: {}", dto);
 
+        // JWT 토큰에서 사용자 ID 추출
         String token = request.getHeader("Authorization").replace("Bearer ", "");
         Long userId = jwtUtil.getUserIdFromRequest(request);
 
         dto.setUserId(userId);
 
+        // 댓글 등록 시도
         if (commentsService.insertComment(dto) != null) {
             return ResponseEntity.ok().build();
         } else {
@@ -63,6 +61,7 @@ public class CommentsController {
     public ResponseEntity<?> likeComment(@PathVariable Long commentId,
                                          @RequestAttribute("userId") Long userId) {
 
+        // 좋아요 처리 후 현재 좋아요 수 반환
         int likeCount = likeService.toggleCommentLike(userId, commentId);
         return ResponseEntity.ok().body(likeCount); // 최신 좋아요 수 반환
     }
@@ -72,10 +71,13 @@ public class CommentsController {
     public ResponseEntity<?> reportComment(@PathVariable Long commentId,
                                            @RequestAttribute("userId") Long userId,
                                            @RequestBody Report dto) {
+
+        // 신고 정보 설정
         dto.setTargetId(commentId);
         dto.setTargetType("comment");
         dto.setUserId(userId);
 
+        // 신고 저장 처리
         reportService.saveReport(userId, dto);
         return ResponseEntity.ok("신고 접수 완료");
     }
